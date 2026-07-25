@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Uploads privés
+uploads/documents/*
+uploads/rapports/*
+uploads/temporaires/*
+
+# Conserver les dossiers
+!uploads/documents/.gitkeep
+!uploads/rapports/.gitkeep
+!uploads/temporaires/.gitkeep

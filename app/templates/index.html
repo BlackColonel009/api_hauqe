@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Système national de gestion et de suivi des certifications">
+  <title>HAUQE Certif</title>
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("hauqe-theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/alertes.css">
+  <link rel="stylesheet" href="/static/css/echeances.css">
+  <link rel="stylesheet" href="/static/css/entreprises.css">
+  <link rel="stylesheet" href="/static/css/entreprise-detail.css">
+  <link rel="stylesheet" href="/static/css/entreprise-form.css">
+  <link rel="stylesheet" href="/static/css/certifications.css">
+  <link rel="stylesheet" href="/static/css/certification-detail.css">
+  <link rel="stylesheet" href="/static/css/collectes.css">
+  <link rel="stylesheet" href="/static/css/collecte-form.css">
+  <link rel="stylesheet" href="/static/css/validations.css">
+  <link rel="stylesheet" href="/static/css/validation-assignment.css">
+  <link rel="stylesheet" href="/static/css/governance-modules.css?v=20260723-1">
+  <link rel="stylesheet" href="/static/css/business-rules-ui.css?v=20260723-1">
+  <link rel="stylesheet" href="/static/css/controle.css">
+  <link rel="stylesheet" href="/static/css/scoring.css">
+  <link rel="stylesheet" href="/static/css/rapports.css">
+  <link rel="stylesheet" href="/static/css/utilisateurs.css">
+  <link rel="stylesheet" href="/static/css/referentiels.css">
+  <link rel="stylesheet" href="/static/css/regles-codification.css">
+  <link rel="stylesheet" href="/static/css/code-model.css">
+  <link rel="stylesheet" href="/static/css/final-pages.css">
+  <link rel="stylesheet" href="/static/css/topbar-dropdowns.css?v=20260717-2">
+  <link rel="stylesheet" href="/static/css/assign-alert-premium.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/assign-alert-fix.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/session-lock.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/alert-email-rules.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/theme.css?v=20260717-1">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navigation principale">
+      <a class="brand" href="#/dashboard"><span class="brand-mark">HQ</span><span><strong>HAUQE</strong><small>Certifications</small></span></a>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <p class="nav-caption">Pilotage</p>
+        <a class="nav-link" data-route="dashboard" href="#/dashboard"><i data-lucide="layout-dashboard"></i><span>Tableau de bord</span></a>
+        <a class="nav-link" data-route="alertes" href="#/alertes"><i data-lucide="bell-ring"></i><span>Alertes</span><b class="nav-badge">12</b></a>
+        <a class="nav-link" data-route="echeances" href="#/echeances"><i data-lucide="calendar-clock"></i><span>Échéances</span></a>
+        <p class="nav-caption">Registre national</p>
+        <a class="nav-link" data-route="entreprises" href="#/entreprises"><i data-lucide="building-2"></i><span>Entreprises</span></a>
+        <a class="nav-link" data-route="certifications" href="#/certifications"><i data-lucide="badge-check"></i><span>Certifications</span></a>
+        <a class="nav-link" data-route="organismes" href="#/organismes"><i data-lucide="landmark"></i><span>Organismes</span></a>
+        <a class="nav-link" data-route="collectes" href="#/collectes"><i data-lucide="clipboard-check"></i><span>Collectes & contrôles</span></a>
+        <a class="nav-link nav-sub-link" data-route="verifications" href="#/verifications"><i data-lucide="file-search"></i><span>Vérifications</span><b class="nav-badge">7</b></a>
+        <a class="nav-link nav-sub-link" data-route="validations" href="#/validations"><i data-lucide="list-checks"></i><span>Validations</span><b class="nav-badge">4</b></a>
+        <a class="nav-link nav-sub-link" data-route="controle" href="#/controle"><i data-lucide="shield-check"></i><span>Grille de contrôle</span></a>
+        <a class="nav-link nav-sub-link" data-route="integrations" href="#/integrations"><i data-lucide="database"></i><span>Intégrations BNEC</span></a>
+        <p class="nav-caption">Analyse</p>
+        <a class="nav-link" data-route="scoring" href="#/scoring"><i data-lucide="gauge"></i><span>Scoring</span></a>
+        <a class="nav-link nav-sub-link" data-route="infc" href="#/infc"><i data-lucide="chart-no-axes-combined"></i><span>INFC</span></a>
+        <a class="nav-link nav-sub-link" data-route="classement-sncc" href="#/classement-sncc"><i data-lucide="medal"></i><span>Classement SNCC</span></a>
+        <a class="nav-link nav-sub-link" data-route="veille" href="#/veille"><i data-lucide="radar"></i><span>Cellule de veille</span></a>
+        <a class="nav-link nav-sub-link" data-route="decisions" href="#/decisions"><i data-lucide="scale"></i><span>Décisions & actions</span></a>
+        <a class="nav-link" data-route="rapports" href="#/rapports"><i data-lucide="file-chart-column"></i><span>Rapports</span></a>
+        <a class="nav-link" data-route="utilisateurs" href="#/utilisateurs"><i data-lucide="settings-2"></i><span>Administration</span></a>
+        <a class="nav-link nav-sub-link" data-route="referentiels" href="#/referentiels"><i data-lucide="library-big"></i><span>Référentiels</span></a>
+        <a class="nav-link nav-sub-link" data-route="regles-codification" href="#/regles-codification"><i data-lucide="binary"></i><span>Règles & codification</span></a>
+        <a class="nav-link nav-sub-link" data-route="journal-audit" href="#/journal-audit"><i data-lucide="scroll-text"></i><span>Journal d’audit</span></a>
+        <a class="nav-link nav-sub-link" data-route="documents" href="#/documents"><i data-lucide="files"></i><span>Documents</span></a>
+        <a class="nav-link nav-sub-link" data-route="qualite-donnees" href="#/qualite-donnees"><i data-lucide="badge-check"></i><span>Qualité des données</span></a>
+        <a class="nav-link nav-sub-link" data-route="sauvegardes" href="#/sauvegardes"><i data-lucide="database-backup"></i><span>Sauvegardes</span></a>
+        <a class="nav-link nav-sub-link" data-route="publications" href="#/publications"><i data-lucide="globe-2"></i><span>Publications</span></a>
+      </nav>
+      <div class="sidebar-support"><i data-lucide="circle-help"></i><div><strong>Besoin d’aide ?</strong><small>Consulter le guide utilisateur</small></div></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="icon-button menu-toggle" id="menuToggle" aria-label="Ouvrir le menu"><i data-lucide="menu"></i></button>
+        <div class="topbar-title"><strong>Système national de gestion des certifications</strong><span>Dernière synchronisation : aujourd’hui à 08:42</span></div>
+        <div class="topbar-actions">
+          <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Activer le thème sombre"><span class="theme-switch-track"><i class="theme-sun" data-lucide="sun"></i><i class="theme-moon" data-lucide="moon"></i><b></b></span><em id="themeSwitchLabel">Clair</em></button>
+          <div class="topbar-dropdown-wrap"><button class="icon-button notification-button" id="notificationToggle" aria-label="Notifications" aria-expanded="false"><i data-lucide="bell"></i><span id="notificationDot"></span></button><section class="topbar-dropdown notification-dropdown" id="notificationDropdown" hidden><header><div><strong>Notifications</strong><small>4 non lues</small></div><button id="markNotificationsRead">Tout marquer comme lu</button></header><div class="quick-notifications" id="quickNotifications"></div><footer><a href="#/alertes">Voir toutes les alertes<i data-lucide="arrow-right"></i></a></footer></section></div>
+          <div class="topbar-dropdown-wrap"><button class="user-menu" id="userMenuToggle" aria-expanded="false"><span class="avatar">AD</span><span class="user-copy"><strong>Amévi Dossou</strong><small>Administrateur HAUQE</small></span><i data-lucide="chevron-down"></i></button><section class="topbar-dropdown account-dropdown" id="accountDropdown" hidden><header><span class="avatar large">AD</span><div><strong>Amévi Dossou</strong><small>amevi.dossou@hauqe.tg</small><em>Administrateur HAUQE</em></div></header><nav><a href="#/profil"><i data-lucide="user-round"></i><span><strong>Mon profil</strong><small>Informations personnelles</small></span></a><a href="#/profil" data-profile-shortcut="security"><i data-lucide="shield-check"></i><span><strong>Sécurité</strong><small>Mot de passe et MFA</small></span></a><a href="#/profil" data-profile-shortcut="notifications"><i data-lucide="settings-2"></i><span><strong>Préférences</strong><small>Notifications et affichage</small></span></a><a href="#/journal-audit"><i data-lucide="history"></i><span><strong>Mon activité</strong><small>Connexions et opérations</small></span></a></nav><footer><a href="#/connexion"><i data-lucide="log-out"></i>Se déconnecter</a></footer></section></div>
+        </div>
+      </header>
+      <div id="routeLoading" class="route-loading" hidden role="status" aria-live="polite"><div class="hauqe-h-loader option-a" aria-hidden="true"><svg viewBox="0 0 92 92"><circle class="hauqe-ring" cx="46" cy="46" r="39"/><circle class="hauqe-orbit" cx="46" cy="46" r="39"/><path class="hauqe-letter" d="M29 24V68M63 24V68M29 46H63"/><path class="hauqe-leaf" d="M68 25c8-8 14-4 13-13-9-1-14 5-13 13Z"/></svg></div><strong>HAUQE</strong><p>Initialisation de votre espace sécurisé…</p></div>
+      <div id="pageContent" aria-live="polite"></div>
+      <div id="routeError" class="route-error" hidden><i data-lucide="triangle-alert"></i><h1>Impossible de charger cette page</h1><p>Vérifiez la connexion au serveur puis réessayez.</p><button class="btn btn-primary app-btn" id="retryRoute">Réessayer</button></div>
+    </main>
+  </div>
+  <div class="session-lock" id="sessionLock" hidden role="dialog" aria-modal="true" aria-labelledby="sessionLockTitle">
+    <div class="session-lock-backdrop"></div>
+    <section class="session-lock-card">
+      <div class="session-lock-brand"><span>HQ</span><div><strong>HAUQE Certif</strong><small>Session sécurisée</small></div></div>
+      <div class="session-lock-avatar">AD<span><i data-lucide="lock-keyhole"></i></span></div>
+      <p class="eyebrow">Session verrouillée</p>
+      <h2 id="sessionLockTitle">Bienvenue, Amévi</h2>
+      <p class="session-lock-copy">Votre session a été verrouillée après une période d’inactivité. Saisissez votre code privé pour reprendre votre travail.</p>
+      <form id="sessionUnlockForm" novalidate>
+        <label for="sessionUnlockCode">Code privé de déverrouillage</label>
+        <div class="session-code-field"><i data-lucide="key-round"></i><input id="sessionUnlockCode" type="password" minlength="5" autocomplete="off" placeholder="Votre code privé" required><button type="button" id="toggleUnlockCode" aria-label="Afficher le code"><i data-lucide="eye"></i></button></div>
+        <div class="session-lock-error" id="sessionLockError" aria-live="polite"></div>
+        <button class="session-unlock-button" type="submit"><i data-lucide="unlock-keyhole"></i>Déverrouiller la session</button>
+      </form>
+      <div class="session-lock-footer"><span><i data-lucide="shield-check"></i>Connexion protégée</span><a href="#/connexion" id="sessionLogout"><i data-lucide="log-out"></i>Se déconnecter</a></div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="/static/js/mock-data.js"></script>
+  <script src="/static/js/code-model.js"></script>
+  <script src="/static/js/core/business-rules-ui.js?v=20260723-1"></script>
+  <script type="module" src="/static/js/core/app-shell.js?v=20260717-2"></script>
+</body>
+</html>

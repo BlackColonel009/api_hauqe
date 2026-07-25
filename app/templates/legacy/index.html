@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Système national de gestion et de suivi des certifications de la HAUQE">
+  <title>HAUQE Certif — Tableau de bord</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navigation principale">
+      <a class="brand" href="#" aria-label="Accueil HAUQE Certif">
+        <span class="brand-mark">HQ</span>
+        <span><strong>HAUQE</strong><small>Certifications</small></span>
+      </a>
+
+      <nav class="sidebar-nav">
+        <p class="nav-caption">Pilotage</p>
+        <a class="nav-link active" href="index.html"><i data-lucide="layout-dashboard"></i><span>Tableau de bord</span></a>
+        <a class="nav-link" href="alertes.html"><i data-lucide="bell-ring"></i><span>Alertes</span><b class="nav-badge">12</b></a>
+        <a class="nav-link" href="echeances.html"><i data-lucide="calendar-clock"></i><span>Échéances</span></a>
+
+        <p class="nav-caption">Registre national</p>
+        <a class="nav-link" href="entreprises.html"><i data-lucide="building-2"></i><span>Entreprises</span></a>
+        <a class="nav-link" href="#"><i data-lucide="badge-check"></i><span>Certifications</span></a>
+        <a class="nav-link" href="#"><i data-lucide="landmark"></i><span>Organismes</span></a>
+        <a class="nav-link" href="#"><i data-lucide="clipboard-check"></i><span>Collectes & contrôles</span></a>
+
+        <p class="nav-caption">Analyse</p>
+        <a class="nav-link" href="#"><i data-lucide="gauge"></i><span>Scoring</span></a>
+        <a class="nav-link" href="#"><i data-lucide="file-chart-column"></i><span>Rapports</span></a>
+        <a class="nav-link" href="#"><i data-lucide="settings-2"></i><span>Administration</span></a>
+      </nav>
+
+      <div class="sidebar-support">
+        <i data-lucide="circle-help"></i>
+        <div><strong>Besoin d’aide ?</strong><small>Consulter le guide utilisateur</small></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="icon-button menu-toggle" id="menuToggle" aria-label="Ouvrir le menu"><i data-lucide="menu"></i></button>
+        <div class="topbar-title"><strong>Système national de gestion des certifications</strong><span>Dernière synchronisation : aujourd’hui à 08:42</span></div>
+        <div class="topbar-actions">
+          <button class="icon-button notification-button" aria-label="Notifications"><i data-lucide="bell"></i><span></span></button>
+          <button class="user-menu" type="button">
+            <span class="avatar">AD</span>
+            <span class="user-copy"><strong>Amévi Dossou</strong><small>Administrateur HAUQE</small></span>
+            <i data-lucide="chevron-down"></i>
+          </button>
+        </div>
+      </header>
+
+      <div class="page-content container-fluid">
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">Vue nationale</p>
+            <h1>Tableau de bord</h1>
+            <p>Suivez la situation des entreprises, des certifications et des contrôles prioritaires.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="btn btn-outline-secondary app-btn"><i data-lucide="download"></i>Exporter</button>
+            <button class="btn btn-primary app-btn"><i data-lucide="plus"></i>Nouvelle collecte</button>
+          </div>
+        </section>
+
+        <section class="filter-bar" aria-label="Filtres du tableau de bord">
+          <div class="filter-title"><i data-lucide="sliders-horizontal"></i><span>Filtres</span></div>
+          <label><span>Période</span><select id="periodFilter"><option>Année 2026</option><option>30 derniers jours</option><option>12 derniers mois</option></select></label>
+          <label><span>Région</span><select><option>Toutes les régions</option><option>Maritime</option><option>Plateaux</option><option>Centrale</option><option>Kara</option><option>Savanes</option></select></label>
+          <label><span>Secteur</span><select><option>Tous les secteurs</option><option>Agroalimentaire</option><option>Industrie</option><option>Services</option></select></label>
+          <button class="reset-filter" type="button"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+        </section>
+
+        <section class="metrics-grid" id="metricsGrid" aria-label="Indicateurs principaux"></section>
+
+        <section class="dashboard-grid dashboard-grid-main">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div><h2>État des certifications</h2><p>Répartition par statut actuel</p></div>
+              <button class="more-button" aria-label="Plus d’options"><i data-lucide="ellipsis"></i></button>
+            </div>
+            <div class="chart-wrap"><canvas id="statusChart" aria-label="Répartition des certifications par statut"></canvas></div>
+            <div class="chart-legend" id="statusLegend"></div>
+          </article>
+
+          <article class="panel deadline-panel">
+            <div class="panel-heading">
+              <div><h2>Échéances à surveiller</h2><p>Certificats arrivant à expiration</p></div>
+              <a href="#">Tout afficher <i data-lucide="arrow-up-right"></i></a>
+            </div>
+            <div class="deadline-summary">
+              <div class="deadline-ring"><strong>26</strong><span>échéances<br>à 90 jours</span></div>
+              <div class="deadline-levels">
+                <div><span><i class="dot critical"></i>Dans 30 jours</span><strong>5</strong></div>
+                <div><span><i class="dot warning"></i>Dans 60 jours</span><strong>8</strong></div>
+                <div><span><i class="dot info"></i>Dans 90 jours</span><strong>13</strong></div>
+              </div>
+            </div>
+            <div class="next-deadline"><span><i data-lucide="clock-3"></i>Prochaine échéance</span><strong>AGROVITA SARL — 18 j</strong></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid dashboard-grid-lower">
+          <article class="panel activity-panel">
+            <div class="panel-heading">
+              <div><h2>Activité des certifications</h2><p>Nouvelles, renouvelées et expirées</p></div>
+              <select class="compact-select"><option>6 derniers mois</option><option>12 derniers mois</option></select>
+            </div>
+            <div class="activity-chart-wrap"><canvas id="activityChart" aria-label="Évolution des certifications"></canvas></div>
+          </article>
+
+          <article class="panel priority-panel">
+            <div class="panel-heading">
+              <div><h2>Actions prioritaires</h2><p>À traiter par niveau d’urgence</p></div>
+              <span class="counter">12</span>
+            </div>
+            <div id="priorityList" class="priority-list"></div>
+            <a class="panel-footer-link" href="#">Ouvrir le centre des alertes <i data-lucide="arrow-right"></i></a>
+          </article>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="panel-heading">
+            <div><h2>Certifications récemment mises à jour</h2><p>Dernières opérations enregistrées dans le système</p></div>
+            <a href="#">Voir le registre <i data-lucide="arrow-up-right"></i></a>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle app-table">
+              <thead><tr><th>Entreprise</th><th>Certification</th><th>Organisme</th><th>Expiration</th><th>Statut</th><th>Score</th><th></th></tr></thead>
+              <tbody id="recentTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="assets/js/mock-data.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

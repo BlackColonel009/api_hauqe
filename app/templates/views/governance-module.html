@@ -1,0 +1,23 @@
+<div class="page-content container-fluid governance-page">
+  <section class="page-heading">
+    <div><p class="eyebrow" id="govEyebrow"></p><h1 id="govTitle"></h1><p id="govDescription"></p></div>
+    <div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="govExport"><i data-lucide="download"></i>Exporter</button><button class="btn btn-primary app-btn" id="govPrimary"><i data-lucide="plus"></i><span>Nouvelle action</span></button></div>
+  </section>
+  <section class="gov-flow" id="govFlow"></section>
+  <section class="gov-kpis" id="govKpis"></section>
+  <section class="panel gov-toolbar">
+    <label class="gov-search"><i data-lucide="search"></i><input id="govSearch" type="search" placeholder="Rechercher…"></label>
+    <label><span>État</span><select id="govStatus"><option value="all">Tous les états</option></select></label>
+    <label><span>Priorité</span><select id="govPriority"><option value="all">Toutes</option><option value="high">Haute</option><option value="normal">Normale</option><option value="low">Faible</option></select></label>
+    <button class="reset-filter" id="govReset"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+  </section>
+  <section class="panel gov-panel">
+    <header><div><strong id="govCount"></strong><small id="govUpdated">Données de démonstration — raccordement API à venir</small></div><div class="gov-view-tabs"><button class="active" data-view="all">Toutes</button><button data-view="mine">Mes éléments</button><button data-view="urgent">Prioritaires</button></div></header>
+    <div class="table-responsive"><table class="table gov-table"><thead id="govTableHead"></thead><tbody id="govTableBody"></tbody></table></div>
+    <div class="gov-empty" id="govEmpty" hidden><i data-lucide="inbox"></i><strong>Aucun résultat</strong><span>Modifiez les filtres pour afficher d’autres éléments.</span></div>
+  </section>
+  <div class="gov-overlay" id="govOverlay" hidden></div>
+  <aside class="gov-drawer" id="govDrawer" aria-hidden="true"><header><div><small id="govDrawerRef"></small><h2 id="govDrawerTitle"></h2></div><button id="govDrawerClose" aria-label="Fermer"><i data-lucide="x"></i></button></header><div class="gov-drawer-body" id="govDrawerBody"></div><footer><button class="btn btn-outline-secondary app-btn" id="govDrawerSecondary">Ajouter une note</button><button class="btn btn-primary app-btn" id="govDrawerAdvance"><i data-lucide="arrow-right"></i>Faire avancer</button></footer></aside>
+  <div class="gov-modal" id="govModal" hidden><form id="govForm"><header><div><p class="eyebrow" id="govModalEyebrow"></p><h2 id="govModalTitle"></h2></div><button type="button" id="govModalClose" aria-label="Fermer"><i data-lucide="x"></i></button></header><div class="gov-form-grid" id="govFormFields"></div><footer><button type="button" class="btn btn-outline-secondary app-btn" id="govModalCancel">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="check"></i>Enregistrer</button></footer></form></div>
+  <div class="save-indicator" id="govToast" hidden><i data-lucide="circle-check"></i><span></span></div>
+</div>

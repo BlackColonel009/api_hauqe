@@ -1,0 +1,18 @@
+{
+  "dictionary": "C:\\Users\\hp\\Documents\\APK WEB Projets R.1.3.5 et R1.4.3\\docs\\DICTIONNAIRE_DONNEES_66_TABLES.md",
+  "expected": {
+    "tables": 66,
+    "columns": 843,
+    "foreign_keys": 107,
+    "unique_columns": 9
+  },
+  "actual": {
+    "tables": 66,
+    "columns": 843,
+    "foreign_keys": 107,
+    "unique_columns": 9
+  },
+  "conform": true,
+  "difference_count": 0,
+  "differences": []
+}

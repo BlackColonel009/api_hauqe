@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Calendrier des échéances HAUQE Certif"><title>HAUQE Certif — Échéances</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css"><link rel="stylesheet" href="assets/css/echeances.css">
+</head>
+<body><div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Navigation principale">
+    <a class="brand" href="index.html"><span class="brand-mark">HQ</span><span><strong>HAUQE</strong><small>Certifications</small></span></a>
+    <nav class="sidebar-nav">
+      <p class="nav-caption">Pilotage</p>
+      <a class="nav-link" href="index.html"><i data-lucide="layout-dashboard"></i><span>Tableau de bord</span></a>
+      <a class="nav-link" href="alertes.html"><i data-lucide="bell-ring"></i><span>Alertes</span><b class="nav-badge">12</b></a>
+      <a class="nav-link active" href="echeances.html"><i data-lucide="calendar-clock"></i><span>Échéances</span></a>
+      <p class="nav-caption">Registre national</p>
+      <a class="nav-link" href="entreprises.html"><i data-lucide="building-2"></i><span>Entreprises</span></a><a class="nav-link" href="#"><i data-lucide="badge-check"></i><span>Certifications</span></a><a class="nav-link" href="#"><i data-lucide="landmark"></i><span>Organismes</span></a><a class="nav-link" href="#"><i data-lucide="clipboard-check"></i><span>Collectes & contrôles</span></a>
+      <p class="nav-caption">Analyse</p><a class="nav-link" href="#"><i data-lucide="gauge"></i><span>Scoring</span></a><a class="nav-link" href="#"><i data-lucide="file-chart-column"></i><span>Rapports</span></a><a class="nav-link" href="#"><i data-lucide="settings-2"></i><span>Administration</span></a>
+    </nav><div class="sidebar-support"><i data-lucide="circle-help"></i><div><strong>Besoin d’aide ?</strong><small>Consulter le guide utilisateur</small></div></div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar"><button class="icon-button menu-toggle" id="menuToggle"><i data-lucide="menu"></i></button><div class="topbar-title"><strong>Système national de gestion des certifications</strong><span>Dernière synchronisation : aujourd’hui à 08:42</span></div><div class="topbar-actions"><button class="icon-button notification-button"><i data-lucide="bell"></i><span></span></button><button class="user-menu"><span class="avatar">AD</span><span class="user-copy"><strong>Amévi Dossou</strong><small>Administrateur HAUQE</small></span><i data-lucide="chevron-down"></i></button></div></header>
+    <div class="page-content container-fluid deadlines-page">
+      <section class="page-heading"><div><p class="eyebrow">Pilotage</p><h1>Calendrier des échéances</h1><p>Anticipez les expirations, audits, renouvellements et contrôles réglementaires.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn"><i data-lucide="download"></i>Exporter</button><button class="btn btn-primary app-btn" id="newDeadline"><i data-lucide="calendar-plus"></i>Planifier une échéance</button></div></section>
+      <section class="deadline-kpis" id="deadlineKpis"></section>
+      <section class="deadline-filters">
+        <label><span>Niveau d’alerte</span><select id="rangeFilter"><option value="all">Toutes les échéances</option><option value="180">Niveau 1 · 180 jours</option><option value="90">Niveau 2 · 90 jours</option><option value="30">Niveau 3 · 30 jours</option><option value="expired">Niveau 4 · Expirées</option></select></label>
+        <label><span>Type</span><select id="deadlineType"><option value="all">Tous les types</option><option value="expiration">Expiration</option><option value="audit">Audit</option><option value="renewal">Renouvellement</option><option value="control">Contrôle HAUQE</option></select></label>
+        <label><span>Responsable</span><select id="deadlineOwner"><option value="all">Tous les responsables</option><option value="AD">Amévi Dossou</option><option value="KA">K. Agbodjan</option><option value="none">Non affectées</option></select></label>
+        <label><span>Région</span><select><option>Toutes les régions</option><option>Maritime</option><option>Plateaux</option><option>Centrale</option><option>Kara</option><option>Savanes</option></select></label>
+        <button class="reset-filter" id="resetDeadlines"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+      </section>
+      <section class="calendar-panel panel">
+        <div class="calendar-toolbar"><div class="calendar-navigation"><button id="prevMonth" class="icon-button"><i data-lucide="chevron-left"></i></button><button id="todayButton" class="btn btn-outline-secondary app-btn">Aujourd’hui</button><button id="nextMonth" class="icon-button"><i data-lucide="chevron-right"></i></button><h2 id="monthTitle"></h2></div><div class="view-switch"><button class="active" data-view="calendar"><i data-lucide="calendar-days"></i>Calendrier</button><button data-view="list"><i data-lucide="list"></i>Liste</button></div></div>
+        <div id="calendarView"><div class="weekday-row"><span>Lundi</span><span>Mardi</span><span>Mercredi</span><span>Jeudi</span><span>Vendredi</span><span>Samedi</span><span>Dimanche</span></div><div class="calendar-grid" id="calendarGrid"></div></div>
+        <div id="listView" hidden><div class="deadline-list" id="deadlineList"></div></div>
+        <div class="calendar-legend"><span><i class="expiration"></i>Expiration</span><span><i class="audit"></i>Audit</span><span><i class="renewal"></i>Renouvellement</span><span><i class="control"></i>Contrôle HAUQE</span></div>
+      </section>
+      <section class="upcoming-grid"><article class="panel"><div class="panel-heading"><div><h2>Prochaines échéances prioritaires</h2><p>À traiter dans les 30 prochains jours</p></div><a href="#/alertes">Centre des alertes <i data-lucide="arrow-up-right"></i></a></div><div id="upcomingList"></div></article><article class="panel workload-panel"><div class="panel-heading"><div><h2>Charge par responsable</h2><p>Échéances actives affectées</p></div></div><div id="workload"></div></article></section>
+      <dialog id="deadlineDialog" class="deadline-dialog"><form method="dialog"><div class="dialog-head"><div><p class="eyebrow" id="deadlineDialogEyebrow">Planification</p><h2 id="deadlineDialogTitle">Nouvelle échéance</h2></div><button value="cancel" class="icon-button"><i data-lucide="x"></i></button></div><div class="dialog-form"><label>Type<select id="deadlineFormType"><option value="control">Contrôle HAUQE</option><option value="audit">Audit</option><option value="renewal">Renouvellement</option><option value="expiration">Expiration</option></select></label><label>Entreprise<input id="deadlineFormCompany" placeholder="Rechercher une entreprise"></label><label>Date prévue<input id="deadlineFormDate" type="date"></label><label>Responsable<select id="deadlineFormOwner"><option value="AD">Amévi Dossou</option><option value="KA">K. Agbodjan</option><option value="">Non affectée</option></select></label><label class="full">Action ou observation<textarea id="deadlineFormNote" rows="3"></textarea></label></div><div class="dialog-actions"><button value="cancel" class="btn btn-outline-secondary app-btn">Annuler</button><button value="default" class="btn btn-primary app-btn" id="saveDeadline">Enregistrer</button></div></form></dialog>
+    </div>
+  </main>
+</div>
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="assets/js/echeances.js"></script></body></html>
