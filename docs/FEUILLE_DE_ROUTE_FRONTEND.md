@@ -39,7 +39,7 @@ Les exigences sont classées selon quatre niveaux afin d'éviter de transformer 
 
 1. Séparer les étapes **Collecte**, **Vérification**, **Contrôle**, **Validation**, **Intégration BNEC**, **Classement SNCC** et **Veille**. La validation ne doit plus être présentée comme une simple recevabilité ouvrant directement le contrôle.
 2. Séparer les trois systèmes de notation et de décision :
-   - la grille FUCCS de **28 critères**, notée de 0 à 2, soit **56 points**, avec conversion en taux de conformité ;
+   - la grille FUCCS **versionnée et chargée depuis l'API** ; la version frontend active comporte actuellement **24 critères visibles**, mais ni le nombre de critères ni le score maximal global ne doivent être codés en dur ;
    - l'**INFC sur 100 points**, composé de six domaines pondérés : authenticité 20, validité 20, maintien 20, maîtrise documentaire 15, traçabilité et maîtrise opérationnelle 15, suivi et renouvellement 10 ;
    - le **SNCC**, qui combine classe de conformité, statut administratif et niveau de risque.
 3. Remplacer les seuls horizons 30, 60 et 90 jours par le moteur validé **180 jours, 90 jours, 30 jours et expiration**. Une information complémentaire à 12 mois reste paramétrable et désactivée tant qu'elle n'est pas confirmée.
@@ -227,7 +227,7 @@ Planifier et suivre dans le temps les événements liés aux certifications et a
 
 ### Fonctionnalités illustrées
 
-- horizons paramétrables à 12 mois, 6 mois, 3 mois, 1 mois, 15 jours et expiration, sous réserve d'arbitrage de la HAUQE ;
+- seuils métier 180 jours, 90 jours, 30 jours puis expiration ; d'autres horizons peuvent rester de simples vues calendaires, pas des règles d'alerte ;
 - échéances en retard ;
 - filtres par période, type, responsable et région ;
 - navigation mensuelle ;
@@ -707,7 +707,7 @@ Centraliser les missions de collecte de la HAUQE, leur affectation et l'avanceme
 
 **Terminée — à valider**
 
-La collecte principale est limitée au noyau nécessaire pour alimenter les dossiers : mission, localisation, identité légale, contacts, activités, produits, marchés, certifications, organismes associés, accréditations, justificatifs et consentement. Les produits, marchés et certifications multiples sont des collections structurées conservées dans le brouillon. Les dates sont contrôlées et une fiche dont les informations primordiales sont incomplètes ne peut pas être soumise. Les 28 critères, le score et la décision restent dans Validation/Contrôle.
+La collecte principale est limitée au noyau nécessaire pour alimenter les dossiers : mission, localisation, identité légale, contacts, activités, produits, marchés, certifications, organismes associés, accréditations, justificatifs et consentement. Les produits, marchés et certifications multiples sont des collections structurées conservées dans le brouillon. Les dates sont contrôlées et une fiche dont les informations primordiales sont incomplètes ne peut pas être soumise. Les critères FUCCS, leur score et la décision restent dans Contrôle/Validation et sont chargés depuis la version de grille publiée.
 
 ### Rôle de la page
 
@@ -825,7 +825,7 @@ Fournir aux agents habilités une file structurée pour vérifier puis valider l
 
 ### Rôle de la page
 
-Permettre au validateur HAUQE d'évaluer méthodiquement un dossier selon 28 critères et de formaliser une décision traçable.
+Permettre au contrôleur HAUQE d'évaluer méthodiquement un dossier selon la version FUCCS publiée et de formaliser un contrôle traçable.
 
 ### Profils concernés
 
@@ -835,7 +835,7 @@ Permettre au validateur HAUQE d'évaluer méthodiquement un dossier selon 28 cri
 ### Fonctionnalités illustrées
 
 - contexte de la fiche, de l'agent et du validateur ;
-- 28 critères répartis dans sept domaines ;
+- critères et rubriques chargés dynamiquement depuis la version FUCCS publiée ; la version frontend active comporte actuellement 24 critères visibles ;
 - notation de 0 à 2 et score dynamique sur 56 ;
 - progression par domaine et progression globale ;
 - comptage des non-conformités et points de vigilance ;
@@ -862,7 +862,7 @@ Permettre au validateur HAUQE d'évaluer méthodiquement un dossier selon 28 cri
 
 ### Points à valider
 
-- libellé officiel des 28 critères ;
+- contenu exact de la version FUCCS publiée ; aucun nombre de critères n'est figé dans le JavaScript ;
 - portée exacte des notes 0, 1 et 2 ;
 - seuils et conséquences des décisions ;
 - caractère obligatoire des commentaires selon la note ;
@@ -1174,7 +1174,7 @@ Les éléments ci-dessous constituent le nouveau backlog fonctionnel du frontend
 |---|---|---|---|
 | P0 | `/verifications` | File de vérification documentaire, demandes aux OC, anomalies et avis de vérification | Maquette fonctionnelle — à valider |
 | P0 | `/integrations` | File des dossiers validés à intégrer, contrôle préalable, codification et contrôle post-intégration | Maquette fonctionnelle — à valider |
-| P0 | adaptation `/controle` | Conserver la grille officielle FUCCS : 28 critères, quatre rubriques, score sur 56 et preuves | À corriger |
+| P0 | adaptation `/controle` | Charger la grille FUCCS versionnée depuis l'API ; version frontend active : 24 critères visibles ; nombre de critères et score maximal calculés dynamiquement | À corriger |
 | P0 | adaptation `/scoring` | Séparer score FUCCS, INFC sur 100 et SNCC | À refondre |
 | P0 | adaptation `/alertes` et `/echeances` | Niveaux validés 180/90/30 jours puis expiration, alertes spéciales, délais et relances | À corriger |
 | P0 | adaptation `/utilisateurs` | Profils institutionnels, moindre privilège, double validation et séparation des fonctions | À corriger |
@@ -1260,7 +1260,7 @@ Les éléments ci-dessous constituent le nouveau backlog fonctionnel du frontend
 | Sujet | Décision acquise ou documents en présence | Suite attendue |
 |---|---|---|
 | Seuils d'alerte | RM-05 à RM-08 : 180/90/30 jours puis expiration | Implémenter ; confirmer seulement l'éventuelle information complémentaire à 12 mois et la fréquence des relances |
-| Score de contrôle | FUCCS : 28 critères sur 56 | Confirmer les critères, commentaires obligatoires et décisions associées |
+| Score de contrôle | FUCCS versionné ; critères et score maximal issus de la grille publiée | La version frontend active comporte 24 critères visibles ; ne pas figer 24/28 ni 48/56 dans le code |
 | INFC | Document INFC : six domaines sur 100 ; guide : dimensions plus larges | Valider la formule exacte, les sources et l'agrégation |
 | Classification entreprise | RM-22 à RM-24 : Conforme 85-100, À surveiller 60-84, Non conforme <60 | Implémenter séparément de l'INFC et du SNCC |
 | Pondérations | RM-17 à RM-21 : pondérations paramétrables et versionnées | Définir les valeurs initiales sans les coder en dur |
@@ -1606,3 +1606,862 @@ Documents à maintenir :
 6. préciser les données qui devront provenir de l'API ;
 7. noter les points restant à valider par la HAUQE ou GFA ;
 8. rattacher les règles RM concernées, les tables, les routes API et les tests.
+
+## Synchronisation API — Vérification + FUCCS
+
+**Statut : backend du lot prêt — raccordement frontend à effectuer**
+
+La règle permanente est désormais :
+- chaque endpoint backend doit être associé à sa page frontend ;
+- la feuille backend et la feuille frontend sont mises à jour ensemble ;
+- le rôle du bouton, onglet, modal ou composant consommateur est documenté.
+
+# Mapping frontend ↔ endpoints — Vérification + FUCCS
+
+## `verifications.html` — route `#/verifications`
+
+| Endpoint | Élément / action frontend | Rôle sur la page |
+|---|---|---|
+| `GET /api/v1/verifications` | compteurs, file générale, file personnelle, filtres | Charger les dossiers, priorités, avis, nombre de points/anomalies/confirmations |
+| `POST /api/v1/verifications/from-fiche/{fiche_id}` | bouton **Ouvrir en vérification** | Créer le dossier depuis une fiche `SOUMISE` |
+| `GET /api/v1/verifications/{dossier_id}` | panneau détail | Charger l'en-tête et la synthèse du dossier |
+| `PATCH /api/v1/verifications/{dossier_id}` | priorité / risque / synthèse | Mettre à jour le travail courant sans valider |
+| `GET /api/v1/verifications/{dossier_id}/affectations` | onglet Affectation | Afficher l'historique des vérificateurs |
+| `POST /api/v1/verifications/{dossier_id}/affectations` | modal Assigner | Affecter un vérificateur et une échéance |
+| `PATCH /api/v1/verifications/{dossier_id}/affectations/{assignment_id}` | Réaffecter / terminer affectation | Mettre à jour la période et le statut |
+| `GET /api/v1/verifications/{dossier_id}/points` | grille documentaire | Charger les contrôles réalisés |
+| `POST /api/v1/verifications/{dossier_id}/points` | Ajouter/valider un point | Enregistrer résultat, observation et preuve |
+| `PATCH /api/v1/verifications/{dossier_id}/points/{point_id}` | Modifier le point | Corriger un résultat avant clôture |
+| `GET /api/v1/verifications/{dossier_id}/anomalies` | panneau Anomalies | Lister incohérences et cas suspects |
+| `POST /api/v1/verifications/{dossier_id}/anomalies` | Signaler anomalie | Créer une anomalie générale ou liée à un point |
+| `PATCH /api/v1/verifications/{dossier_id}/anomalies/{anomaly_id}` | Modifier gravité/statut | Mettre à jour l'anomalie |
+| `POST /api/v1/verifications/{dossier_id}/anomalies/{anomaly_id}/resolve` | bouton Résoudre | Enregistrer la résolution motivée |
+| `POST /api/v1/verifications/{dossier_id}/anomalies/{anomaly_id}/escalate` | bouton Escalader | Transmettre un cas suspect à la Direction Technique |
+| `GET /api/v1/verifications/{dossier_id}/confirmations` | onglet Confirmations externes | Suivre demandes et réponses externes |
+| `POST /api/v1/verifications/{dossier_id}/confirmations` | Nouvelle demande | Journaliser canal, destinataire, objet et échéance |
+| `PATCH /api/v1/verifications/{dossier_id}/confirmations/{confirmation_id}` | Modifier la demande | Corriger métadonnées avant réponse |
+| `POST /api/v1/verifications/{dossier_id}/confirmations/{confirmation_id}/response` | Enregistrer réponse | Stocker réponse, résultat et document reçu |
+| `POST /api/v1/verifications/{dossier_id}/close` | bouton **Prononcer l'avis** | Clôturer avec avis normalisé + synthèse |
+| `POST /api/v1/verifications/{dossier_id}/reopen` | action administrative | Réouvrir avec motif et audit |
+
+### Règle frontend de vérification
+
+La page ne doit créer que les points correspondant aux informations réellement demandées dans la version courante du formulaire. Un champ non affiché/non collecté n'est pas une anomalie automatique.
+
+---
+
+## `controle.html` — route `#/controle`
+
+La version frontend actuelle peut afficher 24 critères, mais **le nombre de critères et le score maximal ne doivent jamais être codés en dur**. Ils viennent de la grille publiée.
+
+| Endpoint | Élément / action frontend | Rôle sur la page |
+|---|---|---|
+| `GET /api/v1/fuccs/grilles/active` | initialisation page | Trouver la version de grille applicable |
+| `GET /api/v1/fuccs/grilles/{grid_id}/rubriques` | navigation par rubrique | Construire les groupes de critères |
+| `GET /api/v1/fuccs/grilles/{grid_id}/criteres` | liste de critères | Construire dynamiquement notation/commentaires/preuves |
+| `POST /api/v1/verifications/{dossier_id}/fuccs-controles` | bouton Démarrer FUCCS | Ouvrir un contrôle après vérification admissible |
+| `GET /api/v1/fuccs/controles` | file des contrôles | Rechercher contrôles en cours/finalisés |
+| `GET /api/v1/fuccs/controles/{control_id}` | en-tête contrôle | Charger score, taux, progression et statut |
+| `GET /api/v1/fuccs/controles/{control_id}/notes` | chargement des notes | Restaurer le brouillon serveur |
+| `PUT /api/v1/fuccs/controles/{control_id}/notes/{criterion_id}` | widget de notation | Enregistrer note/commentaire/preuve et recalculer serveur |
+| `GET /api/v1/fuccs/controles/{control_id}/constats` | panneau Constats | Afficher constats transversaux |
+| `POST /api/v1/fuccs/controles/{control_id}/constats` | Ajouter constat | Enregistrer risque/non-conformité/observation |
+| `PATCH /api/v1/fuccs/controles/{control_id}/constats/{finding_id}` | Éditer constat | Mettre à jour avant finalisation |
+| `POST /api/v1/fuccs/controles/{control_id}/finalize` | bouton Finaliser | Vérifier toutes notes/preuves/commentaires puis verrouiller |
+| `POST /api/v1/fuccs/controles/{control_id}/reopen` | action habilitée | Réouvrir un contrôle avec motif audité |
+
+---
+
+## `referentiels.html` / `regles-codification.html`
+
+Ces pages administrent **la grille**, pas le contrôle opérationnel.
+
+| Endpoint | Rôle frontend |
+|---|---|
+| `GET /api/v1/fuccs/grilles` | afficher toutes les versions et leur état |
+| `POST /api/v1/fuccs/grilles` | créer une version brouillon |
+| `GET /api/v1/fuccs/grilles/{grid_id}` | afficher métadonnées et score maximal calculé |
+| `PATCH /api/v1/fuccs/grilles/{grid_id}` | modifier uniquement un brouillon |
+| `POST /api/v1/fuccs/grilles/{grid_id}/clone` | créer la prochaine version à partir d'une version existante |
+| `POST /api/v1/fuccs/grilles/{grid_id}/publish` | publier avec référence d'approbation |
+| `POST /api/v1/fuccs/grilles/{grid_id}/retire` | retirer une version sans supprimer l'historique |
+| `GET/POST/PATCH/DELETE .../rubriques` | administrer les rubriques du brouillon |
+| `GET/POST/PATCH/DELETE .../criteres` | administrer les critères du brouillon |
+
+Une grille publiée est immuable.
+
+---
+
+## `validations.html`
+
+La page Validation ne doit pas modifier Vérification ou FUCCS.
+
+Le prochain domaine lui fournira :
+- avis final de vérification ;
+- contrôle FUCCS finalisé ;
+- score/taux calculés ;
+- constats ;
+- preuves ;
+pour prononcer la décision institutionnelle.
+
+
+### Correction importante de la doctrine FUCCS frontend
+
+La version frontend active comporte actuellement **24 critères visibles**.
+
+Le frontend ne doit cependant jamais coder comme constante :
+- 24 ou 28 critères ;
+- 48 ou 56 points.
+
+Il doit charger :
+- la version publiée ;
+- les rubriques ;
+- les critères ;
+- `score_maximal_calcule`
+depuis l'API.
+
+### Prochaine synchronisation frontend
+
+Le prochain domaine `Validation / Intégration BNEC` précisera les endpoints qui alimenteront :
+- `validations.html` ;
+- la future page/file d'intégration BNEC.
+
+## Synchronisation API — Validation / Intégration BNEC
+
+**Backend : implémenté — non validé runtime.**  
+**Recette : lors du raccordement frontend, page par page.**
+
+### `validations.html` — `#/validations`
+
+Cette page ne doit plus mélanger Vérification, FUCCS et Validation.
+Vérification/FUCCS sont affichés en lecture ; les mutations de la page
+portent sur N1, N2 et les corrections.
+
+| Endpoint | Composant / action | Permission |
+|---|---|---|
+| `GET /api/v1/validations/queue` | File À valider | `VALIDATION.LIRE` |
+| `GET /api/v1/validations` | Historique et filtres | `VALIDATION.LIRE` |
+| `GET /api/v1/validations/{validation_id}` | Détail décision | `VALIDATION.LIRE` |
+| `POST /api/v1/validations/from-fiche/{fiche_id}/level-1` | Revue technique N1 | `VALIDATION.REVUE_N1` |
+| `POST /api/v1/validations/from-fiche/{fiche_id}/level-2` | Validation définitive N2 | `VALIDATION.DECIDER_N2` |
+| `GET /api/v1/validations/{validation_id}/corrections` | Onglet Corrections | `VALIDATION.LIRE` |
+| `POST /api/v1/validations/{validation_id}/corrections` | Demander correction | `VALIDATION.DEMANDER_CORRECTION` |
+| `PATCH /api/v1/validations/{validation_id}/corrections/{correction_id}` | Modifier la demande | `VALIDATION.DEMANDER_CORRECTION` |
+| `POST /api/v1/validations/{validation_id}/corrections/{correction_id}/resubmit` | Réponse/resoumission | `VALIDATION.RESOUMETTRE_CORRECTION` |
+
+Panneau recommandé :
+
+```text
+Avis Vérification
+Résultat FUCCS
+Constats / anomalies / preuves
+-------------------------------
+Revue N1
+Validation N2
+Corrections
+Historique
+```
+
+### `/integrations` — `#/integrations`
+
+Cette route existe déjà dans le backlog frontend comme maquette P0.
+
+| Endpoint | Composant / action | Permission |
+|---|---|---|
+| `GET /api/v1/integrations-bnec/queue` | File À intégrer | `INTEGRATION.LIRE` |
+| `GET /api/v1/integrations-bnec` | Historique/filtres | `INTEGRATION.LIRE` |
+| `POST /api/v1/validations/{validation_id}/integration-bnec` | Ouvrir intégration | `INTEGRATION.OUVRIR` |
+| `GET /api/v1/integrations-bnec/{integration_id}` | Détail/progression | `INTEGRATION.LIRE` |
+| `POST /api/v1/integrations-bnec/{integration_id}/precontrol` | Précontrôle | `INTEGRATION.PRECONTROLER` |
+| `POST /api/v1/integrations-bnec/{integration_id}/start` | Démarrage | `INTEGRATION.EXECUTER` |
+| `GET /api/v1/integrations-bnec/{integration_id}/elements` | Tableau source→cible | `INTEGRATION.LIRE` |
+| `POST /api/v1/integrations-bnec/{integration_id}/elements` | Ajouter élément | `INTEGRATION.EXECUTER` |
+| `PATCH /api/v1/integrations-bnec/{integration_id}/elements/{element_id}` | Préparer/corriger élément | `INTEGRATION.EXECUTER` |
+| `POST /api/v1/integrations-bnec/{integration_id}/elements/{element_id}/result` | Intégré/Échec | `INTEGRATION.EXECUTER` |
+| `POST /api/v1/integrations-bnec/{integration_id}/postcontrol` | Postcontrôle | `INTEGRATION.POSTCONTROLER` |
+| `POST /api/v1/integrations-bnec/{integration_id}/complete` | Clôturer | `INTEGRATION.CLOTURER` |
+
+Progression UI :
+
+```text
+EN_ATTENTE → PRECONTROLE → INTEGRATION_EN_COURS → POSTCONTROLE → INTEGREE
+```
+
+### Règle de test désormais appliquée
+
+Lors du raccordement de chaque page :
+1. remplacer mocks/localStorage par `core/api.js` ;
+2. tester permissions ;
+3. tester transitions et erreurs 409/422 ;
+4. contrôler le journal d'audit ;
+5. seulement ensuite marquer l'endpoint « raccordé et validé ».
+
+### Prochaine synchronisation
+
+```text
+scoring.html
+#/infc
+#/classement-sncc
+```
+
+avec le domaine Scoring / Classification / INFC / SNCC.
+
+## Synchronisation API — Scoring / Classification / INFC / SNCC
+
+**Backend : implémenté — non validé runtime.**
+
+### `scoring.html` — `#/scoring`
+
+La page doit séparer quatre cartes/résultats :
+
+```text
+FUCCS
+Classification entreprise
+INFC
+SNCC
+```
+
+Aucune règle de conversion automatique entre ces résultats.
+
+#### Classification entreprise
+
+| Endpoint | Élément UI | Permission |
+|---|---|---|
+| `GET /api/v1/entreprises/{enterprise_id}/classifications/latest` | carte Classification | `CLASSIFICATION.LIRE` |
+| `GET /api/v1/entreprises/{enterprise_id}/classifications` | historique / courbe | `CLASSIFICATION.LIRE` |
+| `POST /api/v1/entreprises/{enterprise_id}/classifications/evaluate` | Calculer et enregistrer | `CLASSIFICATION.CALCULER_VALIDER` |
+
+#### INFC
+
+| Endpoint | Élément UI | Permission |
+|---|---|---|
+| `GET /api/v1/certifications/{certification_id}/infc/latest` | carte INFC | `INFC.LIRE` |
+| `GET /api/v1/certifications/{certification_id}/infc` | historique | `INFC.LIRE` |
+| `POST /api/v1/certifications/{certification_id}/infc/calculate` | Calculer | `INFC.CALCULER` |
+| `POST /api/v1/infc/results/{result_id}/validate` | Valider | `INFC.VALIDER` |
+| `GET /api/v1/infc/results` | recherche globale | `INFC.LIRE` |
+
+#### SNCC
+
+| Endpoint | Élément UI | Permission |
+|---|---|---|
+| `GET /api/v1/certifications/{certification_id}/sncc/current` | carte Classement | `SNCC.LIRE` |
+| `GET /api/v1/certifications/{certification_id}/sncc` | historique | `SNCC.LIRE` |
+| `POST /api/v1/certifications/{certification_id}/sncc` | Premier classement | `SNCC.CLASSER` |
+| `POST /api/v1/certifications/{certification_id}/sncc/reclassify` | Reclasser | `SNCC.RECLASSER` |
+| `POST /api/v1/sncc/{sncc_id}/close` | Clôturer période | `SNCC.RECLASSER` |
+| `GET /api/v1/sncc` | filtres globaux | `SNCC.LIRE` |
+
+---
+
+### `#/infc`
+
+Page P1 spécialisée à créer/raccorder.
+
+Rôle :
+- afficher la version du modèle ;
+- charger les pondérations ;
+- recueillir/afficher les valeurs domaine par domaine ;
+- demander le calcul au serveur ;
+- afficher contributions et niveau ;
+- soumettre à validation ;
+- comparer l'historique.
+
+Le JavaScript ne doit pas recalculer la formule officielle.
+
+---
+
+### `#/classement-sncc`
+
+Page P1 spécialisée à créer/raccorder.
+
+Rôle :
+- afficher classement courant ;
+- classe ;
+- statut administratif ;
+- risque ;
+- justification ;
+- date d'effet / fin ;
+- historique ;
+- reclassement motivé.
+
+Les codes/classes/statuts/risques ne doivent pas être codés définitivement
+dans le frontend tant que le dictionnaire institutionnel n'est pas finalisé.
+
+---
+
+### `regles-codification.html`
+
+Ajouter une section **Modèles de scoring**.
+
+| Endpoint | Élément UI | Permission |
+|---|---|---|
+| `GET /api/v1/scoring/models` | tableau Versions | `SCORING.LIRE` |
+| `GET /api/v1/scoring/models/active` | badge modèle actif | `SCORING.LIRE` |
+| `POST /api/v1/scoring/models` | Nouveau brouillon | `SCORING.ADMINISTRER_MODELE` |
+| `GET /api/v1/scoring/models/{model_id}` | détail modèle | `SCORING.LIRE` |
+| `PATCH /api/v1/scoring/models/{model_id}` | Modifier brouillon | `SCORING.ADMINISTRER_MODELE` |
+| `POST /api/v1/scoring/models/{model_id}/clone` | Nouvelle version | `SCORING.ADMINISTRER_MODELE` |
+| `POST /api/v1/scoring/models/{model_id}/publish` | Publier | `SCORING.ADMINISTRER_MODELE` |
+| `POST /api/v1/scoring/models/{model_id}/retire` | Retirer | `SCORING.ADMINISTRER_MODELE` |
+| `GET /api/v1/scoring/models/{model_id}/weights` | pondérations | `SCORING.LIRE` |
+| `POST /api/v1/scoring/models/{model_id}/weights` | Ajouter domaine | `SCORING.ADMINISTRER_MODELE` |
+| `PATCH /api/v1/scoring/models/{model_id}/weights/{weight_id}` | Modifier pondération | `SCORING.ADMINISTRER_MODELE` |
+| `POST /api/v1/scoring/models/{model_id}/weights/{weight_id}/deactivate` | Désactiver | `SCORING.ADMINISTRER_MODELE` |
+| `POST /api/v1/scoring/preview/{object_type}` | Simulateur sans écriture | `SCORING.LIRE` |
+
+### Recette
+
+Lors du raccordement :
+1. remplacer données simulées/localStorage ;
+2. charger modèles/pondérations API ;
+3. tester données manquantes ;
+4. vérifier modèle/version affichés ;
+5. vérifier audit ;
+6. tester historiques ;
+7. marquer seulement ensuite le lot validé.
+
+## Synchronisation API — Échéances / Alertes / Veille
+
+**Backend : implémenté — non validé runtime.**
+
+### Correction des horizons métier
+
+Les anciennes mentions :
+
+```text
+12 mois / 6 mois / 3 mois / 1 mois / 15 jours
+```
+
+ne doivent plus être utilisées comme seuils métier principaux.
+
+Le raccordement doit afficher le socle :
+
+```text
+180 jours
+90 jours
+30 jours
+expiration
+```
+
+Le moteur restera paramétrable via `regles_metier`.
+
+---
+
+### `echeances.html` — `#/echeances`
+
+| Endpoint | Composant UI | Permission |
+|---|---|---|
+| `GET /api/v1/echeances` | calendrier/liste/filtres | `ECHEANCES.LIRE` |
+| `POST /api/v1/echeances` | Planifier une échéance | `ECHEANCES.GERER` |
+| `GET /api/v1/echeances/{deadline_id}` | panneau détail | `ECHEANCES.LIRE` |
+| `PATCH /api/v1/echeances/{deadline_id}` | Modifier | `ECHEANCES.GERER` |
+| `POST /api/v1/echeances/{deadline_id}/complete` | Terminer | `ECHEANCES.GERER` |
+| `POST /api/v1/echeances/{deadline_id}/cancel` | Annuler | `ECHEANCES.GERER` |
+| `GET /api/v1/echeances/{deadline_id}/alertes` | lien Alertes liées | `ALERTES.LIRE` |
+
+À afficher :
+- Jours restants ;
+- responsable ;
+- type ;
+- priorité ;
+- alertes actives ;
+- retard.
+
+---
+
+### `alertes.html` — `#/alertes`
+
+| Endpoint | Composant UI | Permission |
+|---|---|---|
+| `GET /api/v1/alertes` | file/compteurs/filtres | `ALERTES.LIRE` |
+| `POST /api/v1/alertes` | Alerte spéciale | `ALERTES.CREER` |
+| `GET /api/v1/alertes/{alert_id}` | détail | `ALERTES.LIRE` |
+| `PATCH /api/v1/alertes/{alert_id}` | Modifier active | `ALERTES.GERER` |
+| `POST /api/v1/alertes/{alert_id}/assign` | Affecter | `ALERTES.AFFECTER` |
+| `POST /api/v1/alertes/{alert_id}/resolve` | Résoudre/clôturer | `ALERTES.RESOUDRE` |
+| `POST /api/v1/alertes/{alert_id}/notifications` | Notifier | `NOTIFICATIONS.CREER` |
+
+Mapping niveau :
+
+```text
+1 Information
+2 Surveillance
+3 Urgence
+4 Critique
+```
+
+Le lu/non-lu doit provenir des notifications du compte et non d'un champ
+inventé dans `alertes`.
+
+---
+
+### Cloche de notifications
+
+| Endpoint | Composant UI | Permission |
+|---|---|---|
+| `GET /api/v1/notifications/unread-count` | badge | `NOTIFICATIONS.LIRE` |
+| `GET /api/v1/notifications` | menu cloche | `NOTIFICATIONS.LIRE` |
+| `POST /api/v1/notifications/{notification_id}/read` | clic notification | `NOTIFICATIONS.LIRE` |
+| `POST /api/v1/notifications/read-all` | Tout marquer lu | `NOTIFICATIONS.LIRE` |
+
+Les endpoints de retry/transport sont réservés à l'administration/worker et
+ne doivent pas apparaître dans l'interface utilisateur standard.
+
+---
+
+### `#/veille`
+
+La page CVC devient le poste opérationnel de la Cellule de Veille.
+
+#### Dashboard
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /api/v1/veille/dashboard` | cartes CVC |
+| `POST /api/v1/veille/scans/daily` | bouton administratif Recalculer |
+
+Cartes :
+- dossiers ouverts ;
+- échéances en retard ;
+- alertes actives ;
+- alertes critiques ;
+- relances en attente ;
+- notifications non lues.
+
+#### Dossiers
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /api/v1/veille/dossiers` | file CVC |
+| `POST /api/v1/veille/dossiers` | ouvrir un suivi |
+| `GET /api/v1/veille/dossiers/{case_id}` | panneau dossier |
+| `PATCH /api/v1/veille/dossiers/{case_id}` | priorité/responsable/prochaine action |
+| `POST /api/v1/veille/dossiers/{case_id}/close` | clôture |
+
+#### Relances
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /api/v1/veille/dossiers/{case_id}/relances` | historique |
+| `POST /api/v1/veille/dossiers/{case_id}/relances` | nouvelle relance |
+| `PATCH /api/v1/veille/dossiers/{case_id}/relances/{followup_id}` | édition |
+| `POST /api/v1/veille/dossiers/{case_id}/relances/{followup_id}/response` | réponse/résultat |
+
+#### Notes et rapports
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /api/v1/veille/rapports` | historique |
+| `POST /api/v1/veille/rapports/generate` | générer indicateurs |
+| `GET /api/v1/veille/rapports/{report_id}` | détail |
+| `POST /api/v1/veille/rapports/{report_id}/validate` | visa Direction Technique |
+
+### Recette
+
+À faire au raccordement :
+1. remplacer les mocks ;
+2. tester scan/déduplication ;
+3. tester seuils ;
+4. tester affectation/résolution ;
+5. tester cloche ;
+6. tester relances ;
+7. tester génération de rapport ;
+8. vérifier audit ;
+9. seulement ensuite marquer le lot validé.
+
+## Correctif RBAC notifications
+
+Un test réel de `GET /api/v1/notifications` a mis en évidence un `403 Permission insuffisante`.
+
+Cause identifiée :
+- la route exige correctement `NOTIFICATIONS.LIRE` ;
+- le seed initial n'accordait cette permission qu'à une partie des rôles métier ;
+- or cette route ne retourne que les notifications du compte connecté.
+
+Correction appliquée dans :
+
+```text
+app/scripts/seed_watch_permissions.py
+```
+
+`NOTIFICATIONS.LIRE` est désormais accordé à tous les rôles métier prévus :
+- ADMIN_HAUQE ;
+- DIRECTION_TECHNIQUE ;
+- POINT_FOCAL_BNEC ;
+- VERIFICATEUR ;
+- CONTROLEUR_FUCCS ;
+- ADMIN_BNEC ;
+- AGENT_COLLECTE ;
+- CELLULE_VEILLE ;
+- LECTEUR.
+
+Les permissions sensibles restent limitées :
+- `NOTIFICATIONS.CREER` : rôles opérationnels habilités ;
+- `NOTIFICATIONS.TRANSPORT` : administration/transport uniquement.
+
+Après intégration du correctif :
+
+```powershell
+.\.venv\Scripts\python.exe -m app.scripts.seed_watch_permissions
+```
+
+puis recharger la session si le client conserve localement des permissions mises en cache.
+
+Statut du correctif :
+- code seed corrigé ✅
+- bundle reconstruit ✅
+- seed `app.scripts.seed_watch_permissions` exécuté ✅
+- `GET /api/v1/notifications` passe désormais ✅
+- raccordement complet de la cloche et des pages Veille encore à tester ⏳
+
+## Synchronisation API — Gouvernance / Qualité / Continuité
+
+**Backend : implémenté — non validé runtime.**
+
+Avant raccordement/test :
+
+```powershell
+.\.venv\Scripts\python.exe -m app.scripts.seed_governance_permissions
+```
+
+### `regles-codification.html`
+
+Ajouter le panneau **Règles métier** :
+
+```text
+GET   /api/v1/governance/rules
+GET   /api/v1/governance/rules/active/{logical_code}
+POST  /api/v1/governance/rules
+GET   /api/v1/governance/rules/{rule_id}
+PATCH /api/v1/governance/rules/{rule_id}
+POST  /api/v1/governance/rules/{rule_id}/clone
+POST  /api/v1/governance/rules/{rule_id}/publish
+POST  /api/v1/governance/rules/{rule_id}/retire
+```
+
+### `#/amelioration-continue`
+
+Revues qualité :
+
+```text
+GET   /api/v1/quality/reviews
+POST  /api/v1/quality/reviews
+GET   /api/v1/quality/reviews/{review_id}
+PATCH /api/v1/quality/reviews/{review_id}
+POST  /api/v1/quality/reviews/{review_id}/validate
+```
+
+Plans d'action :
+
+```text
+GET   /api/v1/quality/action-plans
+POST  /api/v1/quality/action-plans
+GET   /api/v1/quality/action-plans/{plan_id}
+PATCH /api/v1/quality/action-plans/{plan_id}
+POST  /api/v1/quality/action-plans/{plan_id}/progress
+POST  /api/v1/quality/action-plans/{plan_id}/close
+```
+
+### `#/decisions`
+
+```text
+GET   /api/v1/decisions
+POST  /api/v1/decisions
+GET   /api/v1/decisions/{decision_id}
+PATCH /api/v1/decisions/{decision_id}
+POST  /api/v1/decisions/{decision_id}/submit
+POST  /api/v1/decisions/{decision_id}/pronounce
+```
+
+### `#/publications`
+
+```text
+GET  /api/v1/publications
+POST /api/v1/publications
+GET  /api/v1/publications/{publication_id}
+POST /api/v1/publications/{publication_id}/submit
+POST /api/v1/publications/{publication_id}/approve
+POST /api/v1/publications/{publication_id}/publish
+POST /api/v1/publications/{publication_id}/retire
+```
+
+### `rapports.html`
+
+```text
+GET  /api/v1/reports
+POST /api/v1/reports
+GET  /api/v1/reports/{report_id}
+POST /api/v1/reports/{report_id}/start
+POST /api/v1/reports/{report_id}/complete
+POST /api/v1/reports/{report_id}/fail
+```
+
+### `journal-audit.html`
+
+```text
+GET /api/v1/audit/events
+GET /api/v1/audit/events/{event_id}
+```
+
+Aucune route de mutation.
+
+### `#/archives`
+
+```text
+GET  /api/v1/archives
+POST /api/v1/archives
+GET  /api/v1/archives/{archive_id}
+```
+
+### `#/sauvegardes`
+
+```text
+GET   /api/v1/backups
+POST  /api/v1/backups/policies
+PATCH /api/v1/backups/policies/{policy_id}
+POST  /api/v1/backups/policies/{policy_id}/runs
+GET   /api/v1/backups/{backup_id}
+POST  /api/v1/backups/{backup_id}/complete
+POST  /api/v1/backups/{backup_id}/fail
+POST  /api/v1/backups/{backup_id}/restore-tests
+```
+
+### `#/incidents`
+
+```text
+GET   /api/v1/incidents
+POST  /api/v1/incidents
+GET   /api/v1/incidents/{incident_id}
+PATCH /api/v1/incidents/{incident_id}
+POST  /api/v1/incidents/{incident_id}/assign
+POST  /api/v1/incidents/{incident_id}/resolve
+POST  /api/v1/incidents/{incident_id}/close
+```
+
+### Raccordement des règles existantes
+
+Le frontend n'est pas concerné directement, mais le backend Veille et Collecte
+doit utiliser le nouveau `business_rule_resolver.py` afin de supporter
+l'historique des versions malgré la contrainte UNIQUE sur `regles_metier.code`.
+
+### Prochaine synchronisation
+
+```text
+/tableaux-de-bord/tactique
+/tableaux-de-bord/strategique
+/tableaux-de-bord/annuel
+/barometre
+/public
+```
+
+puis recette page par page de l'ensemble du projet.
+
+## Synchronisation API — Pilotage / Tableaux de bord / Baromètre
+
+**Backend : implémenté — non validé runtime.**
+
+Avant test :
+
+```powershell
+.\.venv\Scripts\python.exe -m app.scripts.seed_dashboard_permissions
+```
+
+### `index.html`
+
+```text
+GET /api/v1/dashboards/operational
+GET /api/v1/dashboards/filters
+GET /api/v1/dashboards/indicator-definitions
+```
+
+Remplacer les statistiques de `mock-data.js` par ces endpoints.
+
+### `/tableaux-de-bord/tactique`
+
+```text
+GET /api/v1/dashboards/tactical?year=2026&month=7
+```
+
+### `/tableaux-de-bord/strategique`
+
+```text
+GET /api/v1/dashboards/strategic?year=2026&quarter=3
+```
+
+### `/tableaux-de-bord/annuel`
+
+```text
+GET /api/v1/dashboards/annual?year=2026
+```
+
+### `/barometre`
+
+```text
+GET /api/v1/barometer
+```
+
+ou avec période explicite.
+
+### `/public`
+
+```text
+GET /api/v1/public/indicators
+```
+
+Le frontend public ne doit utiliser que cet endpoint. Il reste en 404 tant
+que la règle de diffusion et la publication institutionnelle ne sont pas
+publiées.
+
+### Recette
+
+Pour chaque page :
+1. remplacer les mocks ;
+2. tester permissions ;
+3. vérifier filtres et périodes ;
+4. vérifier agrégats et états vides ;
+5. vérifier 403/404/422 ;
+6. vérifier qu'aucune donnée individuelle ne sort de `/public` ;
+7. seulement ensuite marquer la page validée.
+
+## Synchronisation API — `profil.html` / Mon compte
+
+**Backend : implémenté — non validé runtime.**
+
+### Informations personnelles
+
+```text
+GET   /api/v1/me/profile
+PATCH /api/v1/me/profile
+```
+
+Remplacer les valeurs codées en dur du hero et du formulaire par l'API.
+
+Éditables :
+- prénom(s) ;
+- nom ;
+- téléphone ;
+- langue ;
+- fuseau ;
+- avatar.
+
+Readonly :
+- email ;
+- fonction ;
+- région ;
+- statut ;
+- rôles / permissions.
+
+### Mot de passe
+
+```text
+POST /api/v1/me/password/change
+```
+
+### MFA
+
+```text
+GET  /api/v1/me/mfa
+POST /api/v1/me/mfa/enable
+POST /api/v1/me/mfa/verify
+POST /api/v1/me/mfa/disable
+```
+
+Login MFA :
+
+```text
+POST /api/v1/auth/login
+      ↓ si mfa_required
+POST /api/v1/auth/mfa/verify
+```
+
+### Verrou automatique
+
+Supprimer le stockage :
+
+```text
+hauqe-session-lock-settings
+code privé dans localStorage
+comparaison JS du code
+```
+
+et utiliser :
+
+```text
+GET   /api/v1/me/security-lock
+PATCH /api/v1/me/security-lock
+POST  /api/v1/me/security-lock/lock
+POST  /api/v1/me/security-lock/verify
+```
+
+Le timer frontend peut rester, mais l'état et la vérification sont serveur.
+
+Le frontend doit traiter :
+
+```text
+HTTP 423
+SESSION_SCREEN_LOCKED
+```
+
+### Notifications
+
+```text
+GET   /api/v1/me/notification-preferences
+PATCH /api/v1/me/notification-preferences
+```
+
+Mapping :
+
+```text
+Alertes critiques  → alertes_critiques
+Affectations        → affectations
+Corrections         → corrections
+Rapports planifiés  → rapports_planifies
+Résumé hebdomadaire → resume_hebdomadaire
+```
+
+### Sessions
+
+```text
+GET  /api/v1/me/sessions
+POST /api/v1/me/sessions/{session_id}/revoke
+POST /api/v1/me/sessions/revoke-others
+```
+
+Remplacer les trois sessions simulées Windows/Chrome/Android par les sessions
+réelles.
+
+### Mot de passe oublié
+
+```text
+POST /api/v1/auth/password/forgot
+POST /api/v1/auth/password/reset
+```
+
+Réponse neutre, token 30 minutes, usage unique.
+
+### Extension runtime
+
+Le backend ajoute :
+
+```text
+preferences_utilisateur
+securite_compte_utilisateur
+verrous_session_utilisateur
+jetons_securite_utilisateur
+```
+
+### Recette de la page
+
+À valider :
+1. profil réel ;
+2. édition ;
+3. mot de passe ;
+4. activation/login/désactivation MFA ;
+5. préférences ;
+6. sessions/révocation ;
+7. verrou 5/10/15/30 ;
+8. 5 erreurs code privé ;
+9. forgot/reset ;
+10. états 401/409/422/423 ;
+11. audit.

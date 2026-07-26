@@ -57,6 +57,10 @@ from app.utils.security import (
     hash_access_token,
 )
 
+from app.services.account_session_lock_guard import (
+    ensure_session_not_screen_locked,
+)
+
 
 # ============================================================
 # SCHEMA BEARER POUR FASTAPI / SWAGGER
@@ -65,6 +69,7 @@ from app.utils.security import (
 bearer_scheme = HTTPBearer(
     auto_error=False
 )
+
 
 
 def utc_now() -> datetime:
@@ -236,8 +241,7 @@ async def get_current_auth(
         )
 
     # --------------------------------------------------------
-    # 7. Le compte doit rester actif même si la session
-    # avait été créée lorsqu'il était encore actif.
+    # 7. Le compte doit rester actif
     # --------------------------------------------------------
 
     if (
@@ -260,11 +264,22 @@ async def get_current_auth(
         )
 
     # --------------------------------------------------------
-    # 8. Rechargement des rôles et permissions
+    # 8. Verrouillage de reprise de session
     #
-    # C'est volontaire :
-    # si un administrateur retire une permission, elle ne
-    # reste pas valable jusqu'à la prochaine connexion.
+    # IMPORTANT :
+    # Ce verrouillage n'est pas une expiration de session.
+    # Le Bearer token reste valide mais les routes privées
+    # sont bloquées jusqu'à saisie correcte du code privé.
+    # --------------------------------------------------------
+
+    await ensure_session_not_screen_locked(
+        db,
+        session=db_session,
+        request=request,
+    )
+
+    # --------------------------------------------------------
+    # 9. Rechargement des rôles et permissions
     # --------------------------------------------------------
 
     roles = await AuthRepository.get_roles(
@@ -280,7 +295,7 @@ async def get_current_auth(
     )
 
     # --------------------------------------------------------
-    # 9. La requête étant valide, on actualise l'activité.
+    # 10. Actualisation de l'activité
     # --------------------------------------------------------
 
     await SessionSecurityService.touch(
@@ -289,7 +304,7 @@ async def get_current_auth(
     )
 
     # --------------------------------------------------------
-    # 10. Contexte transmis aux routes protégées
+    # 11. Contexte transmis aux routes protégées
     # --------------------------------------------------------
 
     return AuthContext(
