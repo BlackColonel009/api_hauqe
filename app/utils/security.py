@@ -50,3 +50,21 @@ def hash_access_token(token: str) -> str:
     return hashlib.sha256(
         token.encode("utf-8")
     ).hexdigest()
+    
+# ============================================================
+# CREATION D'UN HASH DE MOT DE PASSE
+# ============================================================
+
+def hash_password(
+    plain_password: str,
+) -> str:
+    """
+    Transforme immédiatement un mot de passe en hash Argon2.
+
+    Le mot de passe en clair ne doit jamais être enregistré
+    dans PostgreSQL ni dans le journal d'audit.
+    """
+
+    return password_hasher.hash(
+        plain_password
+    )
