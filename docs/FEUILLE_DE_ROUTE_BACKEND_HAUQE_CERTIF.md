@@ -6142,3 +6142,275 @@ runtime FastAPI              ⏳
 upload réel avatar           ⏳
 MFA réel                     ⏳
 ```
+
+# LOT — PRÉSENCE UTILISATEURS TOPBAR
+
+## Statut
+
+🟡 **Code produit — recette runtime localhost:8001 à effectuer**
+
+### Finalité
+
+Afficher dans le shell les utilisateurs actuellement ou récemment actifs
+sur une fenêtre de 15 minutes.
+
+### Endpoints
+
+```text
+GET  /api/v1/presence/users?minutes=15&limit=6
+POST /api/v1/presence/heartbeat
+GET  /api/v1/presence/users/{user_id}/avatar
+```
+
+### Permission
+
+```text
+PRESENCE.LIRE
+```
+
+Seed :
+
+```powershell
+python -m app.scripts.seed_presence_permission
+```
+
+### Tables réutilisées / interactions
+
+```text
+sessions_utilisateur
+  └── utilisateur_id → utilisateurs.id
+
+utilisateur_role
+  ├── utilisateur_id → utilisateurs.id
+  └── role_id → roles.id
+
+preferences_utilisateur
+  ├── utilisateur_id → utilisateurs.id
+  └── avatar_document_id → documents.id
+```
+
+Aucune migration et aucune nouvelle table.
+
+### Règles techniques
+
+```text
+ONLINE = session vivante + activité <= 2 min
+RECENT = activité <= 15 min par défaut
+```
+
+Le polling de la liste ne modifie pas la session.
+
+Le heartbeat :
+- est envoyé uniquement après activité réelle du navigateur ;
+- est limité côté frontend à 1/minute ;
+- met à jour `sessions_utilisateur.derniere_activite_at`.
+
+### Audit
+
+Pas d'événement d'audit par heartbeat afin d'éviter le bruit volumétrique.
+La lecture est protégée par RBAC `PRESENCE.LIRE`.
+
+### Tests
+
+```text
+syntaxe Python                 ✅
+intégration PostgreSQL         ⏳
+seed permission                ⏳
+présence multi-utilisateurs    ⏳
+avatar présence                ⏳
+```
+
+# LOT 01 — DASHBOARD OPÉRATIONNEL / RACCORDEMENT FRONTEND
+
+## Statut
+
+🟡 **Backend Pilotage déjà produit ; raccordement frontend produit ;
+recette runtime à confirmer.**
+
+## Endpoints désormais consommés par le frontend
+
+```text
+GET /api/v1/dashboards/filters
+GET /api/v1/dashboards/indicator-definitions
+GET /api/v1/dashboards/operational
+```
+
+## Permissions attendues
+
+```text
+DASHBOARDS.LIRE_REFERENTIELS
+DASHBOARDS.OPERATIONNEL
+```
+
+Seed requis si non encore exécuté :
+
+```powershell
+python -m app.scripts.seed_dashboard_permissions
+```
+
+## Données consommées
+
+```text
+kpis
+certification_statuses
+deadline_buckets
+infc_national_average
+priority_actions
+recent_certifications
+activity_series
+period
+generated_at
+```
+
+## Interactions
+
+Le frontend ne recalcule aucune formule institutionnelle.
+Il affiche les agrégats produits par `DashboardService`.
+
+Filtres envoyés au backend :
+
+```text
+days
+zone_id
+sector
+norm_id
+organisme_id
+```
+
+## Audit / sécurité
+
+- Bearer token via `core/api.js`.
+- 403 traité explicitement.
+- aucun chiffre mock utilisé dans le Dashboard opérationnel.
+- aucun nouvel événement d'audit créé côté frontend.
+- aucune modification de schéma / FK.
+
+## Tests
+
+```text
+contrat frontend ↔ endpoints     ✅ code
+syntaxe JavaScript               ✅
+permissions seed                 ⏳ environnement local
+PostgreSQL réel                  ⏳
+rendu avec données réelles       ⏳
+filtres réels                    ⏳
+```
+
+## Prochaine étape après validation
+
+```text
+02 — Entreprises
+```
+
+## Correctif runtime Dashboard — PostgreSQL GROUP BY / COALESCE
+
+Erreur observée :
+
+```text
+GET /api/v1/dashboards/operational?days=7
+500 Internal Server Error
+
+psycopg.errors.GroupingError:
+certifications.statut doit apparaître dans GROUP BY
+```
+
+Cause :
+SQLAlchemy construisait deux expressions `COALESCE(..., "NON_RENSEIGNE")`
+distinctes dans le `SELECT` et le `GROUP BY`, donc avec deux paramètres liés
+différents côté PostgreSQL.
+
+Correctif appliqué dans :
+
+```text
+app/repositories/dashboard_repository.py
+```
+
+Les regroupements utilisent désormais la colonne source, tandis que
+`COALESCE` reste uniquement dans le `SELECT`.
+
+Cas corrigés préventivement :
+
+```text
+Certification.statut
+SNCC classe / niveau_risque
+Entreprise.activite_principale
+Validation.decision
+```
+
+Contrôle syntaxique Python : ✅
+
+Recette PostgreSQL réelle : ⏳ à confirmer après remplacement du fichier.
+
+## Clôture Dashboard 01 — suppression des données fictives
+
+Statut : 🟡 code complété, recette runtime finale à confirmer.
+
+Correctifs :
+- export CSV serveur : `GET /api/v1/dashboards/operational/export` ;
+- filtres dashboard réellement issus de la base ;
+- expirations de certificats calculées depuis `certifications.date_expiration` ;
+- liste réelle des certificats expirant dans les 180 jours ;
+- filtres région/secteur/norme/organisme appliqués aux agrégats certifications ;
+- alertes/échéances prioritaires restreintes au périmètre filtré lorsque la ressource est Entreprise/Certification ;
+- certifications récentes et série 6 mois filtrées ;
+- contrôles à planifier filtrables par région/secteur ;
+- aucune migration.
+
+Sources de filtres :
+- régions : `zones_administratives` actives ;
+- secteurs : valeurs distinctes `entreprises.activite_principale` ;
+- normes : `normes` ;
+- organismes : `organismes`.
+
+À valider runtime :
+- export ;
+- filtres combinés ;
+- échéances réelles ;
+- actions prioritaires ;
+- absence totale de valeurs fictives.
+
+## Correctif web-route Dashboard 01
+
+`app/main.py` servait encore `legacy/index.html` pour `/views/dashboard`, ce qui
+court-circuitait le nouveau Dashboard API déjà présent dans le projet.
+
+Correction :
+
+```python
+"dashboard": "views/dashboard.html",
+```
+
+Aucune règle métier, table, migration ou endpoint API modifié dans ce correctif.
+Le backend Pilotage existant reste souverain.
+
+Statut : code compilé ; recette Uvicorn locale à confirmer.
+
+## ÉTAPE 02 — ENTREPRISES — RACCORDEMENT COMPLET PRÉPARÉ
+
+Statut : 🟡 code intégré, recette runtime/PostgreSQL à confirmer.
+
+Endpoints ajoutés/complétés :
+- GET `/api/v1/entreprises/filters`
+- GET `/api/v1/entreprises/registry`
+- GET `/api/v1/entreprises/export`
+- GET `/api/v1/entreprises/{id}/export`
+- GET `/api/v1/entreprises/{id}/controls-summary`
+- GET `/api/v1/entreprises` accepte désormais `secteur`.
+
+Endpoints existants désormais consommés : CRUD/archives entreprise, contacts, sites, offres, certifications, classification, documents, audit.
+
+Règles renforcées :
+- RM-11 RCCM unique côté serveur ;
+- RM-12 RCCM absent -> `EN_ATTENTE_REGULARISATION` ;
+- RM-13 raison sociale + adresse/localité + zone + téléphone ou email minimum ;
+- archivage logique uniquement ;
+- export avec permission `ENTREPRISES.EXPORTER` + motif + audit.
+
+Interactions/FK : entreprise -> zone, contacts, sites, offres, certifications ; contrôles FUCCS via fiche_collecte/dossier_verification.
+
+Audit : `ENTREPRISE_CREATE`, `ENTREPRISE_UPDATE`, archivage/restauration existants, `ENTREPRISES_EXPORT`, `ENTREPRISE_DOSSIER_EXPORT`.
+
+Tests code : py_compile ✅. Runtime PostgreSQL ⏳.
+
+Prochaine étape : recette complète Entreprises ; ne pas démarrer Organismes avant validation.
+

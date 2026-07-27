@@ -1,0 +1,303 @@
+/* ============================================================
+   HAUQE ACTION LOADER
+   Modal commun pour appels réseau / traitements de boutons.
+   ============================================================ */
+
+.hauqe-action-loader[hidden]{
+  display:none!important;
+}
+
+.hauqe-action-loader{
+  position:fixed;
+  inset:0;
+  z-index:90000;
+  display:grid;
+  place-items:center;
+  padding:20px;
+}
+
+.hauqe-action-loader-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(8,31,25,.28);
+  backdrop-filter:blur(3px);
+  opacity:0;
+  transition:opacity .15s ease;
+}
+
+.hauqe-action-loader.is-visible .hauqe-action-loader-backdrop{
+  opacity:1;
+}
+
+.hauqe-action-loader-card{
+  position:relative;
+  width:min(390px,calc(100vw - 28px));
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:78px minmax(0,1fr);
+  gap:18px;
+  align-items:center;
+  padding:22px 23px 20px;
+  border:1px solid rgba(255,255,255,.88);
+  border-radius:20px;
+  background:rgba(255,255,255,.985);
+  box-shadow:
+    0 28px 80px rgba(4,35,27,.24),
+    0 8px 22px rgba(4,35,27,.08);
+  opacity:0;
+  transform:translateY(8px) scale(.985);
+  transition:
+    opacity .15s ease,
+    transform .15s ease;
+}
+
+.hauqe-action-loader-card.is-visible{
+  opacity:1;
+  transform:none;
+}
+
+.hauqe-action-loader-brand{
+  width:78px;
+  height:78px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 50% 45%,#f8fcfa 0 42%,#edf7f3 43% 100%);
+}
+
+.hauqe-action-h{
+  width:68px;
+  height:68px;
+}
+
+.hauqe-action-h svg{
+  width:100%;
+  height:100%;
+  overflow:visible;
+  filter:drop-shadow(0 7px 11px rgba(8,118,89,.13));
+}
+
+.action-ring,
+.action-orbit,
+.action-letter{
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.action-ring{
+  stroke:#dbece6;
+  stroke-width:2;
+}
+
+.action-orbit{
+  stroke:#dba33a;
+  stroke-width:3;
+  stroke-dasharray:18 227;
+  transform-origin:center;
+  animation:hauqe-action-orbit 1.35s linear infinite;
+}
+
+.action-letter{
+  stroke:var(--green-600,#178a60);
+  stroke-width:8;
+  stroke-dasharray:170;
+  animation:hauqe-action-letter 1.55s ease-in-out infinite;
+}
+
+.action-leaf{
+  fill:#72b99f;
+  transform-origin:68px 24px;
+  animation:hauqe-action-leaf 1.55s ease-in-out infinite;
+}
+
+.hauqe-action-loader-copy{
+  min-width:0;
+}
+
+.hauqe-action-loader-eyebrow{
+  margin:0 0 5px;
+  color:var(--green-600,#178a60);
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.14em;
+}
+
+.hauqe-action-loader-copy h2{
+  margin:0;
+  color:var(--ink,#13251f);
+  font:800 16px Manrope,sans-serif;
+}
+
+.hauqe-action-loader-message{
+  display:flex;
+  align-items:center;
+  min-height:21px;
+  margin:7px 0 0;
+  color:#38564d;
+  font-size:11px;
+  font-weight:700;
+}
+
+.hauqe-action-loader-copy small{
+  display:block;
+  margin-top:2px;
+  color:var(--muted,#78867f);
+  font-size:9px;
+  line-height:1.45;
+}
+
+.hauqe-loading-dots{
+  display:inline-flex;
+  align-items:flex-end;
+  gap:3px;
+  height:12px;
+  margin-left:4px;
+}
+
+.hauqe-loading-dots i{
+  width:3px;
+  height:3px;
+  border-radius:50%;
+  background:var(--green-600,#178a60);
+  animation:hauqe-loading-dot 1.05s ease-in-out infinite;
+}
+
+.hauqe-loading-dots i:nth-child(2){
+  animation-delay:.14s;
+}
+
+.hauqe-loading-dots i:nth-child(3){
+  animation-delay:.28s;
+}
+
+.hauqe-action-loader-progress{
+  position:absolute;
+  right:0;
+  bottom:0;
+  left:0;
+  height:3px;
+  overflow:hidden;
+  background:#eef4f1;
+}
+
+.hauqe-action-loader-progress span{
+  display:block;
+  width:42%;
+  height:100%;
+  border-radius:0 999px 999px 0;
+  background:linear-gradient(
+    90deg,
+    var(--green-600,#178a60),
+    #dba33a
+  );
+  animation:hauqe-action-progress 1.25s ease-in-out infinite;
+}
+
+.hauqe-action-loading{
+  cursor:progress;
+}
+
+.hauqe-button-busy{
+  cursor:progress!important;
+  opacity:.72;
+}
+
+@keyframes hauqe-action-orbit{
+  to{transform:rotate(360deg)}
+}
+
+@keyframes hauqe-action-letter{
+  0%{stroke-dashoffset:170;opacity:.35}
+  44%,72%{stroke-dashoffset:0;opacity:1}
+  100%{stroke-dashoffset:-170;opacity:.25}
+}
+
+@keyframes hauqe-action-leaf{
+  0%,100%{transform:scale(.76) rotate(-8deg);opacity:.42}
+  55%{transform:scale(1) rotate(4deg);opacity:1}
+}
+
+@keyframes hauqe-loading-dot{
+  0%,65%,100%{transform:translateY(0);opacity:.32}
+  32%{transform:translateY(-4px);opacity:1}
+}
+
+@keyframes hauqe-action-progress{
+  0%{transform:translateX(-115%)}
+  55%{transform:translateX(105%)}
+  100%{transform:translateX(240%)}
+}
+
+[data-theme="dark"] .hauqe-action-loader-backdrop{
+  background:rgba(2,14,11,.52);
+}
+
+[data-theme="dark"] .hauqe-action-loader-card{
+  border-color:#31564c;
+  background:rgba(13,38,32,.985);
+  box-shadow:0 30px 85px rgba(0,0,0,.46);
+}
+
+[data-theme="dark"] .hauqe-action-loader-brand{
+  background:radial-gradient(circle at 50% 45%,#173a31,#0b241e);
+}
+
+[data-theme="dark"] .hauqe-action-loader-copy h2{
+  color:#edf7f3;
+}
+
+[data-theme="dark"] .hauqe-action-loader-message{
+  color:#c2d8d0;
+}
+
+[data-theme="dark"] .hauqe-action-loader-copy small{
+  color:#91aaa1;
+}
+
+[data-theme="dark"] .hauqe-action-loader-progress{
+  background:#17362e;
+}
+
+@media(max-width:460px){
+  .hauqe-action-loader-card{
+    grid-template-columns:62px minmax(0,1fr);
+    gap:14px;
+    padding:19px 18px 17px;
+    border-radius:17px;
+  }
+
+  .hauqe-action-loader-brand{
+    width:62px;
+    height:62px;
+    border-radius:15px;
+  }
+
+  .hauqe-action-h{
+    width:54px;
+    height:54px;
+  }
+
+  .hauqe-action-loader-copy h2{
+    font-size:14px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .action-orbit,
+  .action-letter,
+  .action-leaf,
+  .hauqe-loading-dots i,
+  .hauqe-action-loader-progress span{
+    animation:none!important;
+  }
+
+  .action-letter{
+    stroke-dashoffset:0!important;
+  }
+
+  .hauqe-loading-dots i{
+    opacity:1;
+  }
+}

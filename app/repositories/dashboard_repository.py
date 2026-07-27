@@ -253,10 +253,13 @@ class DashboardRepository:
     @staticmethod
     async def controls_to_plan_count(
         db: AsyncSession,
+        *,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
     ) -> int:
         """
         Dossiers de vérification ouverts qui ne possèdent encore aucun contrôle
-        FUCCS. Cet indicateur alimente la carte "Contrôles à planifier".
+        FUCCS. Région et secteur sont appliqués via la fiche de collecte.
         """
         control_exists = (
             select(ControleFuccs.id)
@@ -266,12 +269,38 @@ class DashboardRepository:
             )
             .exists()
         )
-        result = await db.execute(
-            select(func.count(DossierVerification.id)).where(
-                DossierVerification.date_fin.is_(None),
-                ~control_exists,
+
+        filters = [
+            DossierVerification.date_fin.is_(None),
+            ~control_exists,
+        ]
+
+        if zone_id:
+            filters.append(
+                Entreprise.zone_siege_id == zone_id
             )
+        if sector:
+            filters.append(
+                func.upper(Entreprise.activite_principale)
+                == sector.strip().upper()
+            )
+
+        stmt = (
+            select(func.count(DossierVerification.id))
+            .select_from(DossierVerification)
+            .join(
+                FicheCollecte,
+                FicheCollecte.id
+                == DossierVerification.fiche_collecte_id,
+            )
+            .outerjoin(
+                Entreprise,
+                Entreprise.id == FicheCollecte.entreprise_id,
+            )
+            .where(*filters)
         )
+
+        result = await db.execute(stmt)
         return int(result.scalar_one())
 
     @staticmethod
@@ -280,13 +309,40 @@ class DashboardRepository:
         *,
         start_date: date,
         end_date: date,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
     ) -> int:
-        result = await db.execute(
-            select(func.count(distinct(Certification.entreprise_id))).where(
+        filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+        filters.extend(
+            [
                 Certification.certification_strategique.is_(True),
                 Certification.date_expiration >= start_date,
                 Certification.date_expiration <= end_date,
+                func.upper(Certification.statut).in_(
+                    list(ACTIVE_CERT_STATUSES)
+                ),
+            ]
+        )
+
+        result = await db.execute(
+            select(
+                func.count(
+                    distinct(Certification.entreprise_id)
+                )
             )
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
+            )
+            .where(*filters)
         )
         return int(result.scalar_one())
 
@@ -323,7 +379,7 @@ class DashboardRepository:
                 Entreprise.id == Certification.entreprise_id,
             )
             .where(*filters)
-            .group_by(func.coalesce(Certification.statut, "NON_RENSEIGNE"))
+            .group_by(Certification.statut)
             .order_by(func.count(distinct(Certification.id)).desc())
         )
         return result.all()
@@ -333,7 +389,18 @@ class DashboardRepository:
         db: AsyncSession,
         *,
         limit: int = 10,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
     ):
+        filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+
         result = await db.execute(
             select(
                 Certification.id,
@@ -359,9 +426,177 @@ class DashboardRepository:
                 Organisme,
                 Organisme.id == Certification.organisme_id,
             )
+            .where(*filters)
             .order_by(Certification.updated_at.desc())
             .limit(limit)
         )
+        return result.all()
+
+    # ========================================================
+    # EXPIRATIONS DE CERTIFICATIONS — DASHBOARD
+    # ========================================================
+
+    @staticmethod
+    async def certification_expiration_buckets(
+        db: AsyncSession,
+        *,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
+    ):
+        today = date.today()
+
+        filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+        filters.extend(
+            [
+                Certification.date_expiration.is_not(None),
+                func.upper(Certification.statut).in_(
+                    list(ACTIVE_CERT_STATUSES)
+                ),
+            ]
+        )
+
+        result = await db.execute(
+            select(
+                func.sum(
+                    case(
+                        (
+                            Certification.date_expiration < today,
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("expired"),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Certification.date_expiration >= today,
+                                Certification.date_expiration
+                                <= today
+                                + __import__("datetime").timedelta(days=30),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("d30"),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Certification.date_expiration
+                                > today
+                                + __import__("datetime").timedelta(days=30),
+                                Certification.date_expiration
+                                <= today
+                                + __import__("datetime").timedelta(days=90),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("d90"),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Certification.date_expiration
+                                > today
+                                + __import__("datetime").timedelta(days=90),
+                                Certification.date_expiration
+                                <= today
+                                + __import__("datetime").timedelta(days=180),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("d180"),
+            )
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
+            )
+            .where(*filters)
+        )
+
+        row = result.one()
+
+        return {
+            "expired": int(row.expired or 0),
+            "d30": int(row.d30 or 0),
+            "d90": int(row.d90 or 0),
+            "d180": int(row.d180 or 0),
+        }
+
+    @staticmethod
+    async def expiring_certifications(
+        db: AsyncSession,
+        *,
+        days: int = 180,
+        limit: int = 10,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
+    ):
+        today = date.today()
+        end_date = today + __import__("datetime").timedelta(days=days)
+
+        filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+        filters.extend(
+            [
+                Certification.date_expiration.is_not(None),
+                Certification.date_expiration >= today,
+                Certification.date_expiration <= end_date,
+                func.upper(Certification.statut).in_(
+                    list(ACTIVE_CERT_STATUSES)
+                ),
+            ]
+        )
+
+        result = await db.execute(
+            select(
+                Certification.id,
+                Certification.identifiant_national,
+                Certification.numero_certificat,
+                Certification.date_expiration,
+                Entreprise.id.label("enterprise_id"),
+                Entreprise.raison_sociale,
+                Norme.code.label("norm_code"),
+                Organisme.nom_officiel.label("organisme_name"),
+            )
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
+            )
+            .join(
+                Norme,
+                Norme.id == Certification.norme_id,
+            )
+            .join(
+                Organisme,
+                Organisme.id == Certification.organisme_id,
+            )
+            .where(*filters)
+            .order_by(Certification.date_expiration.asc())
+            .limit(limit)
+        )
+
         return result.all()
 
     # ========================================================
@@ -449,28 +684,126 @@ class DashboardRepository:
         }
 
     @staticmethod
+    def resource_scope_filters(
+        resource_type_column,
+        resource_id_column,
+        *,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
+    ):
+        if not any(
+            [zone_id, sector, norm_id, organisme_id]
+        ):
+            return []
+
+        cert_filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+
+        cert_ids = (
+            select(Certification.id)
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
+            )
+            .where(*cert_filters)
+        )
+
+        enterprise_ids = (
+            select(distinct(Certification.entreprise_id))
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
+            )
+            .where(*cert_filters)
+        )
+
+        normalized_type = func.upper(
+            func.coalesce(resource_type_column, "")
+        )
+
+        return [
+            or_(
+                and_(
+                    normalized_type.in_(
+                        ["CERTIFICATION", "CERTIFICATIONS"]
+                    ),
+                    resource_id_column.in_(cert_ids),
+                ),
+                and_(
+                    normalized_type.in_(
+                        ["ENTREPRISE", "ENTREPRISES"]
+                    ),
+                    resource_id_column.in_(enterprise_ids),
+                ),
+            )
+        ]
+
+    @staticmethod
     async def active_alert_count(
         db: AsyncSession,
         *,
         level: int | None = None,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
     ) -> int:
         filters = [
             Alerte.statut.in_(list(ACTIVE_ALERT_STATUSES))
         ]
+        filters.extend(
+            DashboardRepository.resource_scope_filters(
+                Alerte.ressource_type,
+                Alerte.ressource_id,
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
+            )
+        )
+
         if level:
             filters.append(Alerte.niveau == level)
+
         result = await db.execute(
             select(func.count(Alerte.id)).where(*filters)
         )
         return int(result.scalar_one())
 
     @staticmethod
-    async def overdue_deadline_count(db: AsyncSession) -> int:
-        result = await db.execute(
-            select(func.count(Echeance.id)).where(
-                Echeance.date_echeance < date.today(),
-                Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+    async def overdue_deadline_count(
+        db: AsyncSession,
+        *,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
+    ) -> int:
+        filters = [
+            Echeance.date_echeance < date.today(),
+            Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+        ]
+        filters.extend(
+            DashboardRepository.resource_scope_filters(
+                Echeance.ressource_type,
+                Echeance.ressource_id,
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
             )
+        )
+
+        result = await db.execute(
+            select(func.count(Echeance.id)).where(*filters)
         )
         return int(result.scalar_one())
 
@@ -479,7 +812,40 @@ class DashboardRepository:
         db: AsyncSession,
         *,
         limit: int = 10,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
     ):
+        alert_filters = [
+            Alerte.statut.in_(list(ACTIVE_ALERT_STATUSES))
+        ]
+        alert_filters.extend(
+            DashboardRepository.resource_scope_filters(
+                Alerte.ressource_type,
+                Alerte.ressource_id,
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
+            )
+        )
+
+        deadline_filters = [
+            Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+            Echeance.date_echeance <= date.today(),
+        ]
+        deadline_filters.extend(
+            DashboardRepository.resource_scope_filters(
+                Echeance.ressource_type,
+                Echeance.ressource_id,
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
+            )
+        )
+
         alerts = await db.execute(
             select(
                 Alerte.id,
@@ -489,9 +855,7 @@ class DashboardRepository:
                 Alerte.ressource_id,
                 Alerte.date_detection,
             )
-            .where(
-                Alerte.statut.in_(list(ACTIVE_ALERT_STATUSES))
-            )
+            .where(*alert_filters)
             .order_by(
                 Alerte.niveau.desc().nullslast(),
                 Alerte.date_detection.asc().nullslast(),
@@ -507,10 +871,7 @@ class DashboardRepository:
                 Echeance.ressource_id,
                 Echeance.date_echeance,
             )
-            .where(
-                Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
-                Echeance.date_echeance <= date.today(),
-            )
+            .where(*deadline_filters)
             .order_by(Echeance.date_echeance.asc())
             .limit(limit)
         )
@@ -660,7 +1021,7 @@ class DashboardRepository:
                 func.count(current.c.id).label("value"),
             )
             .where(current.c.rn == 1)
-            .group_by(func.coalesce(column, "NON_RENSEIGNE"))
+            .group_by(column)
             .order_by(func.count(current.c.id).desc())
         )
         return result.all()
@@ -756,10 +1117,7 @@ class DashboardRepository:
                 Certification.entreprise_id == Entreprise.id,
             )
             .group_by(
-                func.coalesce(
-                    Entreprise.activite_principale,
-                    "NON_RENSEIGNE",
-                )
+                Entreprise.activite_principale
             )
             .order_by(func.count(distinct(Certification.id)).desc())
         )
@@ -806,20 +1164,40 @@ class DashboardRepository:
         *,
         start_date: date,
         end_date: date,
+        zone_id: UUID | None = None,
+        sector: str | None = None,
+        norm_id: UUID | None = None,
+        organisme_id: UUID | None = None,
     ):
         period = func.to_char(
             Certification.created_at,
             "YYYY-MM",
         ).label("period")
+
+        filters = DashboardRepository.certification_filters(
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
+        filters.extend(
+            [
+                func.date(Certification.created_at) >= start_date,
+                func.date(Certification.created_at) <= end_date,
+            ]
+        )
+
         result = await db.execute(
             select(
                 period,
                 func.count(Certification.id).label("value"),
             )
-            .where(
-                func.date(Certification.created_at) >= start_date,
-                func.date(Certification.created_at) <= end_date,
+            .select_from(Certification)
+            .join(
+                Entreprise,
+                Entreprise.id == Certification.entreprise_id,
             )
+            .where(*filters)
             .group_by(period)
             .order_by(period)
         )
@@ -882,10 +1260,7 @@ class DashboardRepository:
                 Validation.date_validation <= end_date,
             )
             .group_by(
-                func.coalesce(
-                    Validation.decision,
-                    "NON_RENSEIGNE",
-                )
+                Validation.decision
             )
         )
 

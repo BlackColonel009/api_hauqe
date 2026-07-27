@@ -1,10 +1,103 @@
 <div class="page-content container-fluid company-detail-page">
-  <nav class="detail-breadcrumb" aria-label="Fil d’Ariane"><a href="#/entreprises">Entreprises</a><i data-lucide="chevron-right"></i><span id="breadcrumbCompany">Dossier entreprise</span></nav>
-  <section class="company-profile-head panel">
-    <div class="company-profile-main"><span class="company-profile-logo" id="companyInitials">AV</span><div><div class="profile-title-line"><h1 id="companyName">AGROVITA SARL</h1><span class="company-status risk"><i></i>À risque</span></div><p id="companySubtitle">Agroalimentaire · Lomé, Maritime</p><div class="profile-refs"><span><i data-lucide="briefcase-business"></i><b>RCCM</b> TG-LOM 2020 B 1842</span><span><i data-lucide="receipt-text"></i><b>NIF</b> 1001457821</span></div></div></div>
-    <div class="profile-actions"><button class="btn btn-outline-secondary app-btn"><i data-lucide="download"></i>Exporter le dossier</button><a href="#/entreprises/modifier/1" class="btn btn-primary app-btn"><i data-lucide="square-pen"></i>Modifier</a><button class="icon-button"><i data-lucide="ellipsis-vertical"></i></button></div>
+  <nav class="detail-breadcrumb" aria-label="Fil d’Ariane">
+    <a href="#/entreprises">Entreprises</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="breadcrumbCompany">Dossier entreprise</span>
+  </nav>
+
+  <section class="company-detail-state" id="companyDetailState" hidden aria-live="polite"></section>
+
+  <section class="company-profile-head panel" id="companyProfile" hidden>
+    <div class="company-profile-main">
+      <span class="company-profile-logo" id="companyInitials">EN</span>
+      <div>
+        <div class="profile-title-line">
+          <h1 id="companyName">Entreprise</h1>
+          <span id="companyStatus"></span>
+        </div>
+        <p id="companySubtitle">Informations du registre</p>
+        <div class="profile-refs">
+          <span><i data-lucide="fingerprint"></i><b>ID</b><em id="companyNationalId">—</em></span>
+          <span><i data-lucide="briefcase-business"></i><b>RCCM</b><em id="companyRccm">—</em></span>
+          <span><i data-lucide="receipt-text"></i><b>NIF / IFU</b><em id="companyTaxId">—</em></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <button class="btn btn-outline-secondary app-btn" id="exportCompanyDossier" type="button">
+        <i data-lucide="download"></i>Exporter le dossier
+      </button>
+      <a href="#/entreprises" class="btn btn-primary app-btn" id="editCompanyButton">
+        <i data-lucide="square-pen"></i>Modifier
+      </a>
+      <button class="icon-button" id="companyMoreActions" type="button" aria-label="Autres actions">
+        <i data-lucide="ellipsis-vertical"></i>
+      </button>
+    </div>
   </section>
-  <section class="detail-kpis"><article><span class="green"><i data-lucide="badge-check"></i></span><div><small>Certifications</small><strong>3</strong><em>2 valides · 1 à surveiller</em></div></article><article><span class="orange"><i data-lucide="gauge"></i></span><div><small>Score global</small><strong>82 / 100</strong><em>Conforme avec surveillance</em></div></article><article><span class="red"><i data-lucide="calendar-clock"></i></span><div><small>Prochaine échéance</small><strong>18 jours</strong><em>ISO 22000 · 03 août 2026</em></div></article><article><span class="blue"><i data-lucide="clipboard-check"></i></span><div><small>Dernier contrôle</small><strong>24 mai 2026</strong><em>Score HAUQE : 46 / 56</em></div></article></section>
-  <div class="detail-tabs" role="tablist"><button class="active" data-tab="overview">Vue d’ensemble</button><button data-tab="certifications">Certifications <b>3</b></button><button data-tab="controls">Contrôles & scoring</button><button data-tab="documents">Documents <b>8</b></button><button data-tab="history">Historique</button></div>
+
+  <section class="detail-kpis" id="companyDetailKpis" hidden></section>
+
+  <div class="detail-tabs" id="companyDetailTabs" role="tablist" hidden>
+    <button class="active" data-tab="overview" type="button">Vue d’ensemble</button>
+    <button data-tab="certifications" type="button">Certifications <b id="certificationsCount">0</b></button>
+    <button data-tab="controls" type="button">Contrôles & classification</button>
+    <button data-tab="documents" type="button">Documents <b id="documentsCount">0</b></button>
+    <button data-tab="history" type="button">Historique</button>
+  </div>
+
   <section id="tabContent"></section>
+
+  <dialog class="company-detail-dialog" id="companyDocumentDialog">
+    <form method="dialog" id="companyDocumentForm">
+      <div class="company-dialog-head">
+        <span class="company-dialog-icon"><i data-lucide="upload"></i></span>
+        <div>
+          <strong>Ajouter un document</strong>
+          <small>Le fichier sera rattaché directement à cette entreprise.</small>
+        </div>
+      </div>
+      <label class="company-dialog-field">
+        <span>Fichier</span>
+        <input id="companyDocumentInput" type="file" required>
+      </label>
+      <label class="company-dialog-field">
+        <span>Type de document</span>
+        <input id="companyDocumentType" type="text" value="JUSTIFICATIF_ENTREPRISE" maxlength="255" required>
+      </label>
+      <label class="company-dialog-field">
+        <span>Confidentialité</span>
+        <select id="companyDocumentConfidentiality">
+          <option value="INTERNE">Interne</option>
+          <option value="PRIVE">Privé</option>
+          <option value="PUBLIC">Public</option>
+        </select>
+      </label>
+      <div class="company-dialog-actions">
+        <button class="btn btn-outline-secondary app-btn" type="button" id="cancelCompanyDocument">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit">Téléverser</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="company-detail-dialog" id="companyDetailDialog">
+    <form method="dialog" id="companyDetailDialogForm">
+      <div class="company-dialog-head">
+        <span class="company-dialog-icon" id="companyDetailDialogIcon"><i data-lucide="archive"></i></span>
+        <div>
+          <strong id="companyDetailDialogTitle">Confirmer l’action</strong>
+          <small id="companyDetailDialogSubtitle">Cette opération sera auditée.</small>
+        </div>
+      </div>
+      <label class="company-dialog-field">
+        <span id="companyDetailDialogLabel">Motif</span>
+        <textarea id="companyDetailDialogReason" rows="3" maxlength="2000" placeholder="Indiquez le motif…"></textarea>
+      </label>
+      <div class="company-dialog-actions">
+        <button class="btn btn-outline-secondary app-btn" type="button" id="cancelCompanyDetailDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit" id="confirmCompanyDetailDialog">Confirmer</button>
+      </div>
+    </form>
+  </dialog>
 </div>

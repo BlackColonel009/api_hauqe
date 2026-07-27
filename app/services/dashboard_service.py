@@ -426,21 +426,45 @@ class DashboardService:
         )
 
         controls_to_plan = (
-            await DashboardRepository.controls_to_plan_count(db)
+            await DashboardRepository.controls_to_plan_count(
+                db,
+                zone_id=zone_id,
+                sector=sector,
+            )
         )
         expiring_risk = (
             await DashboardRepository.count_strategic_certifications_expiring(
                 db,
                 start_date=end,
                 end_date=end + timedelta(days=90),
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
             )
         )
-        active_alerts = await DashboardRepository.active_alert_count(db)
+        active_alerts = await DashboardRepository.active_alert_count(
+            db,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
         critical_alerts = await DashboardRepository.active_alert_count(
             db,
             level=4,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
         )
-        overdue = await DashboardRepository.overdue_deadline_count(db)
+        overdue = await DashboardRepository.overdue_deadline_count(
+            db,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
+        )
         infc_avg, _ = await DashboardRepository.latest_infc_average(
             db,
             zone_id=zone_id,
@@ -459,12 +483,31 @@ class DashboardService:
             )
         )
 
-        deadline_buckets = await DashboardRepository.deadline_bucket_counts(
-            db
+        deadline_buckets = (
+            await DashboardRepository.certification_expiration_buckets(
+                db,
+                zone_id=zone_id,
+                sector=sector,
+                norm_id=norm_id,
+                organisme_id=organisme_id,
+            )
+        )
+        expiring_rows = await DashboardRepository.expiring_certifications(
+            db,
+            days=180,
+            limit=10,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
         )
         alerts, deadlines = await DashboardRepository.priority_actions(
             db,
             limit=8,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
         )
 
         actions: list[PriorityAction] = []
@@ -495,6 +538,10 @@ class DashboardService:
         recent_rows = await DashboardRepository.recent_certifications(
             db,
             limit=10,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
         )
         recent = [
             {
@@ -523,6 +570,10 @@ class DashboardService:
             db,
             start_date=end - timedelta(days=180),
             end_date=end,
+            zone_id=zone_id,
+            sector=sector,
+            norm_id=norm_id,
+            organisme_id=organisme_id,
         )
 
         return OperationalDashboardResponse(
@@ -617,6 +668,24 @@ class DashboardService:
                     label="91 à 180 jours",
                     value=deadline_buckets["d180"],
                 ),
+            ],
+            expiring_certifications=[
+                ExpiringCertificationItem(
+                    certification_id=row.id,
+                    enterprise_id=row.enterprise_id,
+                    certification_code=(
+                        row.identifiant_national
+                        or row.numero_certificat
+                    ),
+                    enterprise_name=row.raison_sociale,
+                    norm=row.norm_code,
+                    certification_body=row.organisme_name,
+                    expiration_date=row.date_expiration,
+                    days_remaining=(
+                        row.date_expiration - end
+                    ).days,
+                )
+                for row in expiring_rows
             ],
             infc_national_average=infc_avg,
             priority_actions=actions,

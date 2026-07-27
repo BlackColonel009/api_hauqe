@@ -82,6 +82,17 @@ class PriorityAction(BaseModel):
     resource_id: UUID | None = None
 
 
+class ExpiringCertificationItem(BaseModel):
+    certification_id: UUID
+    enterprise_id: UUID
+    certification_code: str | None = None
+    enterprise_name: str
+    norm: str | None = None
+    certification_body: str | None = None
+    expiration_date: date
+    days_remaining: int
+
+
 class DashboardFiltersResponse(BaseModel):
     zones: list[dict[str, Any]] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
@@ -107,6 +118,9 @@ class OperationalDashboardResponse(BaseModel):
     kpis: list[KpiValue] = Field(default_factory=list)
     certification_statuses: list[DistributionItem] = Field(default_factory=list)
     deadline_buckets: list[DistributionItem] = Field(default_factory=list)
+    expiring_certifications: list[ExpiringCertificationItem] = Field(
+        default_factory=list
+    )
     infc_national_average: Decimal | None = None
     priority_actions: list[PriorityAction] = Field(default_factory=list)
     recent_certifications: list[dict[str, Any]] = Field(default_factory=list)

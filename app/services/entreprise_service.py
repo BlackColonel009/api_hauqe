@@ -20,6 +20,8 @@ Une entreprise n'est jamais supprimée physiquement par ce service.
 
 from __future__ import annotations
 
+import csv
+import io
 from uuid import UUID
 
 from fastapi import (
@@ -35,11 +37,30 @@ from app.models.entreprise import Entreprise
 from app.repositories.entreprise_repository import (
     EntrepriseRepository,
 )
+from app.repositories.contact_entreprise_repository import (
+    ContactEntrepriseRepository,
+)
+from app.repositories.site_entreprise_repository import (
+    SiteEntrepriseRepository,
+)
+from app.repositories.offre_entreprise_repository import (
+    OffreEntrepriseRepository,
+)
+from app.repositories.organismes_certifications_repository import (
+    CertificationRepository,
+)
 from app.schemas.entreprise import (
+    EntrepriseControlSummaryItem,
+    EntrepriseControlSummaryResponse,
     EntrepriseCreateRequest,
+    EntrepriseFiltersResponse,
     EntrepriseListResponse,
+    EntrepriseRegistryItem,
+    EntrepriseRegistryResponse,
+    EntrepriseRegistrySummary,
     EntrepriseResponse,
     EntrepriseUpdateRequest,
+    EntrepriseZoneOption,
 )
 from app.services.auth_service import AuthContext
 
@@ -78,6 +99,42 @@ def clean_text(
     value = value.strip()
 
     return value or None
+
+
+def normalize_code(value: str | None) -> str | None:
+    cleaned = clean_text(value)
+    return cleaned.upper() if cleaned else None
+
+
+def validate_minimum_company_data(
+    *,
+    raison_sociale: str | None,
+    adresse_siege: str | None,
+    telephone_principal: str | None,
+    email_principal: str | None,
+) -> None:
+    """Applique le noyau obligatoire de RM-13 au niveau serveur."""
+
+    if not clean_text(raison_sociale):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La raison sociale est obligatoire.",
+        )
+
+    if not clean_text(adresse_siege):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="L'adresse ou la localité du siège est obligatoire.",
+        )
+
+    if not clean_text(telephone_principal) and not clean_text(email_principal):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Un téléphone principal ou un courriel principal "
+                "est obligatoire."
+            ),
+        )
 
 
 # ============================================================
@@ -157,6 +214,7 @@ class EntrepriseService:
         search: str | None,
         statut: str | None,
         zone_siege_id: UUID | None,
+        secteur: str | None = None,
         include_archived: bool,
         limit: int,
         offset: int,
@@ -169,6 +227,7 @@ class EntrepriseService:
                 search=search,
                 statut=statut,
                 zone_siege_id=zone_siege_id,
+                secteur=secteur,
                 include_archived=include_archived,
                 limit=limit,
                 offset=offset,
@@ -244,6 +303,28 @@ class EntrepriseService:
             .upper()
         )
 
+        validate_minimum_company_data(
+            raison_sociale=payload.raison_sociale,
+            adresse_siege=payload.adresse_siege,
+            telephone_principal=payload.telephone_principal,
+            email_principal=payload.email_principal,
+        )
+
+        normalized_rccm = normalize_code(payload.rccm)
+
+        if normalized_rccm is not None:
+            rccm_owner = await EntrepriseRepository.get_by_rccm(
+                db,
+                normalized_rccm,
+            )
+            if rccm_owner is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Une entreprise possède déjà ce numéro RCCM."
+                    ),
+                )
+
         # ----------------------------------------------------
         # Unicité métier
         # ----------------------------------------------------
@@ -298,9 +379,9 @@ class EntrepriseService:
                 payload.forme_juridique
             ),
 
-            rccm=clean_text(payload.rccm),
-            nif=clean_text(payload.nif),
-            ifu=clean_text(payload.ifu),
+            rccm=normalized_rccm,
+            nif=normalize_code(payload.nif),
+            ifu=normalize_code(payload.ifu),
 
             date_creation=payload.date_creation,
 
@@ -343,7 +424,14 @@ class EntrepriseService:
             # Ce statut n'est pas le workflow des fiches de
             # collecte ou des certifications.
             # ------------------------------------------------
-            statut="ACTIF",
+            # RM-12 : absence de RCCM = dossier à régulariser.
+            # Avec RCCM, aucun statut de conformité n'est inventé ici :
+            # la classification dépend des certifications et du scoring.
+            statut=(
+                "EN_ATTENTE_REGULARISATION"
+                if normalized_rccm is None
+                else None
+            ),
         )
 
         db.add(entreprise)
@@ -454,6 +542,44 @@ class EntrepriseService:
             exclude_unset=True
         )
 
+        prospective_reason = changes.get(
+            "raison_sociale", entreprise.raison_sociale
+        )
+        prospective_address = changes.get(
+            "adresse_siege", entreprise.adresse_siege
+        )
+        prospective_phone = changes.get(
+            "telephone_principal", entreprise.telephone_principal
+        )
+        prospective_email = changes.get(
+            "email_principal", entreprise.email_principal
+        )
+
+        validate_minimum_company_data(
+            raison_sociale=prospective_reason,
+            adresse_siege=prospective_address,
+            telephone_principal=prospective_phone,
+            email_principal=prospective_email,
+        )
+
+        if "rccm" in changes:
+            normalized_rccm = normalize_code(changes.get("rccm"))
+            changes["rccm"] = normalized_rccm
+
+            if normalized_rccm is not None:
+                rccm_owner = await EntrepriseRepository.get_by_rccm(
+                    db,
+                    normalized_rccm,
+                    exclude_id=entreprise.id,
+                )
+                if rccm_owner is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            "Une entreprise possède déjà ce numéro RCCM."
+                        ),
+                    )
+
         # ----------------------------------------------------
         # Si la zone change, vérifier d'abord la FK.
         # ----------------------------------------------------
@@ -523,13 +649,23 @@ class EntrepriseService:
         for field, value in changes.items():
 
             if field in text_fields:
-                value = clean_text(value)
+                if field in {"rccm", "nif", "ifu"}:
+                    value = normalize_code(value)
+                else:
+                    value = clean_text(value)
 
             setattr(
                 entreprise,
                 field,
                 value,
             )
+
+        if not entreprise.rccm:
+            entreprise.statut = "EN_ATTENTE_REGULARISATION"
+        elif (entreprise.statut or "").strip().upper() == "EN_ATTENTE_REGULARISATION":
+            # On retire uniquement le statut administratif lié au RCCM.
+            # Le statut de conformité sera calculé par le domaine concerné.
+            entreprise.statut = None
 
         await write_audit_event(
             db,
@@ -712,7 +848,11 @@ class EntrepriseService:
 
         previous_status = entreprise.statut
 
-        entreprise.statut = "ACTIF"
+        entreprise.statut = (
+            "EN_ATTENTE_REGULARISATION"
+            if not entreprise.rccm
+            else None
+        )
 
         # ----------------------------------------------------
         # Traçabilité obligatoire du désarchivage.
@@ -733,7 +873,7 @@ class EntrepriseService:
             },
 
             valeurs_apres={
-                "statut": "ACTIF",
+                "statut": entreprise.statut,
             },
 
             contexte={
@@ -750,3 +890,398 @@ class EntrepriseService:
         return build_response(
             entreprise
         )
+
+    # ========================================================
+    # FILTRES DU REGISTRE
+    # ========================================================
+
+    @staticmethod
+    async def registry_filters(
+        db: AsyncSession,
+    ) -> EntrepriseFiltersResponse:
+        zones, sectors, statuses = (
+            await EntrepriseRepository.registry_filters(db)
+        )
+
+        return EntrepriseFiltersResponse(
+            zones=[
+                EntrepriseZoneOption(
+                    id=row.id,
+                    parent_id=row.parent_id,
+                    code=row.code,
+                    nom=row.nom,
+                    type_zone=row.type_zone,
+                )
+                for row in zones
+                if row.nom
+            ],
+            sectors=sectors,
+            statuses=statuses,
+        )
+
+
+    # ========================================================
+    # REGISTRE ENRICHI
+    # ========================================================
+
+    @staticmethod
+    async def registry(
+        db: AsyncSession,
+        *,
+        search: str | None,
+        statut: str | None,
+        zone_id: UUID | None,
+        secteur: str | None,
+        include_archived: bool,
+        sort: str,
+        limit: int,
+        offset: int,
+    ) -> EntrepriseRegistryResponse:
+        rows, total = await EntrepriseRepository.registry_rows(
+            db,
+            search=search,
+            statut=statut,
+            zone_id=zone_id,
+            secteur=secteur,
+            include_archived=include_archived,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+        )
+
+        summary = await EntrepriseRepository.registry_summary(
+            db,
+            search=search,
+            zone_id=zone_id,
+            secteur=secteur,
+            include_archived=include_archived,
+        )
+
+        return EntrepriseRegistryResponse(
+            total=total,
+            limit=limit,
+            offset=offset,
+            summary=EntrepriseRegistrySummary(**summary),
+            items=[
+                EntrepriseRegistryItem(
+                    id=row.Entreprise.id,
+                    identifiant_national=(
+                        row.Entreprise.identifiant_national
+                    ),
+                    raison_sociale=row.Entreprise.raison_sociale,
+                    nom_commercial=row.Entreprise.nom_commercial,
+                    rccm=row.Entreprise.rccm,
+                    nif=row.Entreprise.nif,
+                    ifu=row.Entreprise.ifu,
+                    zone_siege_id=row.Entreprise.zone_siege_id,
+                    zone_nom=row.zone_nom,
+                    zone_type=row.zone_type,
+                    activite_principale=(
+                        row.Entreprise.activite_principale
+                    ),
+                    statut=row.Entreprise.statut,
+                    certifications_count=int(
+                        row.certifications_count or 0
+                    ),
+                    next_expiration=row.next_expiration,
+                    classification_score=row.classification_score,
+                    classification_classe=row.classification_classe,
+                    updated_at=row.Entreprise.updated_at,
+                )
+                for row in rows
+            ],
+        )
+
+
+    # ========================================================
+    # CONTRÔLES FUCCS LIÉS À L'ENTREPRISE
+    # ========================================================
+
+    @staticmethod
+    async def controls_summary(
+        db: AsyncSession,
+        *,
+        entreprise_id: UUID,
+    ) -> EntrepriseControlSummaryResponse:
+        if await EntrepriseRepository.get_by_id(db, entreprise_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Entreprise introuvable.",
+            )
+
+        controls = await EntrepriseRepository.enterprise_controls(
+            db,
+            entreprise_id,
+        )
+
+        return EntrepriseControlSummaryResponse(
+            items=[
+                EntrepriseControlSummaryItem(
+                    id=item.id,
+                    dossier_verification_id=(
+                        item.dossier_verification_id
+                    ),
+                    date_debut=item.date_debut,
+                    date_fin=item.date_fin,
+                    score_brut=item.score_brut,
+                    score_maximal=item.score_maximal,
+                    taux=item.taux,
+                    synthese=item.synthese,
+                    statut=item.statut,
+                )
+                for item in controls
+            ]
+        )
+
+
+    # ========================================================
+    # EXPORT CSV DU REGISTRE
+    # ========================================================
+
+    @staticmethod
+    async def export_registry_csv(
+        db: AsyncSession,
+        *,
+        search: str | None,
+        statut: str | None,
+        zone_id: UUID | None,
+        secteur: str | None,
+        include_archived: bool,
+        sort: str,
+        motif: str,
+        actor: AuthContext,
+        request: Request,
+    ) -> str:
+        rows, total = await EntrepriseRepository.registry_rows(
+            db,
+            search=search,
+            statut=statut,
+            zone_id=zone_id,
+            secteur=secteur,
+            include_archived=include_archived,
+            sort=sort,
+            limit=10000,
+            offset=0,
+        )
+
+        buffer = io.StringIO()
+        writer = csv.writer(
+            buffer,
+            delimiter=";",
+            quoting=csv.QUOTE_MINIMAL,
+        )
+
+        writer.writerow(
+            [
+                "Identifiant national",
+                "Raison sociale",
+                "Nom commercial",
+                "RCCM",
+                "NIF",
+                "IFU",
+                "Zone du siège",
+                "Activité principale",
+                "Certifications",
+                "Prochaine expiration",
+                "Score classification",
+                "Classe",
+                "Statut",
+            ]
+        )
+
+        for row in rows:
+            item = row.Entreprise
+            writer.writerow(
+                [
+                    item.identifiant_national,
+                    item.raison_sociale or "",
+                    item.nom_commercial or "",
+                    item.rccm or "",
+                    item.nif or "",
+                    item.ifu or "",
+                    row.zone_nom or "",
+                    item.activite_principale or "",
+                    int(row.certifications_count or 0),
+                    (
+                        row.next_expiration.isoformat()
+                        if row.next_expiration
+                        else ""
+                    ),
+                    (
+                        str(row.classification_score)
+                        if row.classification_score is not None
+                        else ""
+                    ),
+                    row.classification_classe or "",
+                    item.statut or "",
+                ]
+            )
+
+        await write_audit_event(
+            db,
+            action="ENTREPRISES_EXPORT",
+            categorie="EXPORT",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="entreprises",
+            adresse_ip=client_ip(request),
+            contexte={
+                "motif": clean_text(motif),
+                "nombre_lignes": total,
+                "filtres": {
+                    "search": clean_text(search),
+                    "statut": clean_text(statut),
+                    "zone_id": str(zone_id) if zone_id else None,
+                    "secteur": clean_text(secteur),
+                    "include_archived": include_archived,
+                    "sort": sort,
+                },
+            },
+        )
+        await db.commit()
+
+        return "\ufeff" + buffer.getvalue()
+
+    # ========================================================
+    # EXPORT CSV D'UN DOSSIER ENTREPRISE
+    # ========================================================
+
+    @staticmethod
+    async def export_dossier_csv(
+        db: AsyncSession,
+        *,
+        entreprise_id: UUID,
+        motif: str,
+        actor: AuthContext,
+        request: Request,
+    ) -> str:
+        entreprise = await EntrepriseRepository.get_by_id(
+            db,
+            entreprise_id,
+        )
+
+        if entreprise is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Entreprise introuvable.",
+            )
+
+        contacts = await ContactEntrepriseRepository.list_contacts(
+            db,
+            entreprise_id=entreprise_id,
+            include_inactive=True,
+        )
+        sites = await SiteEntrepriseRepository.list_sites(
+            db,
+            entreprise_id=entreprise_id,
+            include_inactive=True,
+        )
+        offres = await OffreEntrepriseRepository.list_offres(
+            db,
+            entreprise_id=entreprise_id,
+            include_inactive=True,
+        )
+        certifications, _ = await CertificationRepository.list(
+            db,
+            search=None,
+            entreprise_id=entreprise_id,
+            organisme_id=None,
+            norme_id=None,
+            statut=None,
+            limit=200,
+            offset=0,
+        )
+
+        buffer = io.StringIO()
+        writer = csv.writer(
+            buffer,
+            delimiter=";",
+            quoting=csv.QUOTE_MINIMAL,
+        )
+
+        writer.writerow(["HAUQE Certif", "Dossier entreprise"])
+        writer.writerow(["Identifiant national", entreprise.identifiant_national])
+        writer.writerow(["Raison sociale", entreprise.raison_sociale or ""])
+        writer.writerow(["Nom commercial", entreprise.nom_commercial or ""])
+        writer.writerow(["RCCM", entreprise.rccm or ""])
+        writer.writerow(["NIF", entreprise.nif or ""])
+        writer.writerow(["IFU", entreprise.ifu or ""])
+        writer.writerow(["Forme juridique", entreprise.forme_juridique or ""])
+        writer.writerow(["Date création", entreprise.date_creation.isoformat() if entreprise.date_creation else ""])
+        writer.writerow(["Nationalité", entreprise.nationalite or ""])
+        writer.writerow(["Effectif", entreprise.effectif if entreprise.effectif is not None else ""])
+        writer.writerow(["Email", entreprise.email_principal or ""])
+        writer.writerow(["Téléphone", entreprise.telephone_principal or ""])
+        writer.writerow(["Site web", entreprise.site_web or ""])
+        writer.writerow(["Adresse siège", entreprise.adresse_siege or ""])
+        writer.writerow(["Activité principale", entreprise.activite_principale or ""])
+        writer.writerow(["Statut", entreprise.statut or ""])
+
+        writer.writerow([])
+        writer.writerow(["CONTACTS"])
+        writer.writerow(["Nom", "Prénoms", "Fonction", "Téléphone", "Email", "Type", "Principal", "Statut"])
+        for item in contacts:
+            writer.writerow([
+                item.nom or "", item.prenoms or "", item.fonction or "",
+                item.telephone or "", item.email or "", item.type_contact or "",
+                "OUI" if item.contact_principal else "NON", item.statut or "",
+            ])
+
+        writer.writerow([])
+        writer.writerow(["SITES"])
+        writer.writerow(["Nom", "Type", "Adresse", "Zone", "Latitude", "Longitude", "Effectif", "Statut"])
+        for item in sites:
+            writer.writerow([
+                item.nom or "", item.type_site or "", item.adresse or "",
+                str(item.zone_id), item.latitude if item.latitude is not None else "",
+                item.longitude if item.longitude is not None else "",
+                item.effectif if item.effectif is not None else "", item.statut or "",
+            ])
+
+        writer.writerow([])
+        writer.writerow(["OFFRES"])
+        writer.writerow(["Type", "Nom", "Catégorie", "Description", "Volume annuel", "Unité", "Capacité", "Marchés", "Destinations", "Statut"])
+        for item in offres:
+            writer.writerow([
+                item.type_offre or "", item.nom or "", item.categorie or "",
+                item.description or "", item.volume_annuel if item.volume_annuel is not None else "",
+                item.unite or "", item.capacite_production if item.capacite_production is not None else "",
+                ", ".join(item.marches_cibles or []), ", ".join(item.destinations or []), item.statut or "",
+            ])
+
+        writer.writerow([])
+        writer.writerow(["CERTIFICATIONS"])
+        writer.writerow(["Identifiant national", "Numéro", "Statut", "Obtention", "Effet", "Expiration", "Stratégique", "Authenticité"])
+        for item in certifications:
+            writer.writerow([
+                item.identifiant_national,
+                item.numero_certificat or "",
+                item.statut or "",
+                item.date_obtention.isoformat() if item.date_obtention else "",
+                item.date_effet.isoformat() if item.date_effet else "",
+                item.date_expiration.isoformat() if item.date_expiration else "",
+                "OUI" if item.certification_strategique else "NON",
+                "OUI" if item.authenticite_verifiee else "NON",
+            ])
+
+        await write_audit_event(
+            db,
+            action="ENTREPRISE_DOSSIER_EXPORT",
+            categorie="EXPORT",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="entreprise",
+            ressource_id=entreprise_id,
+            adresse_ip=client_ip(request),
+            contexte={
+                "motif": clean_text(motif),
+                "contacts": len(contacts),
+                "sites": len(sites),
+                "offres": len(offres),
+                "certifications": len(certifications),
+            },
+        )
+        await db.commit()
+
+        return "\ufeff" + buffer.getvalue()
+

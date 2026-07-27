@@ -1,10 +1,19 @@
+import { installActionLoader } from "./action-loader.js";
 import { initRouter } from "./router.js";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
   logout,
 } from "./auth.js";
-import { apiBlob, hasAccessToken } from "./api.js";
+import {
+  ApiError,
+  apiBlob,
+  apiGet,
+  apiPost,
+  hasAccessToken,
+} from "./api.js";
+
+installActionLoader();
 
 document.querySelector("#menuToggle").addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
 document.addEventListener("click", (event) => {
@@ -16,6 +25,14 @@ const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const userMenuToggle = document.querySelector("#userMenuToggle");
 const accountDropdown = document.querySelector("#accountDropdown");
+const presenceWrap = document.querySelector("#presenceWrap");
+const presenceToggle = document.querySelector("#presenceToggle");
+const presenceDropdown = document.querySelector("#presenceDropdown");
+const presenceCount = document.querySelector("#presenceCount");
+const presenceSummary = document.querySelector("#presenceSummary");
+const presenceState = document.querySelector("#presenceState");
+const presenceUsers = document.querySelector("#presenceUsers");
+const presenceRefresh = document.querySelector("#presenceRefresh");
 const themeSwitch = document.querySelector("#themeSwitch");
 const themeSwitchLabel = document.querySelector("#themeSwitchLabel");
 function applyTheme(theme) {
@@ -212,6 +229,365 @@ function bindRealLogout() {
   });
 }
 
+/* ============================================================
+   PRÉSENCE UTILISATEURS
+   ------------------------------------------------------------
+   - GET /api/v1/presence/users?minutes=15&limit=6
+   - POST /api/v1/presence/heartbeat
+   - avatars chargés en Blob avec Bearer token
+   - le heartbeat est déclenché uniquement par une vraie activité
+     utilisateur, jamais par le polling.
+   ============================================================ */
+
+const PRESENCE_WINDOW_MINUTES = 15;
+const PRESENCE_LIST_LIMIT = 6;
+const PRESENCE_REFRESH_MS = 60_000;
+const PRESENCE_HEARTBEAT_THROTTLE_MS = 60_000;
+
+let presenceRefreshTimer = null;
+let lastPresenceFetchAt = 0;
+let lastHeartbeatAt = 0;
+let presenceForbidden = false;
+let presenceAvatarObjectUrls = [];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function clearPresenceAvatarUrls() {
+  presenceAvatarObjectUrls.forEach((url) => {
+    try { URL.revokeObjectURL(url); } catch {}
+  });
+  presenceAvatarObjectUrls = [];
+}
+
+function presenceInitials(item) {
+  const parts = String(item?.nom_complet || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0] || ""}${parts.at(-1)?.[0] || ""}`
+    .toUpperCase();
+}
+
+function presenceRole(item) {
+  const roles = Array.isArray(item?.roles) ? item.roles : [];
+  const first = roles[0];
+
+  return (
+    first?.libelle
+    || first?.code?.replaceAll("_", " ")
+    || item?.fonction
+    || "Utilisateur HAUQE"
+  );
+}
+
+function presenceTimeLabel(item) {
+  if (item?.presence === "ONLINE") {
+    return "Actif maintenant";
+  }
+
+  const value = item?.last_activity_at;
+  if (!value) return "Activité récente";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Activité récente";
+
+  const minutes = Math.max(
+    1,
+    Math.floor((Date.now() - date.getTime()) / 60_000)
+  );
+
+  return `Actif il y a ${minutes} min`;
+}
+
+function renderPresenceState(message, {
+  error = false,
+  loading = false,
+} = {}) {
+  if (!presenceState) return;
+
+  presenceState.hidden = false;
+  presenceState.classList.toggle("is-error", error);
+  presenceState.classList.toggle("is-loading", loading);
+  presenceState.innerHTML = `
+    <i data-lucide="${error ? "triangle-alert" : loading ? "loader-circle" : "users-round"}"></i>
+    <span>${escapeHtml(message)}</span>
+  `;
+
+  if (window.lucide) {
+    window.lucide.createIcons({
+      attrs: { "stroke-width": 1.8 },
+    });
+  }
+}
+
+async function hydratePresenceAvatars(items) {
+  clearPresenceAvatarUrls();
+
+  const avatarItems = (items || []).filter(
+    (item) => item?.has_avatar && item?.avatar_url
+  );
+
+  await Promise.allSettled(
+    avatarItems.map(async (item) => {
+      try {
+        const blob = await apiBlob(
+          item.avatar_url,
+          { suppressGlobalAuth: true }
+        );
+
+        const url = URL.createObjectURL(blob);
+        presenceAvatarObjectUrls.push(url);
+
+        const target = presenceUsers?.querySelector(
+          `.presence-avatar[data-user-id="${CSS.escape(String(item.user_id))}"]`
+        );
+
+        if (target) {
+          target.classList.add("has-image");
+          target.style.backgroundImage = `url("${url}")`;
+
+          const initialsNode = target.querySelector(
+            ".presence-avatar-initials"
+          );
+          if (initialsNode) initialsNode.textContent = "";
+        }
+      } catch {
+        // Les initiales restent le fallback normal.
+      }
+    })
+  );
+}
+
+function renderPresence(payload) {
+  const items = Array.isArray(payload?.users)
+    ? payload.users
+    : [];
+
+  if (presenceWrap) {
+    presenceWrap.hidden = false;
+  }
+
+  if (presenceCount) {
+    presenceCount.textContent = String(
+      payload?.total_count ?? items.length
+    );
+  }
+
+  if (presenceSummary) {
+    const online = Number(payload?.online_count || 0);
+    const recent = Number(payload?.recent_count || 0);
+
+    presenceSummary.textContent =
+      `${online} en ligne · ${recent} récent${recent > 1 ? "s" : ""} · ${PRESENCE_WINDOW_MINUTES} min`;
+  }
+
+  if (!presenceUsers) return;
+
+  if (!items.length) {
+    presenceUsers.innerHTML = "";
+    renderPresenceState(
+      "Aucun utilisateur actif dans les 15 dernières minutes."
+    );
+    return;
+  }
+
+  if (presenceState) {
+    presenceState.hidden = true;
+  }
+
+  presenceUsers.innerHTML = items.map((item) => {
+    const online = item.presence === "ONLINE";
+    const initialsText = presenceInitials(item);
+
+    return `
+      <a
+        class="presence-user"
+        href="#/utilisateurs"
+        data-presence-user="${escapeHtml(item.user_id)}"
+      >
+        <span
+          class="presence-avatar"
+          data-user-id="${escapeHtml(item.user_id)}"
+        >
+          <span class="presence-avatar-initials">${escapeHtml(initialsText)}</span>
+          <b class="presence-dot ${online ? "online" : "recent"}" aria-hidden="true"></b>
+        </span>
+
+        <span class="presence-user-copy">
+          <strong>${escapeHtml(item.nom_complet || "Utilisateur")}</strong>
+          <em>${escapeHtml(presenceRole(item))}</em>
+          <small>${escapeHtml(presenceTimeLabel(item))}</small>
+        </span>
+
+        ${item.is_current_user ? '<em class="presence-you">Vous</em>' : ""}
+      </a>
+    `;
+  }).join("");
+
+  hydratePresenceAvatars(items);
+}
+
+async function refreshPresence({
+  force = false,
+  silent = false,
+} = {}) {
+  if (
+    !hasAccessToken()
+    || presenceForbidden
+    || !presenceWrap
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+
+  if (!force && now - lastPresenceFetchAt < 10_000) {
+    return;
+  }
+
+  lastPresenceFetchAt = now;
+
+  if (!silent) {
+    renderPresenceState(
+      "Actualisation de la présence…",
+      { loading: true }
+    );
+  }
+
+  presenceRefresh?.classList.add("is-loading");
+
+  try {
+    const payload = await apiGet(
+      `/api/v1/presence/users?minutes=${PRESENCE_WINDOW_MINUTES}&limit=${PRESENCE_LIST_LIMIT}`,
+      { suppressGlobalAuth: true }
+    );
+
+    renderPresence(payload);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      presenceForbidden = true;
+      presenceWrap.hidden = true;
+      return;
+    }
+
+    if (!silent) {
+      renderPresenceState(
+        "Impossible de charger les utilisateurs actifs.",
+        { error: true }
+      );
+    }
+  } finally {
+    presenceRefresh?.classList.remove("is-loading");
+  }
+}
+
+async function sendPresenceHeartbeat({
+  force = false,
+} = {}) {
+  if (
+    !hasAccessToken()
+    || document.hidden
+    || document.body.classList.contains("session-is-locked")
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+
+  if (
+    !force
+    && now - lastHeartbeatAt < PRESENCE_HEARTBEAT_THROTTLE_MS
+  ) {
+    return;
+  }
+
+  lastHeartbeatAt = now;
+
+  try {
+    await apiPost(
+      "/api/v1/presence/heartbeat",
+      null,
+      { suppressGlobalAuth: true }
+    );
+  } catch {
+    // Le heartbeat ne doit jamais perturber une action métier.
+  }
+}
+
+function startPresenceRuntime() {
+  if (!hasAccessToken() || presenceForbidden) return;
+
+  if (presenceWrap) {
+    presenceWrap.hidden = false;
+  }
+
+  sendPresenceHeartbeat({ force: true });
+  refreshPresence({ force: true, silent: true });
+
+  if (!presenceRefreshTimer) {
+    presenceRefreshTimer = window.setInterval(() => {
+      if (!document.hidden && hasAccessToken()) {
+        refreshPresence({ silent: true });
+      }
+    }, PRESENCE_REFRESH_MS);
+  }
+}
+
+function stopPresenceRuntime() {
+  if (presenceRefreshTimer) {
+    clearInterval(presenceRefreshTimer);
+    presenceRefreshTimer = null;
+  }
+
+  clearPresenceAvatarUrls();
+
+  if (presenceWrap) {
+    presenceWrap.hidden = true;
+  }
+
+  if (presenceDropdown) {
+    presenceDropdown.hidden = true;
+  }
+
+  presenceToggle?.setAttribute("aria-expanded", "false");
+}
+
+[
+  "pointerdown",
+  "keydown",
+  "touchstart",
+  "wheel",
+].forEach((eventName) => {
+  window.addEventListener(
+    eventName,
+    () => sendPresenceHeartbeat(),
+    { passive: true }
+  );
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && hasAccessToken()) {
+    sendPresenceHeartbeat({ force: true });
+    refreshPresence({ force: true, silent: true });
+  }
+});
+
+presenceRefresh?.addEventListener("click", async (event) => {
+  event.stopPropagation();
+  await refreshPresence({ force: true });
+});
+
 const notifications = [
   { icon: "triangle-alert", tone: "critical", title: "Certification à renouveler", text: "AGROVITA — ISO 22000 expire dans 2 jours.", time: "Il y a 8 min", link: "#/echeances" },
   { icon: "clipboard-check", tone: "info", title: "Nouvelle fiche affectée", text: "COL-2026-081 attend votre validation.", time: "Il y a 32 min", link: "#/validations" },
@@ -222,9 +598,31 @@ const notifications = [
 document.querySelector("#quickNotifications").innerHTML = notifications.map((item) => `<a class="quick-notification ${item.tone} unread" href="${item.link}"><span><i data-lucide="${item.icon}"></i></span><div><strong>${item.title}</strong><p>${item.text}</p><small>${item.time}</small></div><i data-lucide="chevron-right"></i></a>`).join("");
 
 function closeTopbarDropdowns() {
-  notificationDropdown.hidden = true; accountDropdown.hidden = true;
-  notificationToggle.setAttribute("aria-expanded", "false"); userMenuToggle.setAttribute("aria-expanded", "false");
+  notificationDropdown.hidden = true;
+  accountDropdown.hidden = true;
+
+  if (presenceDropdown) {
+    presenceDropdown.hidden = true;
+  }
+
+  notificationToggle.setAttribute("aria-expanded", "false");
+  userMenuToggle.setAttribute("aria-expanded", "false");
+  presenceToggle?.setAttribute("aria-expanded", "false");
 }
+
+presenceToggle?.addEventListener("click", async (event) => {
+  event.stopPropagation();
+
+  const open = presenceDropdown?.hidden ?? true;
+
+  closeTopbarDropdowns();
+
+  if (open && presenceDropdown) {
+    presenceDropdown.hidden = false;
+    presenceToggle.setAttribute("aria-expanded", "true");
+    await refreshPresence({ force: true });
+  }
+});
 
 notificationToggle.addEventListener("click", (event) => {
   event.stopPropagation(); const open = notificationDropdown.hidden;
@@ -260,10 +658,20 @@ window.addEventListener("hauqe:avatar-updated", (event) => {
 
 window.addEventListener("hauqe:auth-state", (event) => {
   if (event.detail?.authenticated) {
+    presenceForbidden = false;
     hydrateAuthenticatedShell();
+    startPresenceRuntime();
+  } else {
+    stopPresenceRuntime();
   }
 });
 
 initRouter();
 initSessionLock();
 hydrateAuthenticatedShell();
+
+if (hasAccessToken()) {
+  startPresenceRuntime();
+} else {
+  stopPresenceRuntime();
+}

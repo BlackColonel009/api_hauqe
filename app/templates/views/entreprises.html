@@ -1,0 +1,161 @@
+<div class="page-content container-fluid companies-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Registre national</p>
+      <h1>Entreprises certifiées</h1>
+      <p>Consultez, recherchez et suivez les entreprises réellement enregistrées dans la BNEC.</p>
+      <div class="registry-sync-line" id="companiesSyncLine">
+        <span><i data-lucide="database"></i>Données PostgreSQL</span>
+        <span id="companiesSyncAt"><i data-lucide="refresh-cw"></i>Chargement…</span>
+      </div>
+    </div>
+
+    <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn" id="toggleArchives" type="button">
+        <i data-lucide="archive"></i>
+        <span>Archives</span>
+      </button>
+
+      <button class="btn btn-outline-secondary app-btn" id="exportCompanies" type="button">
+        <i data-lucide="download"></i>
+        Exporter
+      </button>
+
+      <a href="#/entreprises/nouveau" class="btn btn-primary app-btn" id="newCompanyButton">
+        <i data-lucide="plus"></i>
+        Nouvelle entreprise
+      </a>
+    </div>
+  </section>
+
+  <section class="company-kpis" id="companyKpis" aria-label="Indicateurs du registre"></section>
+
+  <section class="company-filters" aria-label="Filtres du registre entreprises">
+    <label class="company-search">
+      <i data-lucide="search"></i>
+      <input
+        id="companySearch"
+        type="search"
+        placeholder="Nom, identifiant national, RCCM, NIF ou IFU…"
+        autocomplete="off"
+      >
+    </label>
+
+    <label>
+      <span>Statut</span>
+      <select id="statusFilter" disabled aria-busy="true">
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Région / zone du siège</span>
+      <select id="regionFilter" disabled aria-busy="true">
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Secteur / activité</span>
+      <select id="sectorFilter" disabled aria-busy="true">
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <button class="reset-filter" id="resetCompanies" type="button" disabled>
+      <i data-lucide="rotate-ccw"></i>
+      Réinitialiser
+    </button>
+  </section>
+
+  <section class="companies-api-state" id="companiesApiState" hidden aria-live="polite"></section>
+
+  <section class="panel companies-panel">
+    <div class="companies-head">
+      <label class="table-check" title="Tout sélectionner sur cette page">
+        <input type="checkbox" id="selectAll">
+        <span></span>
+      </label>
+
+      <div>
+        <strong id="companyCount">0 entreprise</strong>
+        <small id="companyScopeText">Registre opérationnel</small>
+      </div>
+
+      <div class="bulk-actions" id="bulkActions" hidden>
+        <button id="bulkArchive" type="button">
+          <i data-lucide="archive"></i>
+          Archiver la sélection
+        </button>
+      </div>
+
+      <select id="companySort" aria-label="Trier le registre">
+        <option value="name">Nom A–Z</option>
+        <option value="recent">Modification récente</option>
+        <option value="score">Meilleure classification</option>
+        <option value="expiry">Échéance la plus proche</option>
+      </select>
+
+      <button class="icon-button view-button active" data-view="table" type="button" aria-label="Vue tableau">
+        <i data-lucide="list"></i>
+      </button>
+      <button class="icon-button view-button" data-view="cards" type="button" aria-label="Vue cartes">
+        <i data-lucide="layout-grid"></i>
+      </button>
+    </div>
+
+    <div id="tableView" class="table-responsive">
+      <table class="table company-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Entreprise</th>
+            <th>Identification</th>
+            <th>Zone</th>
+            <th>Certifications</th>
+            <th>Échéance</th>
+            <th>Classification</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="companyRows"></tbody>
+      </table>
+    </div>
+
+    <div id="cardView" class="company-card-grid" hidden></div>
+
+    <div id="emptyCompanies" class="company-empty" hidden>
+      <i data-lucide="building-2"></i>
+      <strong>Aucune entreprise trouvée</strong>
+      <span id="emptyCompaniesText">Aucune donnée ne correspond aux filtres sélectionnés.</span>
+    </div>
+
+    <footer class="companies-footer">
+      <span id="paginationText">Aucune donnée</span>
+      <div class="companies-pagination" id="companiesPagination"></div>
+    </footer>
+  </section>
+
+  <dialog class="company-dialog" id="companyActionDialog">
+    <form method="dialog" id="companyActionForm">
+      <div class="company-dialog-head">
+        <span class="company-dialog-icon" id="companyDialogIcon"><i data-lucide="archive"></i></span>
+        <div>
+          <strong id="companyDialogTitle">Confirmer l’action</strong>
+          <small id="companyDialogSubtitle">Cette action sera journalisée.</small>
+        </div>
+      </div>
+
+      <label class="company-dialog-field">
+        <span id="companyDialogReasonLabel">Motif</span>
+        <textarea id="companyDialogReason" rows="3" maxlength="2000" placeholder="Indiquez le motif de l’opération…"></textarea>
+      </label>
+
+      <div class="company-dialog-actions">
+        <button class="btn btn-outline-secondary app-btn" value="cancel" type="button" id="cancelCompanyDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" value="default" type="submit" id="confirmCompanyDialog">Confirmer</button>
+      </div>
+    </form>
+  </dialog>
+</div>

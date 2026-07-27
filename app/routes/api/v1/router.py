@@ -152,6 +152,12 @@ from app.routes.api.v1.account_avatar import (
     avatar_router as account_avatar_router,
 )
 
+from app.routes.api.v1.presence import (
+    router as presence_router,
+)
+
+
+
 api_router = APIRouter()
 
 
@@ -167,6 +173,10 @@ api_router.include_router(
 
 api_router.include_router(
     account_router
+)
+
+api_router.include_router(
+    presence_router
 )
 
 api_router.include_router(

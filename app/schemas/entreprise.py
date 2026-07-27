@@ -299,3 +299,91 @@ class EntrepriseListResponse(BaseModel):
     items: list[EntrepriseResponse] = Field(
         default_factory=list
     )
+
+# ============================================================
+# REGISTRE FRONTEND — FILTRES / SYNTHÈSE
+# ============================================================
+
+class EntrepriseZoneOption(BaseModel):
+    """Zone administrative utilisable dans les filtres et formulaires."""
+
+    id: UUID
+    parent_id: UUID | None = None
+    code: str | None = None
+    nom: str
+    type_zone: str | None = None
+
+
+class EntrepriseFiltersResponse(BaseModel):
+    """Référentiels nécessaires au registre Entreprises."""
+
+    zones: list[EntrepriseZoneOption] = Field(default_factory=list)
+    sectors: list[str] = Field(default_factory=list)
+    statuses: list[str] = Field(default_factory=list)
+
+
+class EntrepriseRegistrySummary(BaseModel):
+    """Indicateurs calculés côté PostgreSQL pour la page registre."""
+
+    total: int = 0
+    certified_active: int = 0
+    at_risk: int = 0
+    non_compliant: int = 0
+    pending_regularization: int = 0
+
+
+class EntrepriseRegistryItem(BaseModel):
+    """Ligne enrichie du registre Entreprises."""
+
+    id: UUID
+    identifiant_national: str
+
+    raison_sociale: str | None = None
+    nom_commercial: str | None = None
+    rccm: str | None = None
+    nif: str | None = None
+    ifu: str | None = None
+
+    zone_siege_id: UUID
+    zone_nom: str | None = None
+    zone_type: str | None = None
+
+    activite_principale: str | None = None
+    statut: str | None = None
+
+    certifications_count: int = 0
+    next_expiration: date | None = None
+
+    classification_score: Decimal | None = None
+    classification_classe: str | None = None
+
+    updated_at: datetime
+
+
+class EntrepriseRegistryResponse(BaseModel):
+    """Réponse paginée du registre enrichi."""
+
+    total: int
+    limit: int
+    offset: int
+    summary: EntrepriseRegistrySummary
+    items: list[EntrepriseRegistryItem] = Field(default_factory=list)
+
+
+class EntrepriseControlSummaryItem(BaseModel):
+    """Contrôle FUCCS rattaché à une entreprise via sa fiche de collecte."""
+
+    id: UUID
+    dossier_verification_id: UUID
+    date_debut: date | None = None
+    date_fin: date | None = None
+    score_brut: Decimal | None = None
+    score_maximal: Decimal | None = None
+    taux: str | None = None
+    synthese: str | None = None
+    statut: str | None = None
+
+
+class EntrepriseControlSummaryResponse(BaseModel):
+    items: list[EntrepriseControlSummaryItem] = Field(default_factory=list)
+

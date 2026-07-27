@@ -2847,3 +2847,408 @@ Elle sera utilisable dès que la configuration backend MFA sera appliquée.
 35 fichiers JavaScript : syntaxe ✅
 runtime navigateur/API : ⏳
 ```
+
+# AUDIT DESIGN AUTH / PROFIL — 27/07/2026
+
+Statut : **code corrigé, recette navigateur locale à confirmer**.
+
+Contrôles réalisés :
+
+```text
+29/29 CSS chargés                ✅
+22/22 vues avec .page-content    ✅
+35 JS — syntaxe                  ✅
+connexion inputs homogènes       ✅ code
+drapeau + typewriter             ✅ code
+avatar circulaire / object-fit   ✅ code
+responsive Auth / Profil         ✅ code
+thème sombre Auth / Profil       ✅ code
+loader global                    ✅ préservé
+runtime localhost:8001           ⏳
+```
+
+Défaut corrigé : `auth-profile-api.css` existait mais n'était pas chargé dans
+`index.html`. Les styles récents Auth / Profil étaient donc ignorés.
+
+Prochaine recette :
+1. connexion desktop ;
+2. connexion mobile ;
+3. profil avec avatar paysage et portrait ;
+4. onglet Sécurité ;
+5. mode sombre ;
+6. sessions sur petit écran.
+
+# LOT — MENU FLOTTANT UTILISATEURS ACTIFS
+
+## Statut
+
+🟡 **Code produit — recette navigateur à effectuer**
+
+### Emplacement
+
+Topbar globale, à côté des outils de shell.
+
+### Composant
+
+```text
+👥 Actifs [N]
+      ↓
+Utilisateurs actifs
+photo / initiales
+nom
+rôle
+Actif maintenant / Actif il y a X min
+```
+
+### Comportement
+
+- fenêtre : 15 dernières minutes ;
+- ONLINE en vert ;
+- RECENT en ambre ;
+- maximum 6 lignes dans le menu ;
+- avatar chargé par Bearer token ;
+- fallback initiales ;
+- `Vous` pour le compte courant ;
+- actualisation automatique 60 s ;
+- bouton d'actualisation ;
+- lien `Voir tous les utilisateurs` → `#/utilisateurs`;
+- menu masqué automatiquement sur 403.
+
+### Responsive / thème
+
+```text
+desktop      bouton Actifs + badge
+écran étroit bouton icône seulement
+mobile       dropdown pleine largeur utile
+dark mode    pris en charge
+```
+
+### Fichiers
+
+```text
+templates/index.html
+static/js/core/app-shell.js
+static/css/topbar-dropdowns.css
+static/css/theme.css
+```
+
+### API
+
+```text
+GET  /api/v1/presence/users?minutes=15&limit=6
+POST /api/v1/presence/heartbeat
+GET  /api/v1/presence/users/{user_id}/avatar
+```
+
+### Tests
+
+```text
+35 JS — syntaxe                   ✅
+affichage avec API réelle         ⏳
+2 utilisateurs simultanés         ⏳
+responsive                        ⏳
+dark mode                         ⏳
+```
+
+# LOT 01 — DASHBOARD OPÉRATIONNEL + ACTION LOADER GLOBAL
+
+## Statut
+
+🟡 **Code frontend produit — recette navigateur/API locale à confirmer**
+
+## Dashboard
+
+Ancien comportement :
+
+```text
+window.HAUQE_MOCK
+```
+
+Remplacé sur `#/dashboard` par :
+
+```text
+GET /api/v1/dashboards/filters
+GET /api/v1/dashboards/indicator-definitions
+GET /api/v1/dashboards/operational
+```
+
+### Éléments raccordés
+
+```text
+KPI principaux                   ✅ code
+statuts certifications           ✅ code
+échéances 180/90/30/retard       ✅ code
+actions prioritaires             ✅ code
+certifications récentes          ✅ code
+activité 6 mois                  ✅ code
+INFC national moyen              ✅ code
+horodatage de génération         ✅ code
+```
+
+### Filtres
+
+```text
+Période (7/30/60/90 jours)
+Région / zone
+Secteur
+Norme
+Organisme certificateur
+```
+
+Chaque changement recharge le backend.
+
+### Navigation
+
+```text
+KPI → module concerné
+priorité → Alertes / Échéances
+certification récente → dossier certification
+entreprise récente → dossier entreprise
+Nouvelle collecte → formulaire collecte
+```
+
+## Action Loader global
+
+Nouveau module :
+
+```text
+static/js/core/action-loader.js
+static/css/action-loader.css
+```
+
+Exposé comme :
+
+```javascript
+window.HAUQE_ACTION_LOADER
+```
+
+Fonctions :
+
+```text
+show()
+update()
+hide()
+run()
+bind()
+```
+
+Comportement :
+
+- modal flottant institutionnel ;
+- loader H animé ;
+- texte dynamique ;
+- points de suspension animés ;
+- barre de progression indéterminée ;
+- bouton temporairement désactivé ;
+- `aria-busy` ;
+- double `requestAnimationFrame` avant traitement ;
+- `finally` pour restaurer l'UI ;
+- dark mode ;
+- responsive ;
+- reduced-motion ;
+- priorité inférieure au verrouillage de session.
+
+Le module est utilisé dans le Dashboard pour :
+- chargement initial ;
+- filtres ;
+- réinitialisation ;
+- export CSV ;
+- export graphique ;
+- Nouvelle collecte ;
+- navigations métier issues du Dashboard.
+
+## Fichiers
+
+Modifiés :
+
+```text
+templates/index.html
+static/js/core/app-shell.js
+static/js/app.js
+```
+
+Ajoutés :
+
+```text
+templates/views/dashboard.html
+static/js/core/action-loader.js
+static/css/action-loader.css
+static/css/dashboard-api.css
+```
+
+## Tests
+
+```text
+syntaxe JS de tout le frontend     ✅
+mock dashboard supprimé du flux    ✅
+loader global installable          ✅ code
+API réelle localhost:8001          ⏳
+responsive visuel                  ⏳
+dark mode visuel                   ⏳
+```
+
+## Étape suivante
+
+Après recette du Dashboard :
+
+```text
+02 — Entreprises
+```
+
+## Correctif runtime — période Dashboard opérationnel
+
+Erreur observée :
+
+```text
+GET /api/v1/dashboards/operational?days=Année+2026
+422 Unprocessable Entity
+```
+
+Cause :
+`/dashboards/operational` exige `days: int` entre 1 et 90.
+L'ancienne vue pouvait encore exposer une valeur texte `Année 2026`.
+
+Correctif :
+- normalisation stricte de `days` côté frontend ;
+- fallback sûr à 7 jours ;
+- remplacement automatique des anciennes options par :
+  7 / 30 / 60 / 90 jours ;
+- aucune valeur annuelle envoyée à l'endpoint opérationnel.
+
+Le tableau annuel reste réservé à :
+
+```text
+GET /api/v1/dashboards/annual?year=2026
+```
+
+Statut : code corrigé, recette navigateur à confirmer.
+
+## Clôture Dashboard 01 — raccordements manquants
+
+Statut : 🟡 code complété, recette navigateur finale à confirmer.
+
+Supprimé :
+- badge Alertes `12` fictif ;
+- badges Vérifications `7` / Validations `4` fictifs ;
+- contenu statique des échéances ;
+- export local non souverain.
+
+Raccordé :
+- Exporter → `/api/v1/dashboards/operational/export` ;
+- Nouvelle collecte → `#/collectes/nouveau` ;
+- filtres chargés depuis `/api/v1/dashboards/filters` ;
+- Réinitialiser → reset + rechargement backend ;
+- échéances → `expiring_certifications` réel ;
+- Actions d'urgence → `priority_actions` réel ;
+- badge Alertes sidebar → KPI `active_alerts` réel ;
+- navigations priorité → ressource réelle quand son type/id est disponible.
+
+États vides :
+- aucune échéance = message vide explicite ;
+- aucune action = message vide explicite ;
+- aucune donnée fictive conservée.
+
+## AUDIT RUNTIME RÉEL — DASHBOARD 01
+
+Statut corrigé : 🔴 **NON VALIDÉ / SOURCE FRONTEND À UNIFIER**
+
+L'audit de la base frontend `app(1).zip` montre que le Dashboard historique est
+encore présent dans `templates/legacy/index.html` et que `static/js/app.js` utilise
+toujours `window.HAUQE_MOCK`.
+
+Constats :
+- `templates/views/dashboard.html` absent de la base originale auditée ;
+- `mock-data.js` encore chargé globalement ;
+- Exporter = toast ;
+- filtres = statiques + toast ;
+- échéances = valeurs HTML fictives ;
+- Actions prioritaires = mock + badge 12 ;
+- graphiques = mock ;
+- certifications récentes = mock + faux identifiants numériques ;
+- Nouvelle collecte navigue vers un formulaire encore basé sur localStorage.
+
+Action bloquante avant validation :
+identifier dans `app/main.py` le template réellement renvoyé par `/views/dashboard`,
+puis rendre une seule vue Dashboard souveraine.
+
+Le Dashboard 01 ne doit pas être marqué terminé avant cette unification et une recette
+Network de tous ses appels.
+
+## Correctif bloquant Dashboard 01 — route runtime réellement servie
+
+Statut : 🟡 **correctif produit ; recette navigateur locale à confirmer**.
+
+Audit de `app(2).zip` :
+
+```text
+#/dashboard
+→ router.js
+→ GET /views/dashboard
+→ app/main.py
+→ legacy/index.html   ❌
+```
+
+Alors que les fichiers API déjà présents sont :
+
+```text
+templates/views/dashboard.html
+static/js/app.js
+static/css/dashboard-api.css
+static/js/core/action-loader.js
+static/css/action-loader.css
+```
+
+Correction appliquée :
+
+```text
+app/main.py : dashboard → views/dashboard.html
+```
+
+Le shell charge désormais explicitement :
+
+```text
+/static/css/dashboard-api.css
+/static/css/action-loader.css
+```
+
+Les badges shell fictifs `12`, `7`, `4` sont retirés. Le badge Alertes devient
+`#navAlertBadge`, initialement masqué, puis alimenté par le KPI réel
+`active_alerts` du Dashboard.
+
+Important : `mock-data.js` reste chargé temporairement au niveau du shell car
+d'autres pages non migrées en dépendent encore. Le nouveau `static/js/app.js`
+Dashboard ne consomme plus `window.HAUQE_MOCK`.
+
+Validation statique :
+
+```text
+app/main.py py_compile                         ✅
+Jinja views/dashboard.html                     ✅
+route dashboard ciblant views/dashboard.html  ✅
+ancien AGROVITA absent de la nouvelle vue      ✅
+TestClient complet dans l'environnement outil  ⛔ psycopg absent de l'environnement outil
+Recette localhost:8001 utilisateur             ⏳
+```
+
+## ÉTAPE 02 — ENTREPRISES — RACCORDEMENT FRONTEND PRÉPARÉ
+
+Statut : 🟡 code API réel, recette navigateur à confirmer.
+
+Pages :
+- `#/entreprises` : registre réel, KPI, filtres, recherche, tri, pagination, archives, export, archivage groupé ;
+- `#/entreprises/{uuid}` : dossier réel (contacts, sites, offres, certifications, classification, FUCCS, documents, audit) ;
+- `#/entreprises/nouveau` : création réelle ;
+- `#/entreprises/modifier/{uuid}` : modification réelle et synchronisation contacts/sites/offres.
+
+Mapping runtime obligatoire : `"entreprises": "views/entreprises.html"`.
+
+Aucun `window.HAUQE_MOCK`, aucune entreprise AGROVITA, aucun faux ID numérique dans les scripts remplacés.
+
+Import : volontairement non exposé ; aucun endpoint/permission d'import contrôlé n'existe dans le backend audité.
+
+Loader d'action global utilisé pour appels longs et exports.
+
+Tests code : node --check ✅. Runtime navigateur/API ⏳.
+
+Prochaine étape : recette écran par écran puis seulement Étape 03 — Organismes.
+

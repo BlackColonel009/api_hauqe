@@ -20,6 +20,8 @@ si aucune règle + publication institutionnelle valide ne l'autorise.
 from __future__ import annotations
 
 from datetime import date
+import csv
+import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -95,6 +97,104 @@ async def indicator_definitions(
 # ============================================================
 # OPÉRATIONNEL
 # ============================================================
+
+@dashboard_router.get(
+    "/operational/export",
+)
+async def operational_dashboard_export(
+    days: int = Query(default=7, ge=1, le=90),
+    zone_id: UUID | None = Query(default=None),
+    sector: str | None = Query(default=None, max_length=255),
+    norm_id: UUID | None = Query(default=None),
+    organisme_id: UUID | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("DASHBOARDS.OPERATIONNEL")
+    ),
+):
+    """
+    Export CSV du même snapshot que le Dashboard opérationnel.
+
+    Les filtres sont exactement ceux de `/operational`.
+    Aucun chiffre n'est recalculé dans le frontend.
+    """
+    dashboard = await DashboardService.operational(
+        db,
+        days=days,
+        zone_id=zone_id,
+        sector=sector,
+        norm_id=norm_id,
+        organisme_id=organisme_id,
+    )
+
+    buffer = io.StringIO()
+    writer = csv.writer(
+        buffer,
+        delimiter=";",
+        quoting=csv.QUOTE_MINIMAL,
+    )
+
+    writer.writerow(
+        ["HAUQE Certif", "Dashboard opérationnel"]
+    )
+    writer.writerow(
+        ["Période", dashboard.period.label]
+    )
+    writer.writerow(
+        ["Généré le", dashboard.generated_at.isoformat()]
+    )
+    writer.writerow([])
+
+    writer.writerow(
+        ["INDICATEURS", "Valeur", "Unité"]
+    )
+    for item in dashboard.kpis:
+        writer.writerow(
+            [item.label, item.value, item.unit or ""]
+        )
+
+    writer.writerow([])
+    writer.writerow(
+        ["CERTIFICATIONS À ÉCHÉANCE", "Entreprise", "Expiration", "Jours restants"]
+    )
+    for item in dashboard.expiring_certifications:
+        writer.writerow(
+            [
+                item.certification_code or "",
+                item.enterprise_name,
+                item.expiration_date.isoformat(),
+                item.days_remaining,
+            ]
+        )
+
+    writer.writerow([])
+    writer.writerow(
+        ["ACTIONS PRIORITAIRES", "Type", "Échéance"]
+    )
+    for item in dashboard.priority_actions:
+        writer.writerow(
+            [
+                item.title,
+                item.type,
+                item.due_date.isoformat()
+                if item.due_date
+                else "",
+            ]
+        )
+
+    content = "\ufeff" + buffer.getvalue()
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; "
+                'filename="hauqe-dashboard-operationnel.csv"'
+            )
+        },
+    )
+
 
 @dashboard_router.get(
     "/operational",

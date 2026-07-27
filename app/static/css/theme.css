@@ -147,3 +147,85 @@
 [data-theme="dark"] .remove-entry:hover{border-color:#a85a56!important;background:#492725!important;color:#ffd4d1!important}
 [data-theme="dark"] .company-form-page input[type="file"]{color:#b7ccc5!important}
 [data-theme="dark"] .company-form-page input[type="file"]::file-selector-button{border:0;border-right:1px solid #41665c;background:#173d33;color:#dceae5}
+
+/* Auth / Profil API — composants ajoutés après la maquette initiale */
+[data-theme="dark"] .profile-readonly-note,
+[data-theme="dark"] .profile-inline-card,
+[data-theme="dark"] .mfa-secret-box code,
+[data-theme="dark"] .mfa-secret-box button,
+[data-theme="dark"] .profile-setting-button {
+  border-color: #31564c !important;
+  background: #0b241e !important;
+  color: #dbeae5 !important;
+}
+
+[data-theme="dark"] .profile-setting-button,
+[data-theme="dark"] .mfa-secret-box button {
+  color: #72dbb4 !important;
+}
+
+[data-theme="dark"] .profile-setting-button.danger {
+  color: #f09b97 !important;
+}
+
+[data-theme="dark"] .profile-avatar.has-image .profile-avatar-media {
+  background: #0b241e;
+}
+
+[data-theme="dark"] .profile-avatar button {
+  border-color: #102d27;
+}
+
+[data-theme="dark"] .session-current-badge {
+  background: #173d33;
+  color: #72dbb4;
+}
+
+/* Présence utilisateurs */
+[data-theme="dark"] .presence-toggle,
+[data-theme="dark"] .presence-refresh{
+  border-color:#31564c;
+  background:#102d27;
+  color:#e5f0ec;
+}
+
+[data-theme="dark"] .presence-toggle:hover,
+[data-theme="dark"] .presence-refresh:hover{
+  background:#173a31;
+}
+
+[data-theme="dark"] .presence-toggle-icon,
+[data-theme="dark"] .presence-you{
+  background:#173d33;
+  color:#72dbb4;
+}
+
+[data-theme="dark"] .presence-user{
+  border-color:#294a41;
+  color:#e5f0ec;
+}
+
+[data-theme="dark"] .presence-user:hover{
+  background:#173a31;
+}
+
+[data-theme="dark"] .presence-user-copy strong{
+  color:#e5f0ec;
+}
+
+[data-theme="dark"] .presence-user-copy em{
+  color:#bad0c8;
+}
+
+[data-theme="dark"] .presence-avatar{
+  background:linear-gradient(145deg,#173d33,#0b241e);
+  color:#72dbb4;
+}
+
+[data-theme="dark"] .presence-dot{
+  border-color:#102d27;
+}
+
+[data-theme="dark"] .presence-dropdown>footer{
+  border-color:#294a41;
+}

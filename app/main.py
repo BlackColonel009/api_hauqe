@@ -57,10 +57,10 @@ async def frontend_view(
     page_name: str,
 ):
     allowed_pages = {
-        "dashboard": "legacy/index.html",
+        "dashboard": "views/dashboard.html",
         "alertes": "legacy/alertes.html",
         "echeances": "legacy/echeances.html",
-        "entreprises": "legacy/entreprises.html",
+        "entreprises": "views/entreprises.html",
 
         "entreprise-detail": "views/entreprise-detail.html",
         "entreprise-form": "views/entreprise-form.html",

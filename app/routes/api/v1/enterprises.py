@@ -28,6 +28,7 @@ from fastapi import (
     Depends,
     Query,
     Request,
+    Response,
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,8 +39,11 @@ from app.permissions.auth import (
 )
 from app.schemas.entreprise import (
     EntrepriseArchiveRequest,
+    EntrepriseControlSummaryResponse,
     EntrepriseCreateRequest,
+    EntrepriseFiltersResponse,
     EntrepriseListResponse,
+    EntrepriseRegistryResponse,
     EntrepriseResponse,
     EntrepriseUpdateRequest,
 )
@@ -78,6 +82,11 @@ async def list_entreprises(
 
     zone_siege_id: UUID | None = Query(
         default=None
+    ),
+
+    secteur: str | None = Query(
+        default=None,
+        max_length=255,
     ),
 
     include_archived: bool = Query(
@@ -119,10 +128,106 @@ async def list_entreprises(
             search=search,
             statut=statut,
             zone_siege_id=zone_siege_id,
+            secteur=secteur,
             include_archived=include_archived,
             limit=limit,
             offset=offset,
         )
+    )
+
+
+# ============================================================
+# FILTRES DU REGISTRE
+# ============================================================
+
+@router.get(
+    "/filters",
+    response_model=EntrepriseFiltersResponse,
+)
+async def entreprise_filters(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("ENTREPRISES.LIRE")
+    ),
+):
+    return await EntrepriseService.registry_filters(db)
+
+
+# ============================================================
+# REGISTRE ENRICHI
+# ============================================================
+
+@router.get(
+    "/registry",
+    response_model=EntrepriseRegistryResponse,
+)
+async def entreprise_registry(
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    zone_id: UUID | None = Query(default=None),
+    secteur: str | None = Query(default=None, max_length=255),
+    include_archived: bool = Query(default=False),
+    sort: str = Query(default="name", pattern="^(name|recent|score|expiry)$"),
+    limit: int = Query(default=25, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("ENTREPRISES.LIRE")
+    ),
+):
+    return await EntrepriseService.registry(
+        db,
+        search=search,
+        statut=statut,
+        zone_id=zone_id,
+        secteur=secteur,
+        include_archived=include_archived,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+    )
+
+
+# ============================================================
+# EXPORT CSV DU REGISTRE
+# ============================================================
+
+@router.get("/export")
+async def export_entreprises(
+    request: Request,
+    motif: str = Query(min_length=3, max_length=2000),
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    zone_id: UUID | None = Query(default=None),
+    secteur: str | None = Query(default=None, max_length=255),
+    include_archived: bool = Query(default=False),
+    sort: str = Query(default="name", pattern="^(name|recent|score|expiry)$"),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("ENTREPRISES.EXPORTER")
+    ),
+):
+    content = await EntrepriseService.export_registry_csv(
+        db,
+        search=search,
+        statut=statut,
+        zone_id=zone_id,
+        secteur=secteur,
+        include_archived=include_archived,
+        sort=sort,
+        motif=motif,
+        actor=actor,
+        request=request,
+    )
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="hauqe-entreprises.csv"'
+            )
+        },
     )
 
 
@@ -204,6 +309,39 @@ async def list_archived_entreprises(
 # DÉTAIL
 # ============================================================
 
+# ============================================================
+# EXPORT DU DOSSIER ENTREPRISE
+# ============================================================
+
+@router.get("/{entreprise_id}/export")
+async def export_entreprise_dossier(
+    entreprise_id: UUID,
+    request: Request,
+    motif: str = Query(min_length=3, max_length=2000),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("ENTREPRISES.EXPORTER")
+    ),
+):
+    content = await EntrepriseService.export_dossier_csv(
+        db,
+        entreprise_id=entreprise_id,
+        motif=motif,
+        actor=actor,
+        request=request,
+    )
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="hauqe-entreprise-{entreprise_id}.csv"'
+            )
+        },
+    )
+
+
 @router.get(
     "/{entreprise_id}",
     response_model=EntrepriseResponse,
@@ -225,6 +363,27 @@ async def get_entreprise(
             db,
             entreprise_id=entreprise_id,
         )
+    )
+
+
+# ============================================================
+# CONTRÔLES FUCCS RATTACHÉS À L'ENTREPRISE
+# ============================================================
+
+@router.get(
+    "/{entreprise_id}/controls-summary",
+    response_model=EntrepriseControlSummaryResponse,
+)
+async def entreprise_controls_summary(
+    entreprise_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("FUCCS.LIRE")
+    ),
+):
+    return await EntrepriseService.controls_summary(
+        db,
+        entreprise_id=entreprise_id,
     )
 
 

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fr">
+<body>
+  <div class="page-content container-fluid dashboard-page">
+    <section class="page-heading dashboard-heading">
+      <div>
+        <p class="eyebrow">Vue nationale</p>
+        <h1>Tableau de bord</h1>
+        <p>
+          Suivez la situation des entreprises, des certifications
+          et des contrôles prioritaires à partir des données du système.
+        </p>
+        <div class="dashboard-sync-line">
+          <span id="dashboardGeneratedAt">
+            <i data-lucide="refresh-cw"></i>
+            En attente des données
+          </span>
+          <span id="dashboardPeriodLabel">
+            <i data-lucide="calendar-range"></i>
+            Période non chargée
+          </span>
+          <span id="dashboardInfcBadge" hidden>
+            <i data-lucide="gauge"></i>
+            INFC moyen : —
+          </span>
+        </div>
+      </div>
+
+      <div class="heading-actions">
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="dashboardExport"
+          type="button"
+        >
+          <i data-lucide="download"></i>
+          Exporter
+        </button>
+
+        <button
+          class="btn btn-primary app-btn"
+          id="dashboardNewCollection"
+          type="button"
+        >
+          <i data-lucide="plus"></i>
+          Nouvelle collecte
+        </button>
+      </div>
+    </section>
+
+    <section
+      class="filter-bar dashboard-filter-bar"
+      aria-label="Filtres du tableau de bord"
+    >
+      <div class="filter-title">
+        <i data-lucide="sliders-horizontal"></i>
+        <span>Filtres</span>
+      </div>
+
+      <label>
+        <span>Période</span>
+        <select id="periodFilter">
+          <option value="7">7 derniers jours</option>
+          <option value="30">30 derniers jours</option>
+          <option value="60">60 derniers jours</option>
+          <option value="90">90 derniers jours</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Région / zone</span>
+        <select id="regionFilter" disabled aria-busy="true">
+          <option value="">Chargement des régions…</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Secteur</span>
+        <select id="sectorFilter" disabled aria-busy="true">
+          <option value="">Chargement des secteurs…</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Norme</span>
+        <select id="normFilter" disabled aria-busy="true">
+          <option value="">Chargement des normes…</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Organisme</span>
+        <select id="bodyFilter" disabled aria-busy="true">
+          <option value="">Chargement des organismes…</option>
+        </select>
+      </label>
+
+      <button class="reset-filter" id="dashboardResetFilters" type="button" disabled>
+        <i data-lucide="rotate-ccw"></i>
+        Réinitialiser
+      </button>
+
+      <small class="dashboard-filter-scope" id="dashboardFilterScope">
+        Région et secteur proviennent du registre entreprises ; norme et organisme du registre des certifications.
+      </small>
+    </section>
+
+    <section
+      class="dashboard-api-state"
+      id="dashboardApiState"
+      hidden
+      aria-live="polite"
+    ></section>
+
+    <section
+      class="metrics-grid"
+      id="metricsGrid"
+      aria-label="Indicateurs principaux"
+    ></section>
+
+    <section class="dashboard-grid dashboard-grid-main">
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>État des certifications</h2>
+            <p>Répartition par statut actuel</p>
+          </div>
+
+          <button
+            class="more-button"
+            id="statusChartMenu"
+            type="button"
+            aria-label="Options du graphique"
+          >
+            <i data-lucide="ellipsis"></i>
+          </button>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas
+            id="statusChart"
+            aria-label="Répartition des certifications par statut"
+          ></canvas>
+        </div>
+
+        <div class="chart-legend" id="statusLegend"></div>
+      </article>
+
+      <article class="panel deadline-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Échéances à surveiller</h2>
+            <p>Certificats arrivant à expiration — données du registre</p>
+          </div>
+
+          <a href="#/echeances" id="deadlineAllLink">
+            Calendrier complet
+            <i data-lucide="arrow-up-right"></i>
+          </a>
+        </div>
+
+        <div class="deadline-summary">
+          <div class="deadline-ring" id="deadlineRing">
+            <strong id="deadline90Total">0</strong>
+            <span>certificats<br>à 90 jours</span>
+          </div>
+
+          <div class="deadline-levels" id="deadlineLevels"></div>
+        </div>
+
+        <div class="dashboard-expiring-list" id="expiringCertificationList">
+          <div class="dashboard-empty-state">
+            <i data-lucide="calendar-check-2"></i>
+            <strong>Aucune donnée d'échéance chargée</strong>
+            <span>Les certificats expirant dans les 180 jours apparaîtront ici.</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-grid dashboard-grid-lower">
+      <article class="panel activity-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Activité des certifications</h2>
+            <p>Évolution mensuelle des certifications enregistrées</p>
+          </div>
+
+          <span class="dashboard-period-chip">
+            <i data-lucide="calendar-days"></i>
+            6 derniers mois
+          </span>
+        </div>
+
+        <div class="activity-chart-wrap">
+          <canvas
+            id="activityChart"
+            aria-label="Évolution mensuelle des certifications"
+          ></canvas>
+        </div>
+      </article>
+
+      <article class="panel priority-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Actions d'urgence</h2>
+            <p>Alertes actives et échéances nécessitant une action</p>
+          </div>
+
+          <span class="counter" id="priorityCount" title="Nombre réel d’actions prioritaires">0</span>
+        </div>
+
+        <div id="priorityList" class="priority-list"></div>
+
+        <a class="panel-footer-link" href="#/alertes" id="priorityCenterLink">
+          Ouvrir le centre des alertes
+          <i data-lucide="arrow-right"></i>
+        </a>
+      </article>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Certifications récemment mises à jour</h2>
+          <p>Dernières opérations enregistrées dans le système</p>
+        </div>
+
+        <a href="#/certifications" id="certificationRegisterLink">
+          Voir le registre
+          <i data-lucide="arrow-up-right"></i>
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table align-middle app-table">
+          <thead>
+            <tr>
+              <th>Entreprise</th>
+              <th>Certification</th>
+              <th>Organisme</th>
+              <th>Expiration</th>
+              <th>Statut</th>
+              <th>Mise à jour</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recentTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
