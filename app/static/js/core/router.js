@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "./config.js";
+import { hasAccessToken } from "./api.js";
 
 const routes = Object.freeze({
   dashboard: { view: "/views/dashboard", script: "/static/js/app.js", title: "Tableau de bord" },
@@ -78,9 +79,45 @@ function executePageScript(src) {
   });
 }
 
+
+const PUBLIC_ROUTES = new Set([
+  "connexion",
+  "mot-de-passe-oublie",
+  "public",
+]);
+
+function enforceRouteAuthentication(name) {
+  if (PUBLIC_ROUTES.has(name)) return true;
+
+  if (!hasAccessToken()) {
+    sessionStorage.setItem(
+      "hauqe-return-after-login",
+      location.hash || "#/dashboard"
+    );
+    location.hash = "#/connexion";
+    return false;
+  }
+
+  return true;
+}
+
+function applyAuthRouteClass(name) {
+  document.body.classList.toggle(
+    "auth-route-active",
+    ["connexion", "mot-de-passe-oublie"].includes(name)
+  );
+}
+
 export async function navigate() {
   const loadingStartedAt = performance.now();
   const name = routeName();
+
+  if (!enforceRouteAuthentication(name)) {
+    return;
+  }
+
+  applyAuthRouteClass(name);
+
   const route = routes[name];
   const content = document.querySelector("#pageContent");
   const loading = document.querySelector("#routeLoading");

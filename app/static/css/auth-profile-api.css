@@ -1,0 +1,510 @@
+/*
+ * Compléments fonctionnels API — Authentification / Mon compte.
+ *
+ * Ce fichier n'impose pas la future direction artistique.
+ * Il ajoute seulement les états nécessaires au raccordement :
+ * loading, MFA, erreurs, sessions, readonly et transitions légères.
+ *
+ * La zone `.auth-animation-slot` est réservée à l'animation fournie
+ * ultérieurement par le projet.
+ */
+
+body.auth-route-active {
+  overflow: hidden;
+}
+
+.auth-animation-slot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-visual {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-brand,
+.auth-message,
+.auth-visual > small {
+  position: relative;
+  z-index: 2;
+}
+
+.auth-submit.is-loading {
+  cursor: wait;
+  opacity: .82;
+}
+
+.auth-submit:disabled,
+.profile-page button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.auth-mfa-step {
+  animation: authStepIn .22s ease-out;
+}
+
+.auth-mfa-step[hidden] {
+  display: none;
+}
+
+.auth-back-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--green-700);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.auth-back-step svg {
+  width: 14px;
+}
+
+.auth-mfa-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 13px;
+  border-radius: 12px;
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.auth-mfa-icon svg {
+  width: 22px;
+}
+
+.auth-mfa-step > label {
+  display: block;
+  margin-top: 16px;
+  color: #53605b;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.auth-mfa-step input {
+  width: 100%;
+  height: 42px;
+  margin-top: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  letter-spacing: .08em;
+}
+
+.auth-mfa-expiry {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.profile-loading-state,
+.profile-api-state,
+.profile-empty-state {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.profile-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green-600);
+  animation: profilePulse 1s ease-in-out infinite;
+}
+
+.profile-api-state.error {
+  color: #b7433e;
+}
+
+.profile-api-state svg,
+.profile-empty-state svg {
+  width: 20px;
+}
+
+.profile-api-state div,
+.profile-empty-state {
+  text-align: center;
+}
+
+.profile-api-state strong,
+.profile-api-state small,
+.profile-empty-state strong,
+.profile-empty-state small {
+  display: block;
+}
+
+.profile-readonly-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f5f8f6;
+  color: var(--muted);
+  font-size: 7.5px;
+}
+
+.profile-readonly-note svg {
+  width: 15px;
+  color: var(--green-700);
+}
+
+.profile-security-block {
+  border-bottom: 1px solid #edf1ef;
+}
+
+.profile-security-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 0;
+}
+
+.profile-security-title strong,
+.profile-security-title small {
+  display: block;
+}
+
+.profile-security-title strong {
+  font-size: 9px;
+}
+
+.profile-security-title small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.profile-security-title > svg {
+  width: 18px;
+  color: var(--green-700);
+}
+
+.profile-form-compact {
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+
+.profile-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 18px 16px;
+}
+
+.profile-setting-button {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--green-700);
+  font-size: 7.5px;
+  font-weight: 700;
+}
+
+.profile-setting-button.danger {
+  color: #b7433e;
+}
+
+.profile-inline-card {
+  margin: 12px 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8faf9;
+}
+
+.profile-inline-card strong,
+.profile-inline-card small {
+  display: block;
+}
+
+.profile-inline-card strong {
+  font-size: 9px;
+}
+
+.profile-inline-card small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.mfa-secret-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.mfa-secret-box code {
+  flex: 1;
+  overflow-wrap: anywhere;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: #153f32;
+  font-size: 8px;
+}
+
+.mfa-secret-box button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--green-700);
+  font-size: 7px;
+}
+
+.mfa-secret-box svg {
+  width: 13px;
+}
+
+.profile-inline-field {
+  display: block;
+  color: #53605b;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.profile-inline-field input {
+  width: 100%;
+  height: 38px;
+  margin-top: 5px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 9px;
+}
+
+.profile-inline-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.profile-section-head {
+  gap: 12px;
+}
+
+.profile-section-head:has(#revokeOtherSessions) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.session-row {
+  gap: 10px;
+}
+
+.session-device-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.session-device-icon svg {
+  width: 16px;
+}
+
+.session-row-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-row-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.session-current-badge {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e3f4ec;
+  color: #16734f;
+  font-size: 6.5px;
+}
+
+.current-session-button {
+  color: var(--green-700) !important;
+}
+
+.profile-hero > div:nth-child(2) > span.is-inactive {
+  color: #b7433e;
+}
+
+.save-indicator.error {
+  background: #b7433e;
+}
+
+@keyframes authStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes profilePulse {
+  0%, 100% {
+    opacity: .35;
+    transform: scale(.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-mfa-step,
+  .profile-loading-dot {
+    animation: none;
+  }
+}
+
+/* Connexion — drapeau togolais aligné au logo */
+.auth-brand {
+  display: flex;
+  align-items: center;
+}
+
+.auth-country-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+  line-height: 1;
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+
+/* Connexion — animation machine à écrire */
+.auth-typewriter {
+  min-height: 2.35em;
+}
+
+#authTypewriterText {
+  white-space: pre-line;
+}
+
+.auth-typewriter-caret {
+  display: inline-block;
+  width: 2px;
+  height: .95em;
+  margin-left: 4px;
+  vertical-align: -0.08em;
+  background: currentColor;
+  animation: authCaretBlink .78s step-end infinite;
+}
+
+@keyframes authCaretBlink {
+  0%, 48% { opacity: 1; }
+  49%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-typewriter-caret {
+    animation: none;
+    opacity: .65;
+  }
+}
+
+/* Connexion — les champs Email et Mot de passe gardent exactement la même largeur */
+.auth-card #passwordLoginStep > label {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  color: #53605b;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.auth-card #passwordLoginStep > label > input,
+.auth-card #passwordLoginStep .password-field,
+.auth-card #passwordLoginStep .password-field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Profil — avatar réel */
+.profile-avatar {
+  overflow: visible;
+}
+
+.profile-avatar > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+}
+
+.profile-avatar.has-image {
+  background: #fff;
+}
+
+.profile-avatar.is-uploading::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: 3;
+  border: 3px solid rgba(255,255,255,.7);
+  border-top-color: var(--green-700);
+  border-radius: 50%;
+  animation: avatarSpin .75s linear infinite;
+}
+
+.profile-avatar button {
+  z-index: 4;
+}
+
+/* Navbar — photo de profil */
+.avatar.has-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+
+@keyframes avatarSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-avatar.is-uploading::after {
+    animation: none;
+  }
+}

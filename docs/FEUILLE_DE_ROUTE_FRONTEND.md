@@ -11,7 +11,7 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 23 juillet 2026 — intégration des 51 règles métiers validées par la HAUQE/GFA |
+| Dernière mise à jour | 26 juillet 2026 — check-up final avant raccordement API ↔ frontend |
 
 ## Architecture d'intégration retenue
 
@@ -84,9 +84,9 @@ Les exigences sont classées selon quatre niveaux afin d'éviter de transformer 
 | 19 | `referentiels.html` | Administration | Terminée — à valider |
 | 20 | `regles-codification.html` | Administration | Terminée — à valider |
 | 21 | `journal-audit.html` | Administration | Terminée — à valider |
-| 22 | `connexion.html` | Authentification | Terminée — à valider |
+| 22 | `connexion.html` | Authentification | Raccordement API en cours |
 | 23 | `mot-de-passe-oublie.html` | Authentification | Terminée — à valider |
-| 24 | `profil.html` | Compte utilisateur | Terminée — à valider |
+| 24 | `profil.html` | Compte utilisateur | Raccordement API en cours |
 
 ---
 
@@ -2465,3 +2465,385 @@ jetons_securite_utilisateur
 9. forgot/reset ;
 10. états 401/409/422/423 ;
 11. audit.
+
+# PLAN FINAL DE RACCORDEMENT API ↔ FRONTEND
+
+## Statut de passage
+
+**GO pour le raccordement progressif.**
+
+Le frontend reste visuellement avancé, mais une page n'est plus considérée fonctionnellement terminée tant que ses données et actions essentielles ne sont pas reliées aux endpoints FastAPI réels.
+
+## Ordre de raccordement
+
+```text
+0. core/api.js + gestion globale des erreurs
+1. Authentification + shell + verrou de session
+2. profil.html / Mon compte
+3. index.html / dashboard opérationnel
+4. Entreprises
+5. Organismes / Certifications / Documents
+6. Collecte
+7. Vérification
+8. FUCCS
+9. Validation / Intégration BNEC
+10. Classification / INFC / SNCC
+11. Échéances / Alertes / Notifications / Veille
+12. Gouvernance / Qualité / Continuité
+13. Tactique / Stratégique / Annuel / Baromètre / Public
+```
+
+## Contrat commun `api.js`
+
+Toutes les pages doivent passer par la même couche :
+
+```text
+Authorization Bearer
+JSON
+loaders
+erreurs 401 / 403 / 409 / 422 / 423 / 5xx
+timeout réseau
+permissions
+prévention double soumission
+```
+
+Règles :
+- `401` → session invalide/expirée, retour connexion ;
+- `403` → permission insuffisante ;
+- `409` → conflit métier affiché sans écraser l'état courant ;
+- `422` → erreurs reliées aux champs du formulaire ;
+- `423` + `SESSION_SCREEN_LOCKED` → écran global de code privé ;
+- `5xx` → message serveur neutre + possibilité de réessayer.
+
+## Sprint 1 — Authentification d'abord
+
+Aucun écran métier n'est raccordé avant stabilisation de :
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/me
+POST /api/v1/auth/logout
+POST /api/v1/auth/mfa/verify
+POST /api/v1/auth/password/forgot
+POST /api/v1/auth/password/reset
+GET/POST /api/v1/me/security-lock...
+```
+
+Le verrou utilisateur et `AUTH_IDLE_TIMEOUT_MINUTES` restent deux mécanismes distincts.
+
+## SMTP
+
+L'e-mail réel est volontairement différé :
+
+```text
+IN_APP       → à raccorder/recetter maintenant
+EMAIL        → peut rester EN_ATTENTE
+SMTP         → phase infrastructure ultérieure
+```
+
+L'absence de SMTP ne bloque donc pas la connexion API ↔ frontend.
+
+## Definition of Done par page
+
+Une page passe de « maquette » à « raccordée » uniquement après :
+
+- suppression des données simulées principales ;
+- appels API centralisés via `core/api.js` ;
+- actions réelles ;
+- permissions ;
+- états chargement/vide/erreur ;
+- validation des erreurs API ;
+- audit lorsque requis ;
+- responsive conservé ;
+- test fonctionnel ;
+- mise à jour simultanée des deux feuilles de route.
+
+## Première tranche à ouvrir
+
+```text
+core/api.js
+   ↓
+connexion.html
+   ↓
+/auth/login
+   ↓
+/me
+   ↓
+shell / permissions
+   ↓
+logout
+   ↓
+MFA / 423 verrouillage
+   ↓
+profil.html
+```
+
+# SPRINT ACTIF — CONNEXION + PROFIL + DESIGN LÉGER
+
+## Statut
+
+🟡 **Raccordement API en cours — non validé runtime**
+
+Le premier sprint frontend raccorde désormais ensemble :
+
+```text
+connexion.html
+profil.html
+```
+
+avant le dashboard métier.
+
+Cette décision évite de valider une authentification incomplète sans tester
+immédiatement :
+- identité utilisateur ;
+- sécurité ;
+- sessions ;
+- verrouillage ;
+- MFA ;
+- préférences.
+
+## Connexion
+
+Code raccordé à :
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/me
+POST /api/v1/auth/logout
+POST /api/v1/auth/mfa/verify
+```
+
+Fonctions frontend implémentées en code :
+- erreurs API ;
+- chargement bouton ;
+- « Rester connecté » ;
+- retour à la page demandée avant login ;
+- étape MFA conditionnelle ;
+- 401/403/422/423 ;
+- token centralisé.
+
+## Profil
+
+Valeurs simulées remplacées en code par :
+
+```text
+GET /api/v1/me/profile
+```
+
+Mise à jour :
+
+```text
+PATCH /api/v1/me/profile
+```
+
+Le frontend n'envoie que les champs réellement modifiés.
+
+Sécurité :
+
+```text
+POST /api/v1/me/password/change
+GET/POST /api/v1/me/mfa...
+GET/PATCH/POST /api/v1/me/security-lock...
+```
+
+Préférences :
+
+```text
+GET/PATCH /api/v1/me/notification-preferences
+```
+
+Sessions :
+
+```text
+GET /api/v1/me/sessions
+POST /api/v1/me/sessions/{id}/revoke
+POST /api/v1/me/sessions/revoke-others
+```
+
+## Verrouillage localStorage supprimé du nouveau code
+
+Ancienne logique :
+
+```text
+hauqe-session-lock-settings
+code privé stocké côté navigateur
+comparaison JS
+```
+
+Nouvelle logique :
+
+```text
+timer frontend
+→ FastAPI
+→ verrou PostgreSQL
+→ HTTP 423
+→ code vérifié côté serveur
+```
+
+## Animation / design
+
+Le layout actuel est conservé pour ne pas mélanger UX et logique.
+
+Une zone dédiée existe désormais :
+
+```text
+#authAnimationSlot
+```
+
+Le petit design / animation demandé sera appliqué à :
+- `connexion.html` ;
+- éventuellement des micro-transitions cohérentes sur `profil.html`.
+
+L'animation doit rester :
+- légère ;
+- non bloquante ;
+- responsive ;
+- compatible `prefers-reduced-motion` ;
+- indépendante de la réussite API.
+
+## Recette
+
+Statut :
+
+```text
+Syntaxe JS                       ✅
+Connexion API                    ✅ code
+Profil API                       ✅ code
+Sessions API                     ✅ code
+Verrou API                       ✅ code
+MFA UI                           ✅ code
+
+Validation navigateur            ⏳
+Validation FastAPI réelle        ⏳
+Animation/design final           ⏳
+```
+
+Une fois ce sprint validé, la page suivante reste :
+
+```text
+index.html — Dashboard opérationnel
+```
+
+# POINT D’INTÉGRATION LOCAL — AUTH + PROFIL
+
+Base API frontend :
+
+```text
+http://localhost:8001
+```
+
+Fichier de configuration :
+
+```text
+app/static/js/core/config.js
+```
+
+Premier vertical :
+
+```text
+connexion.html
+→ login réel
+→ MFA éventuel
+→ GET /me
+→ profil.html
+→ sécurité / préférences / sessions / verrou
+```
+
+Micro-design de connexion inclus :
+
+```text
+logo HAUQE + 🇹🇬
+Piloter la conformité.
+Anticiper les risques.
+```
+
+Animation :
+
+```text
+frappe → pause → effacement → pause → boucle
+```
+
+Statut :
+
+```text
+code préparé                 ✅
+JS vérifié                   ✅
+API localhost:8001 ciblée    ✅
+recette navigateur/API       ⏳
+```
+
+Prochaine étape après validation Auth + Profil :
+
+```text
+index.html → dashboard opérationnel
+```
+
+# AJUSTEMENT PROFIL.HTML — BOUTON GLOBAL / AVATAR / MFA
+
+## Statut
+
+🟡 **Code frontend prêt — recette navigateur à effectuer**
+
+### Bouton supérieur
+
+Dans l'onglet Sécurité :
+
+```text
+Enregistrer la sécurité
+```
+
+enregistre désormais :
+- changement du mot de passe si les trois champs sont renseignés ;
+- configuration du code privé / délai de verrouillage si modifiée.
+
+Le MFA reste volontairement une action séparée car il nécessite
+un cycle d'activation + vérification TOTP.
+
+### Avatar
+
+Le bouton caméra ouvre maintenant un vrai sélecteur :
+
+```text
+PNG / JPG / JPEG
+maximum 3 Mo
+```
+
+Flux :
+
+```text
+POST /api/v1/me/avatar
+GET  /api/v1/me/profile
+GET  /api/v1/me/avatar
+```
+
+La photo est affichée :
+- dans le hero de `profil.html` ;
+- dans la navbar après chargement.
+
+### MFA
+
+L'interface n'est pas désactivée.
+
+Elle reste raccordée à :
+
+```text
+GET  /api/v1/me/mfa
+POST /api/v1/me/mfa/enable
+POST /api/v1/me/mfa/verify
+POST /api/v1/me/mfa/disable
+```
+
+Elle sera utilisable dès que la configuration backend MFA sera appliquée.
+
+### Autres corrections
+
+- largeur Email / Mot de passe homogénéisée sur `connexion.html` ;
+- loader global du nouveau frontend conservé ;
+- API cible toujours `http://localhost:8001`.
+
+### Tests techniques
+
+```text
+35 fichiers JavaScript : syntaxe ✅
+runtime navigateur/API : ⏳
+```

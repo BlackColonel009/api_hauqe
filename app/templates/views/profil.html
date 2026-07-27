@@ -1,1 +1,125 @@
-<div class="page-content container-fluid profile-page"><section class="page-heading"><div><p class="eyebrow">Mon compte</p><h1>Profil et préférences</h1><p>Gérez vos informations personnelles, votre sécurité et vos notifications.</p></div><div class="heading-actions"><button class="btn btn-primary app-btn" id="saveProfile"><i data-lucide="save"></i>Enregistrer les modifications</button></div></section><section class="profile-hero panel"><div class="profile-avatar">AD<button id="changeAvatar"><i data-lucide="camera"></i></button></div><div><h2>Amévi Dossou</h2><p>Administrateur HAUQE</p><span><i></i>Compte actif</span></div><div class="profile-meta"><span><small>Dernière connexion</small><strong>Aujourd’hui à 08:37</strong></span><span><small>Compte créé</small><strong>12 janvier 2025</strong></span><span><small>Double authentification</small><strong class="secure">Activée</strong></span></div></section><div class="profile-layout"><aside class="panel profile-nav"><button class="active" data-profile-tab="personal"><i data-lucide="user-round"></i>Informations personnelles</button><button data-profile-tab="security"><i data-lucide="shield-check"></i>Sécurité</button><button data-profile-tab="notifications"><i data-lucide="bell-ring"></i>Notifications</button><button data-profile-tab="sessions"><i data-lucide="monitor-smartphone"></i>Sessions et connexions</button><hr><a href="#/connexion"><i data-lucide="log-out"></i>Se déconnecter</a></aside><main class="panel profile-content" id="profileContent"></main></div><div class="save-indicator" id="profileToast" hidden><i data-lucide="circle-check"></i><span></span></div></div>
+<div class="page-content container-fluid profile-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Mon compte</p>
+      <h1>Profil et préférences</h1>
+      <p>
+        Gérez vos informations personnelles, votre sécurité
+        et vos notifications.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <button
+        class="btn btn-primary app-btn"
+        id="saveProfile"
+        type="button"
+      >
+        <i data-lucide="save"></i>
+        <span>Enregistrer les modifications</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="profile-hero panel" id="profileHero">
+    <div class="profile-avatar-wrapper">
+      <div class="profile-avatar" id="profileAvatar">
+        <span id="profileInitials">--</span>
+        
+      </div>
+      <button
+          id="changeAvatar"
+          type="button"
+          aria-label="Modifier la photo de profil"
+        class="avatar-camera">
+          <i data-lucide="camera"></i>
+        </button>
+        <input
+          id="avatarFileInput"
+          type="file"
+          accept="image/png,image/jpeg"
+          hidden
+        >
+    </div>   
+    <div>
+      <h2 id="profileHeroName">Chargement…</h2>
+      <p id="profileHeroRole">Compte utilisateur</p>
+      <span id="profileHeroStatus">
+        <i></i>
+        <span>Vérification du compte…</span>
+      </span>
+    </div>
+
+    <div class="profile-meta">
+      <span>
+        <small>Dernière connexion</small>
+        <strong id="profileLastLogin">—</strong>
+      </span>
+      <span>
+        <small>Compte créé</small>
+        <strong id="profileCreatedAt">—</strong>
+      </span>
+      <span>
+        <small>Double authentification</small>
+        <strong id="profileMfaState">—</strong>
+      </span>
+    </div>
+  </section>
+
+  <div class="profile-layout">
+    <aside class="panel profile-nav">
+      <button
+        class="active"
+        type="button"
+        data-profile-tab="personal"
+      >
+        <i data-lucide="user-round"></i>
+        Informations personnelles
+      </button>
+
+      <button type="button" data-profile-tab="security">
+        <i data-lucide="shield-check"></i>
+        Sécurité
+      </button>
+
+      <button type="button" data-profile-tab="notifications">
+        <i data-lucide="bell-ring"></i>
+        Notifications
+      </button>
+
+      <button type="button" data-profile-tab="sessions">
+        <i data-lucide="monitor-smartphone"></i>
+        Sessions et connexions
+      </button>
+
+      <hr>
+
+      <a href="#/connexion" id="profileLogout">
+        <i data-lucide="log-out"></i>
+        Se déconnecter
+      </a>
+    </aside>
+
+    <main
+      class="panel profile-content"
+      id="profileContent"
+      aria-live="polite"
+    >
+      <div class="profile-loading-state">
+        <span class="profile-loading-dot"></span>
+        Chargement de votre compte…
+      </div>
+    </main>
+  </div>
+
+  <div
+    class="save-indicator"
+    id="profileToast"
+    hidden
+    role="status"
+    aria-live="polite"
+  >
+    <i data-lucide="circle-check"></i>
+    <span></span>
+  </div>
+</div>

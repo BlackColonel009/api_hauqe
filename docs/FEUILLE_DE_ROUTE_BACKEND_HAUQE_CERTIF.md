@@ -3,7 +3,7 @@
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
 **Dernière mise à jour :** 2026-07-26  
-**Statut global :** domaines métier backend principaux et lot Mon compte implémentés ; migration Mon compte et hooks MFA/verrou/réactivation encore à intégrer/tester avant raccordement frontend complet.
+**Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
 
@@ -35,13 +35,24 @@ La structure actuelle de la base est conservée.
 
 Aucune refonte arbitraire du MPD/MCD/MLD ne doit être faite.
 
-Référence validée :
+Référence initiale validée (MPD/MCD/MLD d'origine) :
 
 - **66 tables métier**
 - **843 colonnes**
 - **107 clés étrangères**
 - **9 contraintes UNIQUE**
 - **66 clés primaires**
+
+Extension runtime explicitement décidée pour **Mon compte / Sécurité utilisateur** :
+
+- `preferences_utilisateur`
+- `securite_compte_utilisateur`
+- `verrous_session_utilisateur`
+- `jetons_securite_utilisateur`
+
+**État physique cible après migration `c5b7a8f2d901` : 70 tables métier.**
+
+Les documents PowerDesigner historiques restent la référence de la version initiale 66 tables ; cette extension doit être reportée dans le prochain cycle documentaire MCD/MLD/MPD.
 - UUID comme identifiants techniques
 - PostgreSQL
 - `gen_random_uuid()` pour les UUID
@@ -5546,4 +5557,588 @@ Après application de la migration et intégration des trois hooks de sécurité
 
 ```text
 RACCORDEMENT FRONTEND / RECETTE PAGE PAR PAGE
+```
+
+# CHECK-UP FINAL AVANT RACCORDEMENT API ↔ FRONTEND
+
+## Résultat du check-up
+
+**Décision : GO pour le raccordement API ↔ frontend, avec recette verticale page par page.**
+
+Le check-up confirme :
+
+```text
+Socle Auth / RBAC                     ✅
+Entreprises                            ✅ backend
+Organismes / Certifications / Docs    ✅ backend
+Collecte                               ✅ backend
+Vérification                           ✅ backend
+FUCCS                                  ✅ backend
+Validation / Intégration BNEC         ✅ backend
+Scoring / Classification / INFC / SNCC✅ backend
+Échéances / Alertes / Veille          ✅ backend
+Gouvernance / Qualité / Continuité    ✅ backend
+Pilotage / Dashboards / Baromètre     ✅ backend
+Mon compte / Sécurité                  ✅ code
+Verrou session dans auth               ✅ intégré par l'utilisateur
+Interaction verrou / idle timeout      ✅ ajustée
+
+Runtime global de tous les lots        ⏳ recette au raccordement
+MFA dans login                         ⏳ à confirmer pendant Sprint 1
+Réactivation RM-33                     ⏳ à confirmer pendant Sprint 1/2
+SMTP EMAIL                             ⏸ différé — non bloquant
+```
+
+### Point SMTP
+
+Pour la phase de raccordement actuelle :
+
+```text
+IN_APP       → actif / à tester
+EMAIL        → file EN_ATTENTE
+SMTP réel    → différé volontairement
+```
+
+L'absence de SMTP ne doit pas bloquer la recette des écrans. Les tests d'envoi e-mail seront isolés dans une phase infrastructure ultérieure.
+
+## Préflight obligatoire avant le premier écran
+
+Ne commencer le frontend qu'après avoir vérifié dans le dépôt réel :
+
+1. tous les routers des lots sont inclus dans `app/routes/api/v1/router.py` ;
+2. les quatre modèles Mon compte sont importés par SQLAlchemy/Alembic si le projet utilise des imports explicites ;
+3. migration `c5b7a8f2d901` appliquée ;
+4. `python -m compileall app` sans erreur ;
+5. `alembic current` sur la révision attendue ;
+6. seeds nécessaires exécutés : Veille/Notifications, Gouvernance, Pilotage ;
+7. Collecte et Veille utilisent `business_rule_resolver.py` ;
+8. `get_current_auth()` contient le garde `ensure_session_not_screen_locked(...)` avec `db_session` ;
+9. `AUTH_IDLE_TIMEOUT_MINUTES` est cohérent avec le verrou utilisateur 5/10/15/30 minutes ;
+10. l'absence de SMTP est acceptée comme dette d'infrastructure non bloquante.
+
+## Plan directeur de raccordement API ↔ frontend
+
+### Principe de travail
+
+**Une tranche verticale à la fois : page → API → permissions → erreurs → audit → validation.**
+
+On ne raccorde pas 20 pages avant de tester. Une page devient la référence stable avant de passer à la suivante.
+
+### SPRINT 0 — Socle d'intégration frontend
+
+Objectif : construire une seule couche API commune utilisée par toutes les pages.
+
+À finaliser dans `app/static/js/core/api.js` :
+
+```text
+apiRequest()
+├── base URL /api/v1
+├── Authorization: Bearer
+├── JSON request/response
+├── 401 → déconnexion / connexion
+├── 403 → accès refusé
+├── 409 → conflit métier
+├── 422 → erreurs de formulaire
+├── 423 → écran de verrouillage
+├── 5xx → erreur serveur générique
+└── timeout / réseau
+```
+
+Ajouter également :
+- helper `getCurrentUser()` ;
+- helper permissions ;
+- loader commun ;
+- toast/erreurs communs ;
+- protection contre double soumission ;
+- aucune donnée métier sensible comme source d'autorité dans `localStorage`.
+
+### SPRINT 1 — Authentification / shell / sécurité de session
+
+Pages :
+
+```text
+connexion.html
+mot-de-passe-oublie.html
+shell principal / navbar / sidebar
+écran global de verrouillage
+```
+
+Endpoints prioritaires :
+
+```text
+POST /api/v1/auth/login
+POST /api/v1/auth/mfa/verify
+POST /api/v1/auth/logout
+GET  /api/v1/me
+POST /api/v1/auth/password/forgot
+POST /api/v1/auth/password/reset
+GET  /api/v1/me/security-lock
+POST /api/v1/me/security-lock/lock
+POST /api/v1/me/security-lock/verify
+```
+
+Critères de sortie Sprint 1 :
+- login réel ;
+- MFA non contournable si activé ;
+- logout réel ;
+- 401/403/423 gérés globalement ;
+- verrou écran réel ;
+- reprise par code privé ;
+- timeout serveur distinct du verrou écran ;
+- mot de passe oublié fonctionnel hors envoi SMTP réel si SMTP différé.
+
+### SPRINT 2 — `profil.html` / Mon compte
+
+Endpoints :
+
+```text
+GET/PATCH /api/v1/me/profile
+POST      /api/v1/me/password/change
+GET/POST  /api/v1/me/mfa...
+GET/PATCH /api/v1/me/notification-preferences
+GET/POST  /api/v1/me/sessions...
+```
+
+Remplacer toutes les valeurs simulées et tout stockage local du code privé.
+
+### SPRINT 3 — Dashboard opérationnel `index.html`
+
+```text
+GET /api/v1/dashboards/operational
+GET /api/v1/dashboards/filters
+GET /api/v1/dashboards/indicator-definitions
+```
+
+Objectif : première page métier entièrement alimentée par PostgreSQL.
+
+### SPRINT 4 — Entreprises
+
+Ordre :
+
+```text
+entreprises.html
+→ entreprise-detail.html
+→ entreprise-form.html
+→ contacts / sites / offres / doublons
+```
+
+### SPRINT 5 — Organismes / Certifications / Documents
+
+Ordre :
+
+```text
+organismes.html
+organisme-detail.html
+organisme-form.html
+certifications.html
+certification-detail.html
+certification-form.html
+documents privés
+```
+
+### SPRINT 6 — Collecte
+
+```text
+collectes.html
+collecte-form.html
+campagnes / missions / affectations
+offres déclarées
+certifications déclarées
+historique collecte
+```
+
+Rappel : **aucun snapshot composite** ; l'ancien patch reste abandonné.
+
+### SPRINT 7 — Vérification
+
+Raccorder la page de vérification distincte de la validation institutionnelle :
+- dossiers ;
+- affectations ;
+- points ;
+- anomalies ;
+- confirmations externes.
+
+### SPRINT 8 — FUCCS
+
+`controle.html` : grille versionnée dynamique, aucun `24/28/48/56` structurel codé en dur.
+
+### SPRINT 9 — Validation / Intégration BNEC
+
+Séparer explicitement :
+
+```text
+validation institutionnelle
+≠
+intégration technique BNEC
+```
+
+### SPRINT 10 — Classification / INFC / SNCC
+
+Raccorder séparément les trois résultats. Aucun calcul frontend souverain.
+
+### SPRINT 11 — Échéances / Alertes / Notifications / Veille
+
+Pages :
+
+```text
+echeances.html
+alertes.html
+cloche notifications
+#/veille
+```
+
+SMTP reste hors critère de blocage ; IN_APP est la priorité de recette.
+
+### SPRINT 12 — Gouvernance / Qualité / Continuité
+
+```text
+règles métier
+qualité / plans d'action
+décisions
+publications
+rapports
+audit
+archives
+sauvegardes
+incidents
+```
+
+### SPRINT 13 — Pilotage avancé / public
+
+```text
+tactique
+stratégique
+annuel
+baromètre
+public agrégé autorisé
+```
+
+Le public reste fermé tant que la règle + publication institutionnelle ne sont pas présentes.
+
+## Définition de « page raccordée et validée »
+
+Une page n'est déclarée raccordée que si les 10 points suivants sont vrais :
+
+1. aucune donnée principale ne vient des mocks ;
+2. aucun calcul métier souverain n'est dupliqué en JavaScript ;
+3. chargement initial API réussi ;
+4. actions CRUD/workflow réelles réussies ;
+5. permissions testées au moins avec un rôle autorisé et un rôle refusé ;
+6. états vides et chargement gérés ;
+7. erreurs 401/403/409/422/423/5xx gérées ;
+8. audit serveur vérifié pour les actions sensibles ;
+9. responsive/ergonomie conservés ;
+10. feuille backend + feuille frontend mises à jour avant de passer à la page suivante.
+
+## Prochaine étape exacte
+
+**Commencer par SPRINT 0 puis SPRINT 1.**
+
+Premier travail de raccordement :
+
+```text
+app/static/js/core/api.js
++ connexion.html / connexion.js
++ gestion globale 401 / 403 / 423
++ /auth/login
++ /me
++ /auth/logout
++ MFA challenge si actif
+```
+
+# DÉMARRAGE RACCORDEMENT API ↔ FRONTEND — AUTH + PROFIL
+
+## Statut
+
+🟡 **Raccordement commencé — non validé runtime**
+
+Premier vertical frontend traité :
+
+```text
+connexion.html
++
+profil.html
++
+client API central
++
+verrouillage de reprise
+```
+
+Bundle :
+
+```text
+HAUQE_FRONTEND_AUTH_PROFILE_INTEGRATION.zip
+```
+
+## Fichiers frontend créés/modifiés
+
+```text
+app/templates/index.html
+app/templates/views/connexion.html
+app/templates/views/profil.html
+
+app/static/js/core/api.js
+app/static/js/core/auth.js
+app/static/js/core/router.js
+app/static/js/core/app-shell.js
+app/static/js/core/session-lock.js
+
+app/static/js/connexion.js
+app/static/js/profil.js
+
+app/static/css/auth-profile-api.css
+```
+
+## Avancement fonctionnel
+
+### Client API central
+
+Implémenté en code :
+
+```text
+Bearer token
+JSON
+timeout réseau
+401
+403
+409
+422
+423
+5xx
+```
+
+Token :
+- `sessionStorage` par défaut ;
+- `localStorage` seulement si « Rester connecté » est coché ;
+- autorité serveur inchangée.
+
+### Login
+
+Raccordement code :
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/me
+POST /api/v1/auth/logout
+POST /api/v1/auth/mfa/verify
+```
+
+Le frontend sait désormais gérer :
+
+```text
+email + mot de passe
+       ↓
+mfa_required ?
+       ↓ oui
+challenge MFA
+       ↓
+validation MFA
+       ↓
+Bearer token
+```
+
+Runtime encore à tester avec le backend intégré.
+
+### Profil
+
+Raccordement code :
+
+```text
+GET   /api/v1/me/profile
+PATCH /api/v1/me/profile
+POST  /api/v1/me/password/change
+
+GET/POST /api/v1/me/mfa...
+
+GET/PATCH /api/v1/me/notification-preferences
+
+GET/POST /api/v1/me/sessions...
+
+GET/PATCH/POST /api/v1/me/security-lock...
+```
+
+Le PATCH profil est différentiel.
+
+Exemple :
+si seul le téléphone change :
+
+```json
+{
+  "telephone": "93356041"
+}
+```
+
+### Sessions / verrou
+
+Le code privé n'est plus stocké dans le navigateur.
+
+Flux cible :
+
+```text
+timer frontend
+→ POST /me/security-lock/lock
+→ HTTP 423 sur les routes privées
+→ écran verrouillé
+→ POST /me/security-lock/verify
+→ reprise
+```
+
+Après 5 erreurs, la révocation est gérée par FastAPI.
+
+### SMTP
+
+Toujours différé :
+
+```text
+IN_APP  → à tester
+EMAIL   → peut rester EN_ATTENTE
+SMTP    → raccordement futur
+```
+
+Le SMTP ne bloque pas la recette Auth/Profil.
+
+## Animation / léger design
+
+Une zone d'intégration dédiée est ajoutée sur la page de connexion :
+
+```text
+#authAnimationSlot
+[data-auth-animation-slot]
+```
+
+L'animation/design fourni par le projet sera appliqué à cette couche sans
+modifier le flux d'authentification.
+
+Aucune animation arbitraire n'a été inventée dans ce lot.
+
+## Tests techniques effectués
+
+```text
+Syntaxe JavaScript Node --check  ✅
+Tests navigateur/API runtime     ⏳
+```
+
+## Critère de sortie du vertical
+
+Ne pas marquer Auth/Profil « validé » avant :
+
+```text
+login backend réel             ⏳
+GET /me                        ⏳
+logout                         ⏳
+MFA non contournable           ⏳
+profil réel                    ⏳
+PATCH téléphone seul           ⏳
+mot de passe                   ⏳
+préférences                    ⏳
+sessions                       ⏳
+verrou 423                     ⏳
+5 codes privés erronés         ⏳
+animation/design demandé       ⏳ à intégrer
+```
+
+## Prochaine action exacte
+
+1. intégrer les fichiers du bundle dans le dépôt ;
+2. démarrer FastAPI ;
+3. ouvrir `#/connexion` ;
+4. tester un login réel sans MFA ;
+5. tester `GET /me` ;
+6. ouvrir `#/profil` ;
+7. tester `GET /me/profile` puis PATCH téléphone seul ;
+8. tester verrou/session ;
+9. tester MFA si un compte MFA est disponible ;
+10. appliquer l'animation/design fourni ;
+11. mettre à jour les feuilles de route après validation.
+
+# POINT D’INTÉGRATION LOCAL — 2026-07-27
+
+API FastAPI utilisée pour le raccordement frontend :
+
+```text
+http://localhost:8001
+```
+
+Lot frontend préparé :
+
+```text
+HAUQE_AUTH_PROFIL_LOCALHOST_8001.zip
+```
+
+État :
+
+```text
+configuration base API              ✅
+connexion frontend                  ✅ code
+GET /api/v1/me                      ✅ code
+profil /me/profile                  ✅ code
+MFA                                 ✅ code
+préférences notifications           ✅ code
+sessions                            ✅ code
+verrouillage de reprise / HTTP 423  ✅ code
+animation login                     ✅ code
+drapeau Togo                        ✅ code
+
+tests runtime contre localhost:8001 ⏳ à exécuter après intégration
+SMTP                                ⏸ différé
+```
+
+Aucun endpoint n’est déclaré validé runtime avant la recette navigateur.
+
+# AJUSTEMENT MON COMPTE — MOT DE PASSE / AVATAR / MFA
+
+## Statut
+
+🟡 **Code préparé — validation runtime localhost:8001 à effectuer**
+
+### Avatar personnel
+
+Nouveaux endpoints proposés :
+
+```text
+POST   /api/v1/me/avatar
+GET    /api/v1/me/avatar
+DELETE /api/v1/me/avatar
+```
+
+Ils réutilisent :
+
+```text
+preferences_utilisateur.avatar_document_id
+documents
+```
+
+Aucune nouvelle migration.
+
+Objectif :
+- permettre à chaque utilisateur de gérer uniquement son propre avatar ;
+- éviter d'accorder `DOCUMENTS.DEPOSER` pour une simple photo de compte ;
+- conserver les anciens avatars en `INACTIF` au lieu d'une suppression définitive.
+
+Patch fourni :
+
+```text
+BACKEND_AVATAR_PATCH/app/routes/api/v1/account_avatar.py
+```
+
+### MFA
+
+Le frontend MFA reste entièrement actif et conforme au flux prévu.
+
+Configuration backend encore requise :
+
+```text
+MFA_FERNET_KEY
+hook MFA dans /auth/login
+```
+
+Aucun contournement ni mode simulé ajouté.
+
+### Tests
+
+```text
+syntaxe Python patch avatar   ✅
+runtime FastAPI              ⏳
+upload réel avatar           ⏳
+MFA réel                     ⏳
 ```

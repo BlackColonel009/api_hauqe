@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routes.api.v1 import health
+from app.routes.api.v1 import  health
 
 from app.routes.api.v1.auth import (
     router as auth_router,
@@ -148,6 +148,10 @@ from app.routes.api.v1.account import (
     account_auth_router,
 )
 
+from app.routes.api.v1.account_avatar import (
+    avatar_router as account_avatar_router,
+)
+
 api_router = APIRouter()
 
 
@@ -163,6 +167,10 @@ api_router.include_router(
 
 api_router.include_router(
     account_router
+)
+
+api_router.include_router(
+    account_avatar_router
 )
 
 api_router.include_router(
