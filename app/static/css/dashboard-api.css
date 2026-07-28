@@ -479,3 +479,55 @@
   }
 }
 
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.dashboard-filter-bar{
+  position:relative;
+  gap:12px;
+  padding:15px;
+  border:1px solid #e1e9e5;
+  border-radius:17px;
+  background:linear-gradient(180deg,#fff,#fafcfb);
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+.dashboard-filter-bar label span{
+  color:#667970;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+.dashboard-filter-bar select{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  background:#fff;
+  color:#33483e;
+  font-size:10px;
+  font-weight:600;
+}
+.dashboard-filter-bar select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+.metric-card{
+  border-radius:17px;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+.metric-card:hover{
+  border-color:#d4e2dc;
+}
+.dashboard-api-state{
+  padding:14px 16px;
+  border-radius:14px;
+  box-shadow:0 8px 22px rgba(24,60,45,.04);
+}
+.priority-empty,
+.dashboard-table-empty{
+  border-radius:14px;
+}

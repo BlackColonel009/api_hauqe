@@ -302,3 +302,35 @@
     animation:none;
   }
 }
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.topbar-dropdown{
+  overflow:hidden;
+  border:1px solid #e1e9e5;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 22px 55px rgba(17,45,33,.16);
+  backdrop-filter:blur(16px);
+}
+.topbar-dropdown>header,
+.account-dropdown>header,
+.presence-dropdown>header{
+  padding:14px 15px;
+  border-color:#e8eeeb;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+}
+.quick-notification,
+.presence-row{
+  border-radius:11px;
+  transition:background .16s ease,transform .16s ease;
+}
+.quick-notification:hover,
+.presence-row:hover{
+  background:#f7fbf9;
+  transform:translateX(2px);
+}

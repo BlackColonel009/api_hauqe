@@ -2,3 +2,181 @@
 @media(max-width:1150px){.deadline-kpis{grid-template-columns:repeat(2,1fr)}.upcoming-grid{grid-template-columns:1fr}.calendar-day{min-height:100px}.deadline-filters{flex-wrap:wrap}.deadline-filters .reset-filter{margin-left:0}}
 @media(max-width:700px){.deadline-kpis{grid-template-columns:1fr}.calendar-toolbar{align-items:flex-start;flex-direction:column}.weekday-row span{padding:7px 2px;text-align:center;font-size:7px}.calendar-day{min-height:72px;padding:3px}.calendar-event{height:8px;padding:0;border-left-width:2px;color:transparent}.deadline-list-row{grid-template-columns:68px 34px 1fr}.deadline-list-row>span,.deadline-list-row>strong:last-child{display:none}.dialog-form{grid-template-columns:1fr}.dialog-form .full{grid-column:auto}}
 .deadline-list-row,.upcoming-row{width:100%;border-left:0;border-right:0;border-top:0;background:#fff;text-align:left;cursor:pointer}.deadline-list-row:hover,.upcoming-row:hover{background:#f7fbf9}.calendar-day[data-date]{cursor:cell}.calendar-event{cursor:pointer}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.deadlines-page .deadline-kpis{
+  gap:12px;
+  margin-bottom:18px;
+}
+.deadlines-page .deadline-kpi{
+  position:relative;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  align-items:center;
+  gap:11px;
+  min-height:92px;
+  padding:15px;
+  overflow:hidden;
+  border:1px solid #e1e9e5;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff 0%,#fbfcfb 100%);
+  box-shadow:0 9px 25px rgba(25,61,46,.045),inset 0 1px 0 rgba(255,255,255,.95);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.deadlines-page .deadline-kpi::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width:56px;
+  height:56px;
+  border-radius:0 0 0 56px;
+  background:rgba(41,121,88,.035);
+  pointer-events:none;
+}
+.deadlines-page .deadline-kpi:hover{
+  transform:translateY(-2px);
+  border-color:#d4e2dc;
+  box-shadow:0 14px 30px rgba(25,61,46,.075);
+}
+.deadlines-page .deadline-kpi>span{
+  width:42px;
+  height:42px;
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+}
+.deadlines-page .deadline-kpi small{
+  margin-bottom:3px;
+  color:#7e8d86;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.06em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.deadlines-page .deadline-kpi strong{
+  margin:0;
+  color:#243d32;
+  font:800 23px/1.05 Manrope,sans-serif;
+  letter-spacing:-.04em;
+}
+.deadlines-page .deadline-kpi em{
+  margin-top:5px;
+  color:#8b9892;
+  font-size:8.5px;
+  font-style:normal;
+  font-weight:500;
+  line-height:1.35;
+}
+
+.deadlines-page .deadline-filters{
+  position:relative;
+  gap:12px;
+  margin-bottom:16px;
+  padding:15px;
+  border:1px solid #e1e9e5;
+  border-radius:17px;
+  background:linear-gradient(180deg,#fff 0%,#fafcfb 100%);
+  box-shadow:0 10px 28px rgba(24,60,45,.045),inset 0 1px 0 rgba(255,255,255,.95);
+}
+.deadlines-page .deadline-filters label>span{
+  margin-bottom:6px;
+  color:#667970;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+
+.deadlines-page .deadline-filters select{
+  min-height:44px;
+  border:1px solid #d8e3de;
+  border-radius:12px;
+  outline:none;
+  background-color:#fff;
+  color:#33483e;
+  font:600 10px "DM Sans",sans-serif;
+  box-shadow:0 2px 8px rgba(23,55,42,.03),inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.deadlines-page .deadline-filters select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09),0 8px 20px rgba(24,88,64,.055);
+}
+
+.deadlines-page .deadline-filters .reset-filter{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-width:120px;
+  height:46px;
+  padding:0 15px;
+  border:1px solid #d7e2dd;
+  border-radius:13px;
+  background:#f7faf8;
+  color:#52645b;
+  font:800 9px "DM Sans",sans-serif;
+  white-space:nowrap;
+  box-shadow:0 2px 8px rgba(23,55,42,.025);
+  transition:border-color .18s ease,background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+.deadlines-page .deadline-filters .reset-filter:hover{
+  border-color:#bcd0c7;
+  background:#fff;
+  color:#23795a;
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(24,88,64,.07);
+}
+
+
+.deadlines-page .calendar-panel,
+.deadlines-page .deadline-list-panel,
+.deadlines-page .workload-panel{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.deadline-dialog .dialog-form input,
+.deadline-dialog .dialog-form select,
+.deadline-dialog .dialog-form textarea{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.deadline-dialog .dialog-form input,
+.deadline-dialog .dialog-form select,
+.deadline-dialog .dialog-form textarea:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.deadlines-page .calendar-toolbar{
+  min-height:72px;
+  padding:14px 17px;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+}
+.deadlines-page .view-switch{
+  padding:4px;
+  border:1px solid #e1e9e5;
+  border-radius:11px;
+  background:#f5f8f6;
+}
+.deadlines-page .view-switch button{
+  border-radius:8px;
+}
+.deadlines-page .view-switch button.active{
+  box-shadow:0 4px 10px rgba(23,65,49,.07);
+}

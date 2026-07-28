@@ -1,10 +1,53 @@
-<div class="page-content container-fluid scoring-page">
-  <section class="page-heading"><div><p class="eyebrow">Analyse et conformité</p><h1>Scoring des contrôles</h1><p>Analysez les résultats, les niveaux de conformité et l’évolution des entreprises contrôlées.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="scoreExcel"><i data-lucide="sheet"></i>Exporter Excel</button><button class="btn btn-primary app-btn" id="scorePdf"><i data-lucide="file-text"></i>Rapport PDF</button></div></section>
-  <section class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px;padding:13px 16px"><div><strong>Trois résultats indépendants</strong><small style="display:block;color:var(--muted)">Cette page présente la classification globale de l’entreprise. L’INFC et le SNCC disposent de leurs propres modèles et historiques.</small></div><div class="heading-actions"><a class="btn btn-outline-secondary app-btn" href="#/infc">Consulter l’INFC</a><a class="btn btn-outline-secondary app-btn" href="#/classement-sncc">Consulter le SNCC</a></div></section>
-  <section class="score-selector panel"><label><span>Entreprise évaluée</span><select id="scoreCompany"><option value="tropic">Tropic Jus SARL</option><option value="bio">Bio Savane Coopérative</option><option value="agro">Agro Plus Togo</option></select></label><label><span>Contrôle</span><select id="scoreControl"><option>CTR-2026-077 · 17 juillet 2026</option><option>CTR-2025-041 · 22 septembre 2025</option></select></label><div class="score-status"><span><i></i>Contrôle finalisé</span><small>Décision enregistrée par Amévi Dossou</small></div><a href="#/controle/CTR-2026-077">Voir la grille<i data-lucide="external-link"></i></a></section>
-  <section class="score-hero"><article class="global-score panel"><div class="global-ring" id="globalRing"><div><strong id="globalIndex">0</strong><span>/100</span></div></div><div><p>Indice global de conformité</p><h2 id="globalLevel">Calcul en cours</h2><span class="provisional-badge"><i data-lucide="flask-conical"></i>Formule provisoire — à valider</span><small id="globalDecision">Décision proposée : —</small></div></article><article class="control-score panel"><span><i data-lucide="clipboard-check"></i></span><div><small>Score du contrôle</small><strong id="rawScore">0 / 56</strong><em id="rawPercent">0 % des points</em></div></article><article class="score-stat panel"><span class="red"><i data-lucide="circle-x"></i></span><div><small>Non-conformités</small><strong id="scoreNc">0</strong><em>dont 1 majeure</em></div></article><article class="score-stat panel"><span class="orange"><i data-lucide="triangle-alert"></i></span><div><small>Points de vigilance</small><strong id="scoreWarnings">0</strong><em>Suivi recommandé</em></div></article><article class="score-stat panel"><span class="green"><i data-lucide="trending-up"></i></span><div><small>Évolution</small><strong id="scoreEvolution">+0 pt</strong><em>Depuis le dernier contrôle</em></div></article></section>
-  <div class="scoring-grid"><section class="panel domain-analysis"><header><div><h2>Performance par domaine</h2><p>Résultats normalisés sur 100 pour faciliter la comparaison.</p></div><div class="chart-switch"><button class="active" data-chart="bars"><i data-lucide="chart-no-axes-column"></i>Barres</button><button data-chart="radar"><i data-lucide="radar"></i>Radar</button></div></header><div class="domain-chart-wrap"><div id="domainBars"></div><canvas id="scoreRadar" hidden></canvas></div></section><section class="panel score-scale"><header><h2>Niveau de conformité</h2><p>Seuils provisoires proposés pour la maquette.</p></header><div class="scale-gauge"><div class="scale-track"><i></i><i></i><i></i><i></i><span id="scaleMarker"></span></div><div class="scale-labels"><span><b>0–39</b>Critique</span><span><b>40–59</b>Insuffisant</span><span><b>60–79</b>À consolider</span><span><b>80–100</b>Conforme</span></div></div><div class="scale-note"><i data-lucide="info"></i><span>Ces seuils n’ont aucune valeur réglementaire tant qu’ils ne sont pas validés par la HAUQE.</span></div></section></div>
-  <div class="scoring-grid lower"><section class="panel score-details"><header><div><h2>Détail des domaines</h2><p>Notes, pondérations provisoires et contribution à l’indice global.</p></div><button class="btn btn-outline-secondary app-btn" id="toggleWeights"><i data-lucide="sliders-horizontal"></i>Voir les pondérations</button></header><div class="table-responsive"><table class="table score-table"><thead><tr><th>Domaine</th><th>Score brut</th><th>Résultat</th><th class="weight-column" hidden>Pondération</th><th class="weight-column" hidden>Contribution</th><th>Niveau</th><th>Évolution</th></tr></thead><tbody id="scoreDomainRows"></tbody></table></div></section><section class="panel actions-panel"><header><h2>Actions prioritaires</h2><span id="actionCount"></span></header><div id="priorityActions"></div><footer><a href="#/echeances/nouveau" id="scheduleFollowup">Planifier le suivi<i data-lucide="arrow-right"></i></a></footer></section></div>
-  <section class="panel score-history"><header><div><h2>Évolution historique</h2><p>Comparaison des contrôles et décisions précédentes.</p></div><select id="historyPeriod"><option>24 derniers mois</option><option>12 derniers mois</option></select></header><div class="history-content"><div class="history-chart"><canvas id="historyChart"></canvas></div><div class="history-timeline" id="historyTimeline"></div></div></section>
-  <div class="save-indicator" id="scoreToast" hidden><i data-lucide="circle-check"></i><span></span></div>
+<div class="page-content container-fluid scoring-page scoring-workspace-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Évaluation paramétrée</p>
+      <h1>Scoring & classification entreprise</h1>
+      <p>Le moteur applique exclusivement le modèle de scoring publié. La classification entreprise, l’INFC et le SNCC restent trois résultats indépendants.</p>
+    </div>
+    <div class="heading-actions">
+      <a class="btn btn-outline-secondary app-btn" href="#/infc">INFC <i data-lucide="arrow-right"></i></a>
+      <a class="btn btn-outline-secondary app-btn" href="#/classement-sncc">SNCC <i data-lucide="arrow-right"></i></a>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="scoringApiState" hidden></section>
+  <section class="scoring-model-banner" id="classificationModelBanner"></section>
+
+  <section class="scoring-independence panel">
+    <span><i data-lucide="split"></i></span>
+    <div><strong>Trois sorties métier séparées</strong><small>Classification globale de l’entreprise ≠ INFC d’une certification ≠ classement SNCC. Aucun score FUCCS n’est transformé automatiquement en classification ou INFC.</small></div>
+  </section>
+
+  <section class="classification-kpis" id="classificationKpis"></section>
+
+  <section class="score-selector scoring-workspace-toolbar panel">
+    <label class="scoring-search"><i data-lucide="search"></i><input id="classificationSearch" type="search" placeholder="Entreprise, identifiant ou modèle…"></label>
+    <label><span>Classe</span><select id="classificationClass" disabled><option value="">Chargement…</option></select></label>
+    <label><span>Statut</span><select id="classificationStatus" disabled><option value="">Chargement…</option></select></label>
+    <label><span>Tri</span><select id="classificationSort"><option value="recent">Plus récentes</option><option value="oldest">Plus anciennes</option><option value="company">Entreprise A–Z</option><option value="score">Score décroissant</option><option value="class">Classe A–Z</option></select></label>
+    <button class="reset-filter" id="classificationReset" type="button"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+  </section>
+
+  <section class="panel score-details scoring-registry-panel">
+    <header><div><h2>Historique des classifications</h2><p>Chaque évaluation validée crée une nouvelle ligne historique.</p></div><strong id="classificationCount">0 résultat</strong></header>
+    <div class="table-responsive">
+      <table class="table score-table"><thead><tr><th>Entreprise</th><th>Score</th><th>Classe</th><th>Modèle</th><th>Validateur</th><th>Date</th><th>Statut</th></tr></thead><tbody id="classificationRows"></tbody></table>
+    </div>
+    <div class="priority-empty" id="classificationEmpty" hidden>Aucune classification enregistrée.</div>
+    <footer class="companies-footer"><span id="classificationPagination"></span><div><button class="btn btn-outline-secondary app-btn" id="classificationPrev" type="button"><i data-lucide="chevron-left"></i>Précédent</button><button class="btn btn-outline-secondary app-btn" id="classificationNext" type="button">Suivant<i data-lucide="chevron-right"></i></button></div></footer>
+  </section>
+
+  <section class="panel score-history scoring-enterprises-panel mt-4">
+    <header><div><h2>Entreprises à évaluer</h2><p>Le formulaire est construit depuis le modèle publié ; aucun domaine ni seuil n’est codé en dur ici.</p></div></header>
+    <div id="scoringEnterpriseList" class="scoring-entity-list"></div>
+  </section>
+
+  <dialog class="hauqe-dialog scoring-evaluation-dialog" id="classificationDialog">
+    <form method="dialog" id="classificationForm">
+      <header><div><p class="eyebrow">Classification entreprise</p><h2 id="classificationDialogTitle">Nouvelle évaluation</h2></div><button type="button" class="dialog-close" data-close-scoring-dialog="classificationDialog"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body"><section class="score-model-context" id="classificationDialogModel"></section><div id="classificationScoreInputs"></div><section class="score-preview" id="classificationPreview" hidden></section></div>
+      <footer><button class="btn btn-outline-secondary app-btn" id="classificationPreviewButton" type="button"><i data-lucide="calculator"></i>Prévisualiser</button><button class="btn btn-primary app-btn" id="classificationSaveButton" type="submit"><i data-lucide="badge-check"></i>Calculer & valider</button></footer>
+    </form>
+  </dialog>
 </div>

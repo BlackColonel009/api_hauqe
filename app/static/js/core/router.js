@@ -17,6 +17,7 @@ const routes = Object.freeze({
   collectes: { view: "/views/collectes", script: "/static/js/collectes.js", title: "Collectes & contrôles" },
   "collecte-form": { view: "/views/collecte-form", script: "/static/js/collecte-form.js", title: "Fiche de collecte" },
   validations: { view: "/views/validations", script: "/static/js/validations.js", title: "Validation des collectes" },
+  "validation-detail": { view: "/views/validation-detail", script: "/static/js/validation-detail.js", title: "Validation hiérarchisée" },
   controle: { view: "/views/controle", script: "/static/js/controle.js", title: "Grille de contrôle" },
   "controle-detail": { view: "/views/controle-detail", script: "/static/js/controle-detail.js", title: "Contrôle FUCCS" },
   scoring: { view: "/views/scoring", script: "/static/js/scoring.js", title: "Scoring et conformité" },
@@ -30,7 +31,8 @@ const routes = Object.freeze({
   profil: { view: "/views/profil", script: "/static/js/profil.js", title: "Mon profil" },
   verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
   "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
-  integrations: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Intégration BNEC" },
+  integrations: { view: "/views/integrations", script: "/static/js/integrations.js", title: "Intégration BNEC" },
+  "integration-detail": { view: "/views/integration-detail", script: "/static/js/integration-detail.js", title: "Dossier d’intégration BNEC" },
   infc: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "INFC" },
   "classement-sncc": { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Classement SNCC" },
   veille: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Cellule de veille" },
@@ -54,7 +56,7 @@ let currentRoute = null;
 
 function routeName() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
-  const name = parts[0] === "entreprises" && ["nouveau", "modifier"].includes(parts[1]) ? "entreprise-form" : parts[0] === "entreprises" && parts[1] ? "entreprise-detail" : parts[0] === "certifications" && ["nouveau", "modifier"].includes(parts[1]) ? "certification-form" : parts[0] === "certifications" && parts[1] ? "certification-detail" : parts[0] === "organismes" && ["nouveau", "modifier"].includes(parts[1]) ? "organisme-form" : parts[0] === "organismes" && parts[1] ? "organisme-detail" : parts[0] === "collectes" && ["nouveau", "modifier"].includes(parts[1]) ? "collecte-form" : parts[0] === "verifications" && parts[1] ? "verification-detail" : parts[0] === "controle" && parts[1] ? "controle-detail" : parts[0] === "tableaux-de-bord" && parts[1] ? `tableau-${parts[1]}` : parts[0];
+  const name = parts[0] === "entreprises" && ["nouveau", "modifier"].includes(parts[1]) ? "entreprise-form" : parts[0] === "entreprises" && parts[1] ? "entreprise-detail" : parts[0] === "certifications" && ["nouveau", "modifier"].includes(parts[1]) ? "certification-form" : parts[0] === "certifications" && parts[1] ? "certification-detail" : parts[0] === "organismes" && ["nouveau", "modifier"].includes(parts[1]) ? "organisme-form" : parts[0] === "organismes" && parts[1] ? "organisme-detail" : parts[0] === "collectes" && ["nouveau", "modifier"].includes(parts[1]) ? "collecte-form" : parts[0] === "verifications" && parts[1] ? "verification-detail" : parts[0] === "validations" && parts[1] ? "validation-detail" : parts[0] === "integrations" && parts[1] ? "integration-detail" : parts[0] === "controle" && parts[1] ? "controle-detail" : parts[0] === "tableaux-de-bord" && parts[1] ? `tableau-${parts[1]}` : parts[0];
   return routes[name] ? name : APP_CONFIG.defaultRoute;
 }
 

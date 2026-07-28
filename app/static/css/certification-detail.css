@@ -1,1 +1,96 @@
 .certification-detail-page{max-width:1550px}.cert-profile{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;margin-bottom:14px}.cert-profile-main{display:flex;align-items:center;gap:15px}.cert-profile-logo{width:57px;height:57px;display:grid;place-items:center;border-radius:14px;background:var(--green-50);color:var(--green-700);font:800 13px Manrope,sans-serif}.cert-profile-main h1{margin:0;font:800 22px Manrope,sans-serif}.cert-profile-main p{margin:4px 0 7px;color:var(--muted);font-size:10px}.cert-detail-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}.cert-detail-kpis article{display:flex;gap:11px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}.cert-detail-kpis article>span{width:39px;height:39px;display:grid;place-items:center;border-radius:10px}.cert-detail-kpis .red{color:#b7433e;background:#fee8e6}.cert-detail-kpis .green{color:#16734f;background:#e3f4ec}.cert-detail-kpis .blue{color:#315fa9;background:#e7effc}.cert-detail-kpis .orange{color:#a65c12;background:#fff0da}.cert-detail-kpis small,.cert-detail-kpis strong,.cert-detail-kpis em{display:block}.cert-detail-kpis small{color:var(--muted);font-size:8px}.cert-detail-kpis strong{font-size:11px}.cert-detail-kpis em{color:#87928d;font-size:8px;font-style:normal}.cert-overview{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:14px}.cert-info-grid{display:grid;grid-template-columns:1fr 1fr;padding:8px 18px 18px}.cert-info{padding:11px 4px;border-bottom:1px solid var(--line)}.cert-info small,.cert-info strong{display:block}.cert-info small{color:var(--muted);font-size:8px;text-transform:uppercase}.cert-info strong{margin-top:4px;font-size:9.5px}.scope-box{margin:0 18px 18px;padding:13px;border-left:3px solid var(--green-600);border-radius:0 8px 8px 0;background:var(--green-50);font-size:9px;line-height:1.55}.entity-card{display:flex;gap:11px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}.entity-card>span{width:36px;height:36px;display:grid;place-items:center;border-radius:9px;background:var(--green-50);color:var(--green-700)}.entity-card svg{width:16px}.entity-card strong,.entity-card small{display:block}.entity-card strong{font-size:9.5px}.entity-card small{margin-top:3px;color:var(--muted);font-size:8px}.entity-card a{margin-left:auto;color:var(--green-700);font-size:8px;text-decoration:none}.audit-table{width:100%;border-collapse:collapse}.audit-table th,.audit-table td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:9px;text-align:left}.audit-table th{background:#f8faf9;color:var(--muted);font-size:8px;text-transform:uppercase}.audit-result{padding:4px 7px;border-radius:10px;background:var(--green-50);color:var(--green-700);font-size:8px;font-weight:700}.verification-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:18px}.verification-check{display:flex;gap:9px;padding:12px;border:1px solid var(--line);border-radius:9px}.verification-check>span{color:var(--green-700)}.verification-check strong,.verification-check small{display:block}.verification-check strong{font-size:9px}.verification-check small{color:var(--muted);font-size:8px}.renewal-callout{margin:14px 18px 18px;padding:14px;border:1px solid #f0d6aa;border-radius:9px;background:#fff8ec;color:#865117;font-size:9px}.cert-doc-list,.cert-history{padding:4px 18px}.cert-doc-row,.cert-history-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.cert-doc-row>span{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:var(--green-50);color:var(--green-700)}.cert-doc-row strong,.cert-doc-row small,.cert-history-row strong,.cert-history-row small{display:block}.cert-doc-row strong,.cert-history-row strong{font-size:9px}.cert-doc-row small,.cert-history-row small{color:var(--muted);font-size:8px}.cert-doc-row button{margin-left:auto}.history-mark{width:10px;height:10px;border-radius:50%;background:var(--green-600)}.cert-history-row time{margin-left:auto;color:var(--muted);font-size:8px}@media(max-width:1050px){.cert-detail-kpis{grid-template-columns:repeat(2,1fr)}.cert-overview{grid-template-columns:1fr}.cert-profile{align-items:flex-start;flex-direction:column}}@media(max-width:650px){.cert-detail-kpis,.cert-info-grid,.verification-checks{grid-template-columns:1fr}.cert-profile-main{align-items:flex-start}.profile-actions{flex-wrap:wrap}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.certification-detail-page .cert-detail-kpis{
+  gap:12px;
+  margin-bottom:18px;
+}
+.certification-detail-page .cert-detail-kpis article{
+  position:relative;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  align-items:center;
+  gap:11px;
+  min-height:92px;
+  padding:15px;
+  overflow:hidden;
+  border:1px solid #e1e9e5;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff 0%,#fbfcfb 100%);
+  box-shadow:0 9px 25px rgba(25,61,46,.045),inset 0 1px 0 rgba(255,255,255,.95);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.certification-detail-page .cert-detail-kpis article::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width:56px;
+  height:56px;
+  border-radius:0 0 0 56px;
+  background:rgba(41,121,88,.035);
+  pointer-events:none;
+}
+.certification-detail-page .cert-detail-kpis article:hover{
+  transform:translateY(-2px);
+  border-color:#d4e2dc;
+  box-shadow:0 14px 30px rgba(25,61,46,.075);
+}
+.certification-detail-page .cert-detail-kpis article>span{
+  width:42px;
+  height:42px;
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+}
+.certification-detail-page .cert-detail-kpis article small{
+  margin-bottom:3px;
+  color:#7e8d86;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.06em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.certification-detail-page .cert-detail-kpis article strong{
+  margin:0;
+  color:#243d32;
+  font:800 23px/1.05 Manrope,sans-serif;
+  letter-spacing:-.04em;
+}
+.certification-detail-page .cert-detail-kpis article em{
+  margin-top:5px;
+  color:#8b9892;
+  font-size:8.5px;
+  font-style:normal;
+  font-weight:500;
+  line-height:1.35;
+}
+
+.certification-detail-page .cert-profile,
+.certification-detail-page .entity-card{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.certification-detail-page .cert-profile{
+  padding:18px;
+  background:
+    radial-gradient(circle at 94% 10%,rgba(53,142,104,.08),transparent 28%),
+    linear-gradient(135deg,#fff,#f7fbf9);
+}
+.certification-detail-page .entity-card{
+  padding:13px;
+  transition:transform .17s ease,border-color .17s ease,box-shadow .17s ease;
+}
+.certification-detail-page .entity-card:hover{
+  transform:translateY(-2px);
+  border-color:#d4e2dc;
+  box-shadow:0 10px 24px rgba(25,61,46,.06);
+}

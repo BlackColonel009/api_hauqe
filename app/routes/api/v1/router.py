@@ -94,14 +94,19 @@ from app.routes.api.v1.fuccs import (
 # MODULE VALIDATIONS
 # ============================================================
 
+from app.routes.api.v1.validation_workspace import (
+    router as validation_workspace_router,
+)
 from app.routes.api.v1.validations import (
     router as validations_router,
+)
+from app.routes.api.v1.integration_workspace import (
+    router as integration_workspace_router,
 )
 from app.routes.api.v1.integrations_bnec import (
     router as integrations_bnec_router,
     validation_integration_router,
 )
-
 # ============================================================
 # MODULE SCORING
 # ============================================================
@@ -283,7 +288,15 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    validation_workspace_router
+)
+
+api_router.include_router(
     validations_router
+)
+
+api_router.include_router(
+    integration_workspace_router
 )
 
 api_router.include_router(

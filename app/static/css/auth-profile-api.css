@@ -508,3 +508,41 @@ body.auth-route-active {
     animation: none;
   }
 }
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.auth-card{
+  border:1px solid #e1e9e5;
+  border-radius:20px;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+  box-shadow:0 24px 58px rgba(17,45,33,.14);
+}
+.auth-card input,
+.auth-card .password-field input,
+.profile-page .profile-inline-field input{
+  min-height:44px;
+  border:1px solid #d8e3de;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+}
+.auth-card input:focus,
+.auth-card .password-field input:focus,
+.profile-page .profile-inline-field input:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+.profile-loading-state,
+.profile-api-state,
+.profile-empty-state{
+  border-radius:14px;
+  box-shadow:0 8px 22px rgba(24,60,45,.04);
+}
+.profile-inline-card{
+  border-radius:14px;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+}

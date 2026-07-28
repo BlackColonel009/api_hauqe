@@ -44,3 +44,167 @@
 @media(max-width:760px){.alert-toolbar{flex-wrap:wrap}.alert-search{width:100%;flex-basis:100%}.alert-toolbar label:not(.alert-search){flex:1}.alert-toolbar select{min-width:0}.alert-row{grid-template-columns:20px 38px 1fr 24px}.alert-owner,.alert-row>.alert-state{display:none}}
 @media(max-width:520px){.alert-stats{grid-template-columns:1fr}.alert-stat{min-height:92px}.alerts-list-head select{display:none}.alert-row{padding:12px 11px}.alerts-page .heading-actions{flex-direction:column}.detail-grid{grid-template-columns:1fr}}
 .assign-alert-dialog{width:min(570px,calc(100% - 30px));padding:0;border:0;border-radius:14px;box-shadow:0 24px 70px rgba(10,35,26,.24)}.assign-alert-dialog::backdrop{background:rgba(8,28,21,.48)}.assign-alert-dialog header,.assign-alert-dialog footer{display:flex;align-items:center;justify-content:space-between;padding:17px 19px;border-bottom:1px solid var(--line)}.assign-alert-dialog h2{margin:0;font-size:16px}.assign-alert-summary{margin:17px 19px 0;padding:11px;border-radius:8px;background:#f2f7f4}.assign-alert-summary strong,.assign-alert-summary small{display:block}.assign-alert-summary strong{font-size:9px}.assign-alert-summary small{color:var(--muted);font-size:7px}.assign-alert-form{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:17px 19px}.assign-alert-form label{color:#53605b;font-size:8px;font-weight:600}.assign-alert-form label.full{grid-column:1/-1}.assign-alert-form b{color:#c94f49}.assign-alert-form input,.assign-alert-form select,.assign-alert-form textarea{width:100%;margin-top:5px;padding:9px;border:1px solid var(--line);border-radius:7px;font-size:8px}.notify-assignee{display:flex;align-items:center;gap:6px;font-weight:400!important}.notify-assignee input{width:auto;margin:0;accent-color:var(--green-600)}.assign-alert-dialog footer{justify-content:flex-end;gap:7px;border-bottom:0;border-top:1px solid var(--line)}@media(max-width:600px){.assign-alert-form{grid-template-columns:1fr}.assign-alert-form label.full{grid-column:auto}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.alerts-page .alert-stats{
+  gap:12px;
+  margin-bottom:18px;
+}
+.alerts-page .alert-stat{
+  position:relative;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  align-items:center;
+  gap:11px;
+  min-height:92px;
+  padding:15px;
+  overflow:hidden;
+  border:1px solid #e1e9e5;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff 0%,#fbfcfb 100%);
+  box-shadow:0 9px 25px rgba(25,61,46,.045),inset 0 1px 0 rgba(255,255,255,.95);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.alerts-page .alert-stat::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width:56px;
+  height:56px;
+  border-radius:0 0 0 56px;
+  background:rgba(41,121,88,.035);
+  pointer-events:none;
+}
+.alerts-page .alert-stat:hover{
+  transform:translateY(-2px);
+  border-color:#d4e2dc;
+  box-shadow:0 14px 30px rgba(25,61,46,.075);
+}
+.alerts-page .alert-stat-icon{
+  width:42px;
+  height:42px;
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+}
+.alerts-page .alert-stat small{
+  margin-bottom:3px;
+  color:#7e8d86;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.06em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.alerts-page .alert-stat strong{
+  margin:0;
+  color:#243d32;
+  font:800 23px/1.05 Manrope,sans-serif;
+  letter-spacing:-.04em;
+}
+.alerts-page .alert-stat em{
+  margin-top:5px;
+  color:#8b9892;
+  font-size:8.5px;
+  font-style:normal;
+  font-weight:500;
+  line-height:1.35;
+}
+
+.alerts-page .alert-toolbar{
+  position:relative;
+  gap:12px;
+  margin-bottom:16px;
+  padding:15px;
+  border:1px solid #e1e9e5;
+  border-radius:17px;
+  background:linear-gradient(180deg,#fff 0%,#fafcfb 100%);
+  box-shadow:0 10px 28px rgba(24,60,45,.045),inset 0 1px 0 rgba(255,255,255,.95);
+}
+.alerts-page .alert-toolbar label>span{
+  margin-bottom:6px;
+  color:#667970;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+
+.alerts-page .alert-search{
+  position:relative;
+  min-width:0;
+}
+.alerts-page .alert-search svg{
+  z-index:2;
+  width:17px;
+  height:17px;
+  color:#7b8983;
+}
+.alerts-page .alert-search input{
+  width:100%;
+  height:46px;
+  padding-left:43px;
+  border:1px solid #d8e3de;
+  border-radius:13px;
+  outline:none;
+  background:#fff;
+  color:#263d33;
+  font:500 11px "DM Sans",sans-serif;
+  box-shadow:0 2px 8px rgba(23,55,42,.035),inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.alerts-page .alert-search input::placeholder{
+  color:#9aa69f;
+  font-weight:400;
+}
+.alerts-page .alert-search input:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09),0 8px 20px rgba(24,88,64,.065);
+}
+
+.alerts-page .alert-search input,
+.alerts-page .alert-toolbar select,
+.alerts-page .alerts-list-head select{
+  min-height:44px;
+  border:1px solid #d8e3de;
+  border-radius:12px;
+  outline:none;
+  background-color:#fff;
+  color:#33483e;
+  font:600 10px "DM Sans",sans-serif;
+  box-shadow:0 2px 8px rgba(23,55,42,.03),inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.alerts-page .alert-search input,
+.alerts-page .alert-toolbar select,
+.alerts-page .alerts-list-head select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09),0 8px 20px rgba(24,88,64,.055);
+}
+
+
+.alerts-page .alerts-list-panel,
+.alerts-page .alert-detail{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.alerts-page .alert-row{
+  border-radius:12px;
+  transition:background .16s ease,transform .16s ease;
+}
+.alerts-page .alert-row:hover,
+.alerts-page .alert-row.selected{
+  background:#f7fbf9;
+  transform:translateX(2px);
+}
+.alerts-page .alert-detail{
+  border-radius:17px;
+}

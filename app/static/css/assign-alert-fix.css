@@ -1,1 +1,14 @@
 .assign-alert-dialog form{overflow-x:hidden!important;overflow-y:auto!important}.assign-alert-dialog *{box-sizing:border-box}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.assign-alert-dialog form{
+  border-radius:18px;
+}
+.assign-alert-dialog *{
+  scrollbar-color:#b9cec4 transparent;
+}

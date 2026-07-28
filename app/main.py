@@ -80,6 +80,10 @@ async def frontend_view(
         "verification-detail": "views/verification-detail.html",
         
         "validations": "views/validations.html",
+        "validation-detail": "views/validation-detail.html",
+        
+        "integrations": "views/integrations.html",
+        "integration-detail": "views/integration-detail.html",
         
         "controle": "views/controle.html",
         "controle-detail": "views/controle-detail.html",

@@ -1,1 +1,61 @@
 .collecte-form-page{max-width:1500px}.collect-stepper button strong{white-space:nowrap}.autosave-state{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:8px}.autosave-state svg{width:15px;color:var(--green-600)}.existing-company{display:flex;align-items:center;justify-content:space-between;margin:20px 20px 0;padding:13px;border:1px solid #cfe5da;border-radius:9px;background:#f5fbf8}.existing-company>div{display:flex;align-items:center;gap:10px}.existing-company svg{width:20px;color:var(--green-700)}.existing-company strong,.existing-company small{display:block}.existing-company strong{font-size:9px}.existing-company small{color:var(--muted);font-size:8px}.product-entry{grid-template-columns:2fr 1fr 40px}.collect-cert-entry{grid-template-columns:repeat(4,1fr) 40px}.collect-market-grid{padding-bottom:10px}.market-block{padding:0 20px 20px}.market-block>label{display:block;margin-bottom:7px;color:#53605b;font-size:9px;font-weight:600}.document-drop{position:relative;display:grid;justify-items:center;margin:20px;padding:25px;border:1px dashed #a8cbbb;border-radius:11px;background:#f7fcf9;color:var(--muted)}.document-drop svg{width:27px;color:var(--green-600)}.document-drop strong{margin:7px 0 2px;color:var(--ink);font-size:10px}.document-drop span{font-size:8px}.document-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.uploaded-files{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:0 20px}.uploaded-file{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px}.uploaded-file>svg{width:17px;color:var(--green-600)}.uploaded-file>svg:last-child{margin-left:auto}.uploaded-file strong,.uploaded-file small{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.uploaded-file strong{font-size:8px}.uploaded-file small,.document-placeholder{color:var(--muted);font-size:7px}.completion-banner{display:flex;align-items:center;gap:11px;margin:20px 20px 0;padding:15px;border-radius:10px}.completion-banner.complete{color:#176747;background:#e8f6ef}.completion-banner.pending{color:#87561c;background:#fff5e6}.completion-banner>span{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#ffffffa8}.completion-banner svg{width:19px}.completion-banner strong,.completion-banner small{display:block}.completion-banner strong{font-size:10px}.completion-banner small{font-size:8px}.completion-banner>b{margin-left:auto;font:800 18px Manrope,sans-serif}.save-indicator.error{background:#9e3935}@media(max-width:1100px){.collect-stepper button div{display:none}.collect-cert-entry{grid-template-columns:1fr 1fr 40px}.collect-cert-entry .remove-entry{grid-column:3;grid-row:1}}@media(max-width:700px){.heading-actions .autosave-state{display:none}.existing-company{align-items:flex-start;gap:10px;flex-direction:column}.product-entry,.collect-cert-entry{grid-template-columns:1fr 40px}.product-entry .remove-entry,.collect-cert-entry .remove-entry{grid-column:2;grid-row:1}.collect-cert-entry .form-field{grid-column:1}.uploaded-files{grid-template-columns:1fr}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.collecte-form-page .form-card,
+.collecte-form-page .collect-step-content{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.collecte-form-page .form-field input,
+.collecte-form-page .form-field select,
+.collecte-form-page .form-field textarea,
+.collecte-form-page .collect-cert-entry input,
+.collecte-form-page .collect-cert-entry select{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.collecte-form-page .form-field input,
+.collecte-form-page .form-field select,
+.collecte-form-page .form-field textarea,
+.collecte-form-page .collect-cert-entry input,
+.collecte-form-page .collect-cert-entry select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.collecte-form-page .collect-stepper{
+  padding:13px 14px;
+  border:1px solid #e1e9e5;
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 9px 24px rgba(24,60,45,.04);
+}
+.collecte-form-page .collect-stepper button{
+  border-radius:11px;
+}
+.collecte-form-page .existing-company,
+.collecte-form-page .document-drop{
+  border-radius:14px;
+  border-color:#dce7e2;
+  background:#fbfdfc;
+}
+.collecte-form-page .autosave-state{
+  padding:7px 10px;
+  border-radius:999px;
+  background:#edf7f2;
+  color:#2a7559;
+}

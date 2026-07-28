@@ -1,3 +1,59 @@
 .assignment-modal{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:20px;background:#10251c77}.assignment-modal[hidden]{display:none}.assignment-modal>form{width:min(760px,100%);max-height:94vh;overflow:auto;border-radius:16px;background:#f8faf9;box-shadow:0 25px 75px #071c1555}.assignment-modal header,.assignment-modal footer{display:flex;align-items:center;justify-content:space-between;padding:18px 21px;border-bottom:1px solid var(--line);background:#fff}.assignment-title{display:flex;align-items:center;gap:11px}.assignment-title>span{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:var(--green-50);color:var(--green-700)}.assignment-title svg{width:20px}.assignment-title h2{margin:1px 0;font:700 17px Manrope,sans-serif}.assignment-title small,.assignment-section-head small{display:block;color:var(--muted);font-size:8px}.assignment-modal header>button{border:0;background:transparent;color:var(--muted)}.assignment-body{display:grid;gap:16px;padding:18px 21px}.assignment-body>section{padding:14px;border:1px solid var(--line);border-radius:11px;background:#fff}.assignment-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.assignment-section-head strong{font-size:10px}.assignment-section-head b{padding:4px 7px;border-radius:10px;background:var(--green-50);color:var(--green-700);font-size:7px}.assignment-files{display:grid;gap:7px;max-height:180px;overflow:auto}.assignment-file{display:grid;grid-template-columns:17px 1fr auto;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer}.assignment-file:has(input:checked){border-color:var(--green-600);background:#f4fbf7}.assignment-file input{accent-color:var(--green-600)}.assignment-file strong,.assignment-file small{display:block}.assignment-file strong{font-size:8.5px}.assignment-file small{color:var(--muted);font-size:7px}.assignment-file em{font-size:7px;font-style:normal;color:var(--muted)}.assignment-validators{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assignment-validator{position:relative;display:grid;grid-template-columns:34px 1fr 16px;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:9px;cursor:pointer}.assignment-validator input{position:absolute;opacity:0}.assignment-validator>span{width:33px;height:33px;display:grid;place-items:center;border-radius:9px;background:var(--green-50);color:var(--green-700);font-size:8px;font-weight:800}.assignment-validator strong,.assignment-validator small{display:block}.assignment-validator strong{font-size:8px}.assignment-validator small{color:var(--muted);font-size:7px}.assignment-validator>svg{width:15px;color:#ccd8d3}.assignment-validator:has(input:checked){border-color:var(--green-600);background:#f4fbf7}.assignment-validator:has(input:checked)>svg{color:var(--green-600)}.assignment-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.assignment-settings label,.assignment-instruction{font-size:8px;font-weight:600}.assignment-settings select,.assignment-settings input,.assignment-instruction textarea{display:block;width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:9px}.assignment-notify{display:grid;grid-template-columns:34px 1fr 18px;align-items:center;gap:9px;padding:10px 12px;border:1px solid #cfe1f5;border-radius:10px;background:#f6f9fe}.assignment-notify>span{width:32px;height:32px;display:grid;place-items:center;border-radius:8px;background:#e7effc;color:#315fa9}.assignment-notify svg{width:15px}.assignment-notify strong,.assignment-notify small{display:block}.assignment-notify strong{font-size:8px}.assignment-notify small{color:#607491;font-size:7px}.assignment-notify input{width:16px;height:16px}.assignment-modal footer{justify-content:flex-end;gap:8px;border-top:1px solid var(--line);border-bottom:0}
 [data-theme="dark"] .assignment-modal>form,[data-theme="dark"] .assignment-modal header,[data-theme="dark"] .assignment-modal footer,[data-theme="dark"] .assignment-body>section{border-color:#31564c;background:#102d27;color:#e5f0ec}[data-theme="dark"] .assignment-file,[data-theme="dark"] .assignment-validator{border-color:#31564c;background:#0b241e;color:#dceae5}[data-theme="dark"] .assignment-file:has(input:checked),[data-theme="dark"] .assignment-validator:has(input:checked){border-color:#2ab78c;background:#173d33}[data-theme="dark"] .assignment-notify{border-color:#355d70;background:#142d37;color:#dcebf2}
 @media(max-width:700px){.assignment-validators,.assignment-settings{grid-template-columns:1fr}.assignment-modal{padding:9px}.assignment-modal header,.assignment-modal footer,.assignment-body{padding:14px}.assignment-title>span{display:none}.assignment-file{grid-template-columns:17px 1fr}.assignment-file em{display:none}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.assignment-modal>form{
+  border-radius:18px;
+  border-color:#e1e9e5;
+  box-shadow:0 28px 70px rgba(18,44,33,.20);
+}
+.assignment-modal>form header{
+  border-color:#e8eeeb;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+}
+.assignment-modal>form footer{
+  border-color:#e8eeeb;
+  background:#fbfcfb;
+}
+
+.assignment-modal .assignment-settings select,
+.assignment-modal .assignment-settings input,
+.assignment-modal .assignment-instruction textarea{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.assignment-modal .assignment-settings select,
+.assignment-modal .assignment-settings input,
+.assignment-modal .assignment-instruction textarea:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.assignment-modal .assignment-body>section{
+  border-color:#e1e9e5;
+  border-radius:14px;
+  background:#fbfcfb;
+}
+.assignment-modal .assignment-file,
+.assignment-modal .assignment-validator{
+  border-radius:12px;
+  transition:border-color .17s ease,background .17s ease,transform .17s ease;
+}
+.assignment-modal .assignment-file:has(input:checked),
+.assignment-modal .assignment-validator:has(input:checked){
+  border-color:#8fc9b2;
+  background:#edf8f3;
+  transform:translateY(-1px);
+}

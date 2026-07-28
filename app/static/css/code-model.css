@@ -1,1 +1,45 @@
 .code-model-modal{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:20px;background:#10251c66}.code-model-modal[hidden]{display:none}.code-model-modal form{width:min(570px,100%);border-radius:13px;background:#fff}.code-model-modal header,.code-model-modal footer{display:flex;align-items:center;justify-content:space-between;padding:17px 19px;border-bottom:1px solid var(--line)}.code-model-modal h2{margin:0;font-size:15px}.code-model-modal header button{border:0;background:transparent}.code-model-body{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:19px}.code-model-body>label{color:#53605b;font-size:8px;font-weight:600}.code-model-body input,.code-model-body select{width:100%;height:36px;margin-top:5px;padding:0 9px;border:1px solid var(--line);border-radius:7px;font-family:monospace;font-size:8px}.code-model-body b{color:#c94f49}.variable-picker,.code-preview,.code-model-help{grid-column:1/-1}.variable-picker{padding:11px;border:1px solid var(--line);border-radius:8px}.variable-picker strong{font-size:8px}.variable-picker p{margin:2px 0 8px;color:var(--muted);font-size:7px}.variable-picker>div{display:flex;flex-wrap:wrap;gap:5px}.variable-picker button{padding:5px 7px;border:1px solid #cfe3d9;border-radius:6px;background:var(--green-50);color:var(--green-700);font-family:monospace;font-size:7px}.code-preview{padding:13px;border-radius:9px;background:#f3f8f5;text-align:center}.code-preview span,.code-preview strong,.code-preview small{display:block}.code-preview span{color:var(--muted);font-size:7px}.code-preview strong{margin:5px;font-family:monospace;font-size:13px}.code-preview small{color:var(--green-700);font-size:7px}.code-preview small.invalid{color:#b7433e}.code-model-help{display:flex;gap:7px;padding:10px;border-radius:8px;background:#e7effc;color:#315fa9;font-size:7.5px}.code-model-help svg{width:14px}.code-model-modal footer{justify-content:flex-end;gap:7px;border-bottom:0;border-top:1px solid var(--line)}@media(max-width:600px){.code-model-body{grid-template-columns:1fr}.variable-picker,.code-preview,.code-model-help{grid-column:auto}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.code-model-modal form{
+  border-radius:18px;
+  border-color:#e1e9e5;
+  box-shadow:0 28px 70px rgba(18,44,33,.20);
+}
+.code-model-modal form header{
+  border-color:#e8eeeb;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+}
+.code-model-modal form footer{
+  border-color:#e8eeeb;
+  background:#fbfcfb;
+}
+
+.code-model-modal .code-model-body input,
+.code-model-modal .code-model-body select{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.code-model-modal .code-model-body input,
+.code-model-modal .code-model-body select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.code-model-modal form{
+  overflow:hidden;
+}
+.code-model-body{
+  padding:16px;
+}

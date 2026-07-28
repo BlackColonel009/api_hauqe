@@ -229,3 +229,127 @@
 [data-theme="dark"] .presence-dropdown>footer{
   border-color:#294a41;
 }
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+[data-theme="dark"] body{
+  background:
+    radial-gradient(circle at 75% -10%,rgba(50,145,106,.055),transparent 30%),
+    #141c18;
+}
+
+[data-theme="dark"] .topbar{
+  border-color:rgba(255,255,255,.075);
+  background:rgba(24,34,29,.90);
+  box-shadow:0 7px 22px rgba(0,0,0,.10);
+}
+
+[data-theme="dark"] .panel,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .company-kpi,
+[data-theme="dark"] .cert-kpi,
+[data-theme="dark"] .collecte-kpi,
+[data-theme="dark"] .validation-kpi,
+[data-theme="dark"] .user-kpi,
+[data-theme="dark"] .deadline-kpi,
+[data-theme="dark"] .report-kpi,
+[data-theme="dark"] .reference-kpi,
+[data-theme="dark"] .gov-kpi,
+[data-theme="dark"] .audit-kpi,
+[data-theme="dark"] .integration-kpi,
+[data-theme="dark"] .integration-detail-kpi,
+[data-theme="dark"] .fuccs-score-card{
+  border-color:rgba(255,255,255,.075)!important;
+  background:linear-gradient(180deg,#202b26,#1d2723)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.12)!important;
+}
+
+[data-theme="dark"] .filter-bar,
+[data-theme="dark"] .company-filters,
+[data-theme="dark"] .cert-filters,
+[data-theme="dark"] .collecte-toolbar,
+[data-theme="dark"] .fuccs-toolbar,
+[data-theme="dark"] .deadline-filters,
+[data-theme="dark"] .gov-toolbar,
+[data-theme="dark"] .score-selector,
+[data-theme="dark"] .integration-toolbar,
+[data-theme="dark"] .dashboard-filter-bar{
+  border-color:rgba(255,255,255,.075)!important;
+  background:linear-gradient(180deg,#202b26,#1d2723)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.11)!important;
+}
+
+[data-theme="dark"] .page-content input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] .page-content select,
+[data-theme="dark"] .page-content textarea{
+  border-color:rgba(255,255,255,.09)!important;
+  background-color:#1c2722!important;
+  color:#e5eee9!important;
+}
+
+[data-theme="dark"] .page-content input:not([type="checkbox"]):not([type="radio"]):focus,
+[data-theme="dark"] .page-content select:focus,
+[data-theme="dark"] .page-content textarea:focus{
+  border-color:#4d9e7c!important;
+  box-shadow:0 0 0 3px rgba(64,161,121,.14)!important;
+}
+
+[data-theme="dark"] .page-heading h1,
+[data-theme="dark"] .panel-heading h2,
+[data-theme="dark"] .company-kpi strong,
+[data-theme="dark"] .cert-kpi strong,
+[data-theme="dark"] .collecte-kpi strong,
+[data-theme="dark"] .validation-kpi strong,
+[data-theme="dark"] .user-kpi strong,
+[data-theme="dark"] .deadline-kpi strong,
+[data-theme="dark"] .report-kpi strong,
+[data-theme="dark"] .reference-kpi strong,
+[data-theme="dark"] .gov-kpi strong,
+[data-theme="dark"] .audit-kpi strong,
+[data-theme="dark"] .integration-kpi strong,
+[data-theme="dark"] .fuccs-score-card strong{
+  color:#e5eee9!important;
+}
+
+[data-theme="dark"] .app-table thead th,
+[data-theme="dark"] .company-table thead th,
+[data-theme="dark"] .cert-table thead th,
+[data-theme="dark"] .validation-table thead th,
+[data-theme="dark"] .user-table thead th,
+[data-theme="dark"] .audit-table thead th,
+[data-theme="dark"] .integration-table thead th{
+  background:#1a2420!important;
+  color:#8f9d96!important;
+  border-color:rgba(255,255,255,.07)!important;
+}
+
+[data-theme="dark"] .app-table tbody tr:hover td,
+[data-theme="dark"] .company-table tbody tr:hover td,
+[data-theme="dark"] .cert-table tbody tr:hover td,
+[data-theme="dark"] .validation-table tbody tr:hover td,
+[data-theme="dark"] .user-table tbody tr:hover td,
+[data-theme="dark"] .audit-table tbody tr:hover td,
+[data-theme="dark"] .integration-table tbody tr:hover td{
+  background:#202d27!important;
+}
+
+[data-theme="dark"] .topbar-dropdown,
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .session-lock-card,
+[data-theme="dark"] .user-modal form,
+[data-theme="dark"] .assignment-modal>form,
+[data-theme="dark"] .code-model-modal form,
+[data-theme="dark"] .gov-modal form,
+[data-theme="dark"] .return-modal>div,
+[data-theme="dark"] .reference-modal form,
+[data-theme="dark"] .dependency-modal>div,
+[data-theme="dark"] .publish-modal>div,
+[data-theme="dark"] .version-modal>div{
+  border-color:rgba(255,255,255,.075)!important;
+  background:#202b26!important;
+  box-shadow:0 28px 70px rgba(0,0,0,.28)!important;
+}

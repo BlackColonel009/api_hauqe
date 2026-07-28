@@ -1,1 +1,50 @@
 .email-channel{margin-bottom:16px;overflow:hidden;border:1px solid #d9e7e2;border-radius:13px;background:#fbfdfc}.email-channel>header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;padding:14px 16px;background:#eff8f5}.email-channel>header>span{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#d9f0e8;color:#087659}.email-channel>header svg{width:17px}.email-channel h3,.alert-mail-rule h3{margin:0;font-size:10px}.email-channel p,.alert-mail-rule p{margin:2px 0 0;color:#71837d;font-size:8px}.email-channel>header b{padding:5px 8px;border-radius:20px;background:#dff4e9;color:#087659;font-size:7px}.email-channel-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px}.email-channel-fields label,.alert-rule-timing label,.external-emails{color:#526861;font-size:8px;font-weight:700}.email-channel-fields input,.alert-rule-timing input,.external-emails textarea{width:100%;margin-top:5px;border:1px solid #d3dfdb;border-radius:8px;background:#fff;font-size:8px;outline:0}.email-channel-fields input{height:36px;padding:0 10px}.alert-rule-list{display:grid;gap:14px}.alert-mail-rule{overflow:hidden;border:1px solid #dce7e3;border-radius:13px;background:#fff}.alert-mail-rule>header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;padding:14px 16px;border-bottom:1px solid #e6eeeb}.alert-mail-rule>header>span{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;background:#edf7f3;color:#087659}.alert-mail-rule>header svg{width:17px}.rule-toggle input{position:absolute;opacity:0}.rule-toggle i{display:block;width:36px;height:20px;padding:2px;border-radius:20px;background:#c7d3cf;cursor:pointer}.rule-toggle i:after{content:"";display:block;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #78948a55;transition:.2s}.rule-toggle input:checked+i{background:#087659}.rule-toggle input:checked+i:after{transform:translateX(16px)}.alert-rule-timing{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px;background:#fbfdfc}.alert-rule-timing label>div{display:flex;align-items:center;margin-top:5px;border:1px solid #d3dfdb;border-radius:8px;background:#fff}.alert-rule-timing input{height:34px;margin:0;padding:0 9px;border:0}.alert-rule-timing label span{padding:0 10px;color:#71837d;white-space:nowrap}.recipient-block{padding:15px 16px}.recipient-block>div:first-child strong,.recipient-block>div:first-child small{display:block}.recipient-block>div:first-child strong{font-size:9px}.recipient-block>div:first-child small{margin-top:2px;color:#788a84;font-size:8px}.recipient-users{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:11px 0 13px}.recipient-users label{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;padding:9px;border:1px solid #dfe8e5;border-radius:9px;cursor:pointer}.recipient-users label>span{display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:#e3f2ed;color:#087659;font-size:7px;font-weight:800}.recipient-users strong,.recipient-users small{display:block;font-size:8px}.recipient-users small{color:#7b8d87;font-size:7px}.external-emails small{display:block;margin-top:2px;color:#879690;font-weight:400}.external-emails textarea{padding:9px;resize:vertical}.alert-email-note{display:flex;gap:8px;margin-top:13px;padding:11px;border-radius:9px;background:#fff6df;color:#80621f;font-size:8px}.alert-email-note svg{flex:0 0 auto;width:15px}@media(max-width:700px){.email-channel-fields,.alert-rule-timing,.recipient-users{grid-template-columns:1fr}.email-channel>header{grid-template-columns:auto 1fr}.email-channel>header b{grid-column:2;justify-self:start}}
+
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+ .email-channel,
+ .alert-mail-rule{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+ .email-channel-fields input,
+ .alert-rule-timing input,
+ .external-emails textarea{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+ .email-channel-fields input,
+ .alert-rule-timing input,
+ .external-emails textarea:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.email-channel,
+.alert-mail-rule{
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff,#fbfcfb);
+  box-shadow:0 8px 22px rgba(24,60,45,.04);
+}
+.email-channel>header,
+.alert-mail-rule>header{
+  padding:14px;
+  border-color:#e8eeeb;
+}
+.alert-email-note{
+  border-radius:14px;
+  background:#f7fbf9;
+}

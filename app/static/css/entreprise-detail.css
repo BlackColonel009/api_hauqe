@@ -6,3 +6,117 @@
 [data-theme="dark"] .company-detail-state,[data-theme="dark"] .company-detail-restricted{border-color:#31564c;background:#102d27;color:#b4c9c1}[data-theme="dark"] .company-detail-state strong,[data-theme="dark"] .company-detail-empty strong,[data-theme="dark"] .company-detail-restricted strong{color:#edf7f3}[data-theme="dark"] .company-detail-dialog,[data-theme="dark"] .company-detail-action-menu{border-color:#31564c;background:#102d27;color:#edf7f3}[data-theme="dark"] .cert-detail-button:hover,[data-theme="dark"] .company-detail-action-menu button:hover{background:#173a31}
 @media(max-width:650px){.company-detail-state{flex-wrap:wrap}.company-detail-state button{width:100%;margin-left:0}.profile-refs{gap:7px}.profile-refs span{width:100%}.company-dialog-actions{flex-direction:column-reverse}.company-dialog-actions .btn{width:100%}}
 
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.company-detail-page .detail-kpis{
+  gap:12px;
+  margin-bottom:18px;
+}
+.company-detail-page .detail-kpis article{
+  position:relative;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  align-items:center;
+  gap:11px;
+  min-height:92px;
+  padding:15px;
+  overflow:hidden;
+  border:1px solid #e1e9e5;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff 0%,#fbfcfb 100%);
+  box-shadow:0 9px 25px rgba(25,61,46,.045),inset 0 1px 0 rgba(255,255,255,.95);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.company-detail-page .detail-kpis article::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width:56px;
+  height:56px;
+  border-radius:0 0 0 56px;
+  background:rgba(41,121,88,.035);
+  pointer-events:none;
+}
+.company-detail-page .detail-kpis article:hover{
+  transform:translateY(-2px);
+  border-color:#d4e2dc;
+  box-shadow:0 14px 30px rgba(25,61,46,.075);
+}
+.company-detail-page .detail-kpis article>span{
+  width:42px;
+  height:42px;
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+}
+.company-detail-page .detail-kpis article small{
+  margin-bottom:3px;
+  color:#7e8d86;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.06em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.company-detail-page .detail-kpis article strong{
+  margin:0;
+  color:#243d32;
+  font:800 23px/1.05 Manrope,sans-serif;
+  letter-spacing:-.04em;
+}
+.company-detail-page .detail-kpis article em{
+  margin-top:5px;
+  color:#8b9892;
+  font-size:8.5px;
+  font-style:normal;
+  font-weight:500;
+  line-height:1.35;
+}
+
+.company-detail-page .company-profile-head,
+.company-detail-page .detail-section-panel{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.company-detail-page .company-dialog-field textarea,
+.company-detail-page .company-dialog-field input,
+.company-detail-page .company-dialog-field select{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.company-detail-page .company-dialog-field textarea,
+.company-detail-page .company-dialog-field input,
+.company-detail-page .company-dialog-field select:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.company-detail-page .company-profile-head{
+  padding:18px;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 94% 10%,rgba(53,142,104,.08),transparent 28%),
+    linear-gradient(135deg,#fff,#f7fbf9);
+}
+.company-detail-page .company-profile-logo{
+  width:52px;
+  height:52px;
+  border-radius:15px;
+  box-shadow:0 8px 20px rgba(28,86,63,.08);
+}
+.company-detail-page .detail-breadcrumb{
+  margin-bottom:14px;
+}

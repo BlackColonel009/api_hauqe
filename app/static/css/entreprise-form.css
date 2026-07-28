@@ -5,3 +5,58 @@
 @media(max-width:1250px){.structured-contact,.structured-site,.structured-offer{grid-template-columns:repeat(2,minmax(0,1fr)) 40px}.structured-contact .remove-entry,.structured-site .remove-entry,.structured-offer .remove-entry{grid-column:3;grid-row:1}}
 @media(max-width:720px){.structured-contact,.structured-site,.structured-offer{grid-template-columns:1fr 40px}.structured-contact .form-field,.structured-site .form-field,.structured-offer .form-field,.structured-check{grid-column:1}.structured-contact .remove-entry,.structured-site .remove-entry,.structured-offer .remove-entry{grid-column:2;grid-row:1}.heading-actions{width:100%;flex-wrap:wrap}.heading-actions .app-btn{flex:1}}
 
+/* ============================================================
+   HAUQE CERTIF — MODERN UI HARMONIZATION
+   Référence visuelle : intégration BNEC Modern UI V2
+   Ajout non destructif : règles historiques conservées.
+   ============================================================ */
+
+.company-form-page .form-card{
+  border-color:#e1e9e5;
+  border-radius:17px;
+  box-shadow:0 10px 28px rgba(24,60,45,.045);
+}
+
+
+.company-form-page .form-field input,
+.company-form-page .form-field select,
+.company-form-page .form-field textarea{
+  min-height:42px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#33483e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.company-form-page .form-field input,
+.company-form-page .form-field select,
+.company-form-page .form-field textarea:focus{
+  border-color:#66ad90;
+  box-shadow:0 0 0 3px rgba(38,132,95,.09);
+}
+
+.company-form-page .form-stepper{
+  padding:13px 14px;
+  border:1px solid #e1e9e5;
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 9px 24px rgba(24,60,45,.04);
+}
+.company-form-page .form-stepper button{
+  border-radius:11px;
+  transition:background .17s ease,color .17s ease;
+}
+.company-form-page .form-stepper button.active{
+  background:#edf8f3;
+  color:#24795a;
+}
+.company-form-page .form-card-head{
+  padding:17px 18px 13px;
+  background:linear-gradient(180deg,#fff,#fcfdfc);
+}
+.company-form-page .form-field label,
+.company-form-page .form-field>span{
+  color:#667970;
+}
