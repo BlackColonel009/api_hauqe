@@ -1,0 +1,279 @@
+<div class="page-content container-fluid validation-detail-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/validations">Validations</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="validationBreadcrumb">Dossier</span>
+  </nav>
+
+  <section
+    class="dashboard-api-state"
+    id="validationDetailState"
+    hidden
+  ></section>
+
+  <section class="validation-detail-header panel">
+    <div class="validation-detail-identity">
+      <span>
+        <i data-lucide="shield-check"></i>
+      </span>
+
+      <div>
+        <div class="profile-title-line">
+          <h1 id="validationDetailTitle">Chargement…</h1>
+
+          <span
+            class="validation-stage ready_n1"
+            id="validationDetailStage"
+          >
+            —
+          </span>
+        </div>
+
+        <p id="validationDetailSubtitle">
+          Validation hiérarchisée
+        </p>
+
+        <div
+          class="profile-refs"
+          id="validationDetailRefs"
+        ></div>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <button
+        class="btn btn-outline-secondary app-btn"
+        id="decisionN1"
+        type="button"
+        hidden
+      >
+        <i data-lucide="badge-1"></i>
+        Décision N1
+      </button>
+
+      <button
+        class="btn btn-primary app-btn"
+        id="decisionN2"
+        type="button"
+        hidden
+      >
+        <i data-lucide="badge-2"></i>
+        Décision N2
+      </button>
+    </div>
+  </section>
+
+  <section
+    class="validation-levels-grid"
+    id="validationLevels"
+  ></section>
+
+  <div class="detail-tabs" role="tablist">
+    <button class="active" data-tab="overview">
+      Vue d’ensemble
+    </button>
+
+    <button data-tab="history">
+      Historique
+      <b id="validationHistoryCount">0</b>
+    </button>
+
+    <button data-tab="corrections">
+      Corrections
+      <b id="validationCorrectionCount">0</b>
+    </button>
+  </div>
+
+  <section id="validationTabContent"></section>
+
+  <dialog
+    class="hauqe-dialog validation-decision-dialog"
+    id="validationDecisionDialog"
+  >
+    <form method="dialog" id="validationDecisionForm">
+      <header>
+        <div>
+          <p class="eyebrow">Décision hiérarchisée</p>
+          <h2 id="decisionDialogTitle">Décision</h2>
+        </div>
+
+        <button
+          type="button"
+          class="dialog-close"
+          data-close-dialog="validationDecisionDialog"
+          aria-label="Fermer"
+        >
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body">
+        <label>
+          <span>Décision <b>*</b></span>
+          <select id="decisionValue" required>
+            <option value="">Sélectionner</option>
+            <option value="VALIDE">Validé</option>
+            <option value="VALIDE_SOUS_RESERVE">
+              Validé sous réserve
+            </option>
+            <option value="AJOURNE">Ajourné</option>
+            <option value="REJETE">Rejeté</option>
+          </select>
+        </label>
+
+        <label id="decisionReserveField" hidden>
+          <span>Réserves <b>*</b></span>
+          <textarea
+            id="decisionReserves"
+            rows="3"
+            maxlength="255"
+          ></textarea>
+        </label>
+
+        <label>
+          <span>Justification <b>*</b></span>
+          <textarea
+            id="decisionJustification"
+            rows="4"
+            required
+          ></textarea>
+        </label>
+
+        <div class="review-warning">
+          <i data-lucide="info"></i>
+          Les décisions sont historisées. Une nouvelle décision crée une
+          nouvelle ligne et n’écrase pas silencieusement l’ancienne.
+        </div>
+      </div>
+
+      <footer>
+        <button
+          type="button"
+          class="btn btn-outline-secondary app-btn"
+          data-close-dialog="validationDecisionDialog"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary app-btn"
+        >
+          <i data-lucide="check"></i>
+          Prononcer la décision
+        </button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog
+    class="hauqe-dialog"
+    id="correctionDialog"
+  >
+    <form method="dialog" id="correctionForm">
+      <header>
+        <div>
+          <p class="eyebrow">Correction</p>
+          <h2>Demander une correction</h2>
+        </div>
+
+        <button
+          type="button"
+          class="dialog-close"
+          data-close-dialog="correctionDialog"
+          aria-label="Fermer"
+        >
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body">
+        <label>
+          <span>Motif <b>*</b></span>
+          <textarea id="correctionReason" rows="3" required></textarea>
+        </label>
+
+        <label>
+          <span>Instructions <b>*</b></span>
+          <textarea id="correctionInstructions" rows="4" required></textarea>
+        </label>
+
+        <label>
+          <span>Date d’échéance</span>
+          <input id="correctionDueDate" type="date">
+        </label>
+      </div>
+
+      <footer>
+        <button
+          type="button"
+          class="btn btn-outline-secondary app-btn"
+          data-close-dialog="correctionDialog"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary app-btn"
+        >
+          <i data-lucide="undo-2"></i>
+          Enregistrer
+        </button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog
+    class="hauqe-dialog"
+    id="resubmitCorrectionDialog"
+  >
+    <form method="dialog" id="resubmitCorrectionForm">
+      <header>
+        <div>
+          <p class="eyebrow">Resoumission</p>
+          <h2>Répondre à la correction</h2>
+        </div>
+
+        <button
+          type="button"
+          class="dialog-close"
+          data-close-dialog="resubmitCorrectionDialog"
+          aria-label="Fermer"
+        >
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body">
+        <label>
+          <span>Réponse <b>*</b></span>
+          <textarea id="resubmitResponse" rows="5" required></textarea>
+        </label>
+
+        <label>
+          <span>Date de resoumission</span>
+          <input id="resubmitDate" type="date">
+        </label>
+      </div>
+
+      <footer>
+        <button
+          type="button"
+          class="btn btn-outline-secondary app-btn"
+          data-close-dialog="resubmitCorrectionDialog"
+        >
+          Annuler
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary app-btn"
+        >
+          <i data-lucide="send"></i>
+          Resoumettre
+        </button>
+      </footer>
+    </form>
+  </dialog>
+</div>

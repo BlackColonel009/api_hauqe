@@ -18,6 +18,19 @@ async def list_verifications(statut:str|None=Query(None),avis:str|None=Query(Non
     return await VerificationService.list(db,statut=statut,avis=avis,priorite=priorite,
         verificateur_id=verificateur_id,limit=limit,offset=offset)
 
+
+@router.get("/filters",response_model=VerificationWorkspaceFiltersResponse)
+async def verification_workspace_filters(db:AsyncSession=Depends(get_db),actor:AuthContext=Depends(require_permission("VERIFICATION.LIRE"))):
+    return await VerificationService.workspace_filters(db)
+
+@router.get("/registry",response_model=VerificationRegistryResponse)
+async def verification_workspace_registry(search:str|None=Query(None,max_length=255),statut:str|None=Query(None,max_length=255),avis:str|None=Query(None,max_length=255),priorite:str|None=Query(None,max_length=255),verificateur_id:UUID|None=Query(None),sort:str=Query("opened",max_length=64),limit:int=Query(25,ge=1,le=100),offset:int=Query(0,ge=0),db:AsyncSession=Depends(get_db),actor:AuthContext=Depends(require_permission("VERIFICATION.LIRE"))):
+    return await VerificationService.workspace_registry(db,search=search,statut=statut,avis=avis,priorite=priorite,verificateur_id=verificateur_id,sort=sort,limit=limit,offset=offset)
+
+@router.get("/eligible-fiches",response_model=VerificationEligibleFichesResponse)
+async def verification_eligible_fiches(search:str|None=Query(None,max_length=255),limit:int=Query(20,ge=1,le=100),offset:int=Query(0,ge=0),db:AsyncSession=Depends(get_db),actor:AuthContext=Depends(require_permission("VERIFICATION.LIRE"))):
+    return await VerificationService.eligible_fiches(db,search=search,limit=limit,offset=offset)
+
 @router.post("/from-fiche/{fiche_id}",response_model=VerificationDossierResponse,status_code=201)
 async def open_from_fiche(fiche_id:UUID,payload:VerificationOpenRequest,request:Request,
     db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.OUVRIR"))):
@@ -26,6 +39,11 @@ async def open_from_fiche(fiche_id:UUID,payload:VerificationOpenRequest,request:
 @router.get("/{dossier_id}",response_model=VerificationDossierResponse)
 async def get_verification(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.LIRE"))):
     return await VerificationService.response(db,await VerificationService.get(db,dossier_id))
+
+
+@router.get("/{dossier_id}/context",response_model=VerificationRegistryItem)
+async def verification_context(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.LIRE"))):
+    return await VerificationService.workspace_item(db,dossier_id)
 
 @router.patch("/{dossier_id}",response_model=VerificationDossierResponse)
 async def update_verification(dossier_id:UUID,payload:VerificationUpdateRequest,request:Request,

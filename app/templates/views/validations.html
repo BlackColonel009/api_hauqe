@@ -1,11 +1,155 @@
 <div class="page-content container-fluid validations-page">
-  <section class="page-heading"><div><p class="eyebrow">Collecte et contrôle</p><h1>Validation des fiches</h1><p>Contrôlez les dossiers soumis, signalez les corrections nécessaires et validez leur intégration au registre.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="validationExport"><i data-lucide="download"></i>Exporter la file</button><button class="btn btn-primary app-btn" id="assignValidation"><i data-lucide="user-plus"></i>Affecter les dossiers</button></div></section>
-  <section class="validation-kpis" id="validationKpis"></section>
-  <section class="validation-workload panel"><div class="workload-title"><span><i data-lucide="users"></i></span><div><strong>Charge des validateurs</strong><small>Répartition des fiches actuellement en attente</small></div></div><div id="validatorWorkload" class="validator-workload"></div></section>
-  <section class="cert-filters validation-filters"><label class="cert-search"><i data-lucide="search"></i><input id="validationSearch" type="search" placeholder="Entreprise, référence, agent ou anomalie…"></label><label><span>État</span><select id="validationStatus"><option value="all">Tous les états</option><option value="pending">À contrôler</option><option value="review">En cours</option><option value="correction">Retournée</option><option value="validated">Validée</option></select></label><label><span>Priorité</span><select id="validationPriority"><option value="all">Toutes</option><option value="high">Haute</option><option value="normal">Normale</option></select></label><label><span>Région</span><select id="validationRegion"><option value="all">Toutes les régions</option></select></label><button class="reset-filter" id="resetValidations"><i data-lucide="rotate-ccw"></i>Réinitialiser</button></section>
-  <section class="panel validation-panel"><div class="cert-list-head"><div><strong id="validationCount"></strong><small>File mise à jour aujourd’hui à 09:15</small></div><div class="queue-tabs"><button class="active" data-queue="all">Toutes</button><button data-queue="mine">Mes validations</button><button data-queue="unassigned">Non affectées</button></div></div><div id="validationResults"></div></section>
-  <div class="validation-overlay" id="validationOverlay" hidden></div><aside class="validation-drawer" id="validationDrawer" aria-hidden="true"><header><div><small id="drawerReference"></small><h2 id="drawerCompany"></h2></div><button id="closeValidation" aria-label="Fermer"><i data-lucide="x"></i></button></header><div class="drawer-content" id="drawerContent"></div><footer><button class="btn btn-outline-danger app-btn" id="returnCollect"><i data-lucide="undo-2"></i>Retourner pour correction</button><button class="btn btn-primary app-btn" id="startControl"><i data-lucide="shield-check"></i>Recevable — démarrer le contrôle</button></footer></aside>
-  <div class="return-modal" id="returnModal" hidden><div><header><h2>Retourner la fiche</h2><button id="closeReturn"><i data-lucide="x"></i></button></header><p>Précisez les corrections attendues avant une nouvelle soumission.</p><label>Motif principal<select id="returnReason"><option>Document manquant ou illisible</option><option>Informations administratives incohérentes</option><option>Certification non vérifiable</option><option>Données de production incomplètes</option><option>Autre motif</option></select></label><label>Instructions à l’agent<textarea id="returnComment" rows="4" placeholder="Décrivez clairement les corrections nécessaires…"></textarea></label><footer><button class="btn btn-outline-secondary app-btn" id="cancelReturn">Annuler</button><button class="btn btn-danger app-btn" id="confirmReturn">Confirmer le retour</button></footer></div></div>
-  <div class="assignment-modal" id="assignmentModal" hidden><form id="assignmentForm"><header><div class="assignment-title"><span><i data-lucide="user-round-check"></i></span><div><p class="eyebrow">Organisation du contrôle</p><h2>Affecter les dossiers</h2><small>Désignez le validateur HAUQE responsable du contrôle.</small></div></div><button type="button" id="closeAssignment" aria-label="Fermer"><i data-lucide="x"></i></button></header><div class="assignment-body"><section><div class="assignment-section-head"><div><strong>Dossiers à affecter</strong><small>Sélectionnez une ou plusieurs fiches recevables.</small></div><b id="assignmentSelectedCount">0 sélectionné</b></div><div class="assignment-files" id="assignmentFiles"></div></section><section><div class="assignment-section-head"><div><strong>Validateur responsable</strong><small>La charge est calculée sur les dossiers déjà affectés.</small></div></div><div class="assignment-validators" id="assignmentValidators"></div></section><div class="assignment-settings"><label>Priorité<select id="assignmentPriority"><option value="normal">Normale</option><option value="high">Haute</option></select></label><label>Date limite<input id="assignmentDeadline" type="date"></label></div><label class="assignment-instruction">Instruction au validateur<textarea id="assignmentInstruction" rows="3" placeholder="Précisez les points d’attention ou l’action attendue…"></textarea></label><label class="assignment-notify"><span><i data-lucide="bell-ring"></i></span><div><strong>Notifier le validateur</strong><small>Notification immédiate dans son espace et par email si ce canal est activé.</small></div><input id="assignmentNotify" type="checkbox" checked></label></div><footer><button type="button" class="btn btn-outline-secondary app-btn" id="cancelAssignment">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="user-check"></i>Confirmer l’affectation</button></footer></form></div>
-  <div class="save-indicator" id="validationToast" hidden><i data-lucide="circle-check"></i><span></span></div>
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Décision hiérarchisée</p>
+      <h1>Validation & corrections</h1>
+      <p>
+        Prononcez la revue de niveau 1 puis la validation définitive
+        de niveau 2 après un contrôle FUCCS finalisé.
+      </p>
+    </div>
+  </section>
+
+  <section
+    class="dashboard-api-state"
+    id="validationApiState"
+    hidden
+  ></section>
+
+  <section
+    class="validation-kpis"
+    id="validationKpis"
+  ></section>
+
+  <section class="cert-filters validation-filters">
+    <label class="cert-search">
+      <i data-lucide="search"></i>
+      <input
+        id="validationSearch"
+        type="search"
+        placeholder="Entreprise, mission, campagne ou zone…"
+      >
+    </label>
+
+    <label>
+      <span>Étape</span>
+      <select id="validationStage" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Décision</span>
+      <select id="validationDecision" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <button
+      class="reset-filter"
+      id="resetValidations"
+      type="button"
+    >
+      <i data-lucide="rotate-ccw"></i>
+      Réinitialiser
+    </button>
+  </section>
+
+  <section class="panel validation-panel">
+    <div class="cert-list-head">
+      <div>
+        <strong id="validationCount">0 dossier</strong>
+        <small id="validationRange">
+          Contrôles FUCCS finalisés
+        </small>
+      </div>
+
+      <div class="queue-tabs">
+        <button class="active" data-stage-tab="">
+          Tous
+        </button>
+        <button data-stage-tab="READY_N1">
+          Niveau 1
+        </button>
+        <button data-stage-tab="READY_N2">
+          Niveau 2
+        </button>
+        <button data-stage-tab="CORRECTION_PENDING">
+          Corrections
+        </button>
+        <button data-stage-tab="COMPLETE">
+          Validés
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table cert-table validation-table">
+        <thead>
+          <tr>
+            <th>Entreprise</th>
+            <th>FUCCS</th>
+            <th>Niveau 1</th>
+            <th>Niveau 2</th>
+            <th>Corrections</th>
+            <th>Étape</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody id="validationRows"></tbody>
+      </table>
+    </div>
+
+    <div
+      class="validation-empty"
+      id="validationEmpty"
+      hidden
+    >
+      <i data-lucide="list-x"></i>
+      <strong>Aucun dossier de validation</strong>
+      <span>
+        Un contrôle FUCCS doit être finalisé avant d’apparaître ici.
+      </span>
+    </div>
+
+    <footer class="companies-footer">
+      <span id="validationPagination"></span>
+
+      <div>
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="validationPrev"
+          type="button"
+        >
+          <i data-lucide="chevron-left"></i>
+          Précédent
+        </button>
+
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="validationNext"
+          type="button"
+        >
+          Suivant
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </footer>
+  </section>
+
+  <section class="validation-doctrine panel">
+    <span>
+      <i data-lucide="shield-check"></i>
+    </span>
+    <div>
+      <strong>Chaîne de décision</strong>
+      <small>
+        FUCCS finalisé → revue N1 → validation N2.
+        Le même utilisateur ne peut pas prononcer les deux niveaux.
+        Une décision favorable N2 ouvre seulement l’étape suivante :
+        l’intégration BNEC.
+      </small>
+    </div>
+  </section>
 </div>

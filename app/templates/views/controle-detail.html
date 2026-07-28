@@ -1,0 +1,147 @@
+<div class="page-content container-fluid fuccs-detail-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/controle">Contrôle FUCCS</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="fuccsBreadcrumb">Dossier</span>
+  </nav>
+
+  <section
+    class="dashboard-api-state"
+    id="fuccsDetailState"
+    hidden
+  ></section>
+
+  <section class="fuccs-detail-header panel">
+    <div class="fuccs-detail-identity">
+      <span>
+        <i data-lucide="clipboard-check"></i>
+      </span>
+
+      <div>
+        <div class="profile-title-line">
+          <h1 id="fuccsDetailTitle">Chargement…</h1>
+
+          <span
+            class="cert-status verify"
+            id="fuccsDetailStatus"
+          >
+            <i></i>—
+          </span>
+        </div>
+
+        <p id="fuccsDetailSubtitle">
+          Contrôle FUCCS
+        </p>
+
+        <div
+          class="profile-refs"
+          id="fuccsDetailRefs"
+        ></div>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <button
+        class="btn btn-outline-secondary app-btn"
+        id="saveAllNotes"
+        type="button"
+        hidden
+      >
+        <i data-lucide="save"></i>
+        Enregistrer les modifications
+      </button>
+
+      <button
+        class="btn btn-primary app-btn"
+        id="finalizeFuccs"
+        type="button"
+        hidden
+      >
+        <i data-lucide="badge-check"></i>
+        Finaliser
+      </button>
+
+      <button
+        class="btn btn-outline-secondary app-btn"
+        id="reopenFuccs"
+        type="button"
+        hidden
+      >
+        <i data-lucide="rotate-ccw"></i>
+        Réouvrir
+      </button>
+    </div>
+  </section>
+
+  <section
+    class="fuccs-score-overview"
+    id="fuccsScoreOverview"
+  ></section>
+
+  <div class="fuccs-workspace">
+    <aside class="panel fuccs-rubric-nav">
+      <div class="panel-heading">
+        <div>
+          <h2>Rubriques</h2>
+          <p id="fuccsGridLabel">Grille publiée</p>
+        </div>
+      </div>
+
+      <div id="fuccsRubricNav"></div>
+    </aside>
+
+    <main>
+      <section class="panel fuccs-criteria-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow" id="fuccsRubricCode">
+              Rubrique
+            </p>
+
+            <h2 id="fuccsRubricTitle">
+              Chargement…
+            </h2>
+
+            <p id="fuccsRubricDescription"></p>
+          </div>
+
+          <div
+            class="fuccs-rubric-score"
+            id="fuccsRubricScore"
+          >
+            0 / 0
+          </div>
+        </div>
+
+        <div id="fuccsCriteriaList"></div>
+      </section>
+
+      <section class="panel mt-4">
+        <div class="panel-heading">
+          <div>
+            <h2>Constats transversaux</h2>
+            <p>
+              Éléments complémentaires qui ne remplacent pas
+              la note des critères.
+            </p>
+          </div>
+
+          <button
+            class="btn btn-outline-secondary app-btn"
+            id="addFuccsFinding"
+            type="button"
+            hidden
+          >
+            <i data-lucide="plus"></i>
+            Ajouter
+          </button>
+        </div>
+
+        <div
+          class="cert-doc-list"
+          id="fuccsFindings"
+        ></div>
+      </section>
+    </main>
+  </div>
+</div>

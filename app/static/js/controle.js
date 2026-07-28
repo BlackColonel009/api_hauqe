@@ -1,18 +1,733 @@
-(function(){"use strict";const $=s=>document.querySelector(s),icons=()=>window.lucide&&lucide.createIcons({attrs:{"stroke-width":1.8}});
-const domains=[
-{title:"Identité et existence légale",icon:"building-2",desc:"Vérification de l’existence juridique et des identifiants officiels.",criteria:[["Raison sociale et forme juridique","Concordance avec les documents officiels."],["RCCM valide et vérifiable","Numéro, date et situation du registre."],["NIF valide et cohérent","Correspondance avec la raison sociale."],["Adresse et site d’activité","Existence et localisation effective du site."]]},
-{title:"Organisation et gouvernance",icon:"users",desc:"Capacité organisationnelle et responsabilités internes.",criteria:[["Organigramme et responsabilités","Fonctions clairement définies."],["Responsable qualité désigné","Mandat et disponibilité vérifiables."],["Procédures documentées","Existence, diffusion et mise à jour."],["Compétences du personnel","Formation adaptée aux fonctions."]]},
-{title:"Production et maîtrise qualité",icon:"factory",desc:"Maîtrise des activités, procédés et contrôles internes.",criteria:[["Processus de production maîtrisé","Étapes et paramètres critiques identifiés."],["Contrôle des matières premières","Critères de réception et fournisseurs."],["Contrôles en cours de production","Enregistrements et mesures disponibles."],["Libération des produits finis","Autorité et preuves de conformité."]]},
-{title:"Certifications et authenticité",icon:"badge-check",desc:"Validité, portée et authenticité des certifications déclarées.",criteria:[["Certificat disponible et lisible","Document complet et non altéré."],["Organisme certificateur reconnu","Reconnaissance ou accréditation vérifiée."],["Portée adaptée aux activités","Produits et sites effectivement couverts."],["Dates et numéro vérifiables","Validité et référence confirmées."]]},
-{title:"Traçabilité et documents",icon:"scan-line",desc:"Capacité à retracer les produits et conserver les preuves.",criteria:[["Identification des lots","Codification unique et appliquée."],["Traçabilité amont","Origine des matières et fournisseurs."],["Traçabilité aval","Clients et destinations identifiables."],["Archivage des enregistrements","Durée, intégrité et accessibilité."]]},
-{title:"Hygiène, sécurité et environnement",icon:"shield-check",desc:"Conditions sanitaires, sécurité du personnel et environnement.",criteria:[["Hygiène des locaux","Propreté, zonage et entretien."],["Hygiène du personnel","Tenues, pratiques et dispositifs."],["Sécurité au travail","Risques identifiés et mesures appliquées."],["Gestion des déchets","Tri, stockage et élimination maîtrisés."]]},
-{title:"Risques et amélioration",icon:"trending-up",desc:"Traitement des écarts, réclamations et amélioration continue.",criteria:[["Analyse des risques","Méthode et actualisation documentées."],["Gestion des non-conformités","Identification, isolement et décision."],["Réclamations et rappels","Procédures et tests disponibles."],["Actions correctives et suivi","Causes, responsables et efficacité."]]}
-];
-const scores=Array(28).fill(null);let active=0,findings=[];
-function startIndex(d){return d*4}function domainStats(d){const a=scores.slice(startIndex(d),startIndex(d)+4);return {answered:a.filter(x=>x!==null).length,score:a.reduce((s,x)=>s+(x||0),0)}}
-function renderNav(){$("#controlDomains").innerHTML=domains.map((d,i)=>{const s=domainStats(i);return `<button class="domain-button ${i===active?"active":""} ${s.answered===4?"complete":""}" data-domain="${i}"><span><i data-lucide="${d.icon}"></i></span><div><strong>${d.title}</strong><small>${s.answered}/4 critères</small></div><b>${s.score}/8</b></button>`}).join("");document.querySelectorAll(".domain-button").forEach(b=>b.onclick=()=>{active=+b.dataset.domain;renderDomain()})}
-function renderDomain(){const d=domains[active],s=domainStats(active);$("#domainNumber").textContent=`Domaine ${active+1} sur 7`;$("#domainTitle").textContent=d.title;$("#domainDescription").textContent=d.desc;$("#domainIcon").innerHTML=`<i data-lucide="${d.icon}"></i>`;$("#domainScore").textContent=`${s.score} / 8`;$("#criteriaList").innerHTML=d.criteria.map((c,i)=>{const n=startIndex(active)+i,v=scores[n];return `<article class="criterion" data-index="${n}"><span class="criterion-number">${n+1}</span><div class="criterion-copy"><strong>${c[0]}</strong><small>${c[1]}</small></div><div class="criterion-actions">${[0,1,2].map(x=>`<button class="score-choice ${v===x?"selected":""}" data-score="${x}" title="${["Non conforme","Partiel","Conforme"][x]}">${x}</button>`).join("")}<button class="comment-toggle" title="Ajouter un commentaire"><i data-lucide="message-square-plus"></i></button></div><div class="criterion-comment"><textarea rows="2" placeholder="Observation ou preuve associée au critère…"></textarea></div></article>`}).join("");$("#previousDomain").hidden=active===0;$("#nextDomain").hidden=active===6;$("#domainFooterProgress").textContent=`${s.answered} critère(s) renseigné(s) sur 4`;document.querySelectorAll(".score-choice").forEach(b=>b.onclick=()=>{scores[+b.closest(".criterion").dataset.index]=+b.dataset.score;update()});document.querySelectorAll(".comment-toggle").forEach(b=>b.onclick=()=>b.closest(".criterion").classList.toggle("has-comment"));renderNav();summary();icons()}
-function summary(){const answered=scores.filter(x=>x!==null).length,total=scores.reduce((s,x)=>s+(x||0),0),pct=Math.round(total/56*100),completed=domains.filter((d,i)=>domainStats(i).answered===4).length;$("#controlScore").textContent=total;$("#scorePercent").textContent=`${pct} %`;$("#scoreLevel").textContent=answered<28?"Évaluation en cours":pct>=80?"Conformité élevée":pct>=60?"Conformité modérée":"Conformité insuffisante";$("#scoreRing").style.setProperty("--score",pct);$("#answeredCount").textContent=`${answered} / 28`;$("#remainingCount").textContent=`${28-answered} à renseigner`;$("#nonConformityCount").textContent=scores.filter(x=>x===0).length;$("#warningCount").textContent=scores.filter(x=>x===1).length;$("#domainProgress").textContent=`${completed} sur 7 terminés`}
-function update(){renderDomain();$("#controlSaveLabel").textContent="Modifications non enregistrées"}function toast(m,error=false){$("#controlToast span").textContent=m;$("#controlToast").style.background=error?"#9e3935":"";$("#controlToast").hidden=false;setTimeout(()=>$("#controlToast").hidden=true,1800)}
-function renderFindings(){$("#findingList").innerHTML=findings.length?findings.map((f,i)=>`<div class="finding-row"><select data-field="level" data-index="${i}"><option>Point de vigilance</option><option>Non-conformité mineure</option><option>Non-conformité majeure</option><option>Bonne pratique</option></select><input data-field="text" data-index="${i}" placeholder="Décrivez le constat…" value="${f.text}"><button data-remove="${i}"><i data-lucide="trash-2"></i></button></div>`).join(""):`<div class="finding-empty"><i data-lucide="clipboard-check"></i><strong>Aucun constat transversal ajouté</strong><span>Les commentaires propres aux critères restent enregistrés dans la grille.</span></div>`;document.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{findings.splice(+b.dataset.remove,1);renderFindings()});document.querySelectorAll("[data-field]").forEach(x=>x.oninput=()=>findings[+x.dataset.index][x.dataset.field]=x.value);icons()}
-$("#previousDomain").onclick=()=>{active--;renderDomain()};$("#nextDomain").onclick=()=>{active++;renderDomain()};$("#addFinding").onclick=()=>{findings.push({level:"Point de vigilance",text:""});renderFindings()};$("#saveControl").onclick=()=>{localStorage.setItem("hauqe-control-draft",JSON.stringify({scores,findings}));$("#controlSaveLabel").textContent="Enregistré à l’instant";toast("Brouillon du contrôle enregistré")};$("#finishControl").onclick=()=>{const answered=scores.filter(x=>x!==null).length,total=scores.reduce((s,x)=>s+(x||0),0);$("#modalScore").textContent=`${total} / 56`;$("#modalLevel").textContent=answered===28?"Grille complète":"Évaluation incomplète";$("#modalCompletion").textContent=`${answered} critères évalués sur 28`;$("#decisionModal").hidden=false;icons()};$("#closeDecision").onclick=$("#cancelDecision").onclick=()=>$("#decisionModal").hidden=true;$("#confirmDecision").onclick=()=>{if(scores.some(x=>x===null))return toast("Les 28 critères doivent être évalués",true);if(!$("#controlDecision").value||!$("#decisionConfirm").checked)return toast("Sélectionnez et confirmez la décision",true);$("#decisionModal").hidden=true;toast("Décision HAUQE enregistrée");setTimeout(()=>location.hash="#/validations",900)};renderDomain();renderFindings();summary();})();
+(function () {
+  "use strict";
+
+  const $ = (selector) => document.querySelector(selector);
+  const PAGE_SIZE = 25;
+
+  let apiGet;
+  let apiPost;
+  let currentUser = null;
+  let activeGrid = null;
+  let offset = 0;
+  let total = 0;
+  let timer = null;
+
+  const filters = {
+    search: "",
+    statut: "",
+    sort: "started",
+  };
+
+  function icon(name) {
+    return `<i data-lucide="${name}"></i>`;
+  }
+
+  function refreshIcons() {
+    if (window.lucide) {
+      window.lucide.createIcons({
+        attrs: { "stroke-width": 1.8 },
+      });
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function hasPermission(code) {
+    return Array.isArray(currentUser?.permissions)
+      && currentUser.permissions.includes(code);
+  }
+
+  function formatDate(value) {
+    if (!value) return "—";
+
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return String(value);
+
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
+
+  function statusClass(value) {
+    const status = String(value || "").toUpperCase();
+
+    if (status === "FINALISE") return "valid";
+    if (status === "BROUILLON") return "watch";
+
+    return "verify";
+  }
+
+  function showState(message, { error = false } = {}) {
+    const node = $("#fuccsApiState");
+
+    node.hidden = false;
+    node.className =
+      `dashboard-api-state ${error ? "error" : ""}`.trim();
+
+    node.innerHTML = `
+      ${icon(error ? "triangle-alert" : "info")}
+      <div>
+        <strong>
+          ${error ? "Impossible de charger le contrôle FUCCS" : "Information"}
+        </strong>
+        <span>${escapeHtml(message)}</span>
+      </div>
+    `;
+
+    refreshIcons();
+  }
+
+  function hideState() {
+    $("#fuccsApiState").hidden = true;
+  }
+
+  function fillSelect(node, label, values) {
+    node.innerHTML =
+      `<option value="">${escapeHtml(label)}</option>`
+      + (values || []).map((value) => `
+        <option value="${escapeHtml(value)}">
+          ${escapeHtml(value)}
+        </option>
+      `).join("");
+
+    node.disabled = false;
+  }
+
+  function renderGridBanner() {
+    const container = $("#fuccsGridBanner");
+
+    if (!activeGrid) {
+      container.className =
+        "fuccs-grid-banner unavailable";
+
+      container.innerHTML = `
+        <span>${icon("shield-alert")}</span>
+        <div>
+          <strong>Aucune grille FUCCS publiée active</strong>
+          <small>
+            Un contrôle ne peut pas démarrer tant qu’une grille publiée
+            n’est pas disponible.
+          </small>
+        </div>
+      `;
+
+      refreshIcons();
+      return;
+    }
+
+    container.className = "fuccs-grid-banner";
+
+    container.innerHTML = `
+      <span>${icon("layout-list")}</span>
+
+      <div>
+        <strong>
+          ${escapeHtml(
+            activeGrid.label
+            || activeGrid.code
+            || "Grille FUCCS"
+          )}
+        </strong>
+
+        <small>
+          Version ${escapeHtml(activeGrid.version || "—")}
+          · ${escapeHtml(activeGrid.rubrics_count)} rubrique(s)
+          · ${escapeHtml(activeGrid.criteria_count)} critère(s)
+          · score maximal ${escapeHtml(activeGrid.maximum_score)}
+          · effet ${escapeHtml(formatDate(activeGrid.effective_date))}
+        </small>
+      </div>
+
+      <span class="fuccs-published-badge">
+        ${icon("badge-check")}
+        Publiée
+      </span>
+    `;
+
+    refreshIcons();
+  }
+
+  function renderKpis(summary) {
+    const cards = [
+      [
+        "blue",
+        "clipboard-list",
+        "Contrôles",
+        summary?.total ?? 0,
+        "Périmètre filtré",
+      ],
+      [
+        "orange",
+        "file-pen-line",
+        "Brouillons",
+        summary?.drafts ?? 0,
+        "En cours de notation",
+      ],
+      [
+        "green",
+        "badge-check",
+        "Finalisés",
+        summary?.finalized ?? 0,
+        "Contrôles verrouillés",
+      ],
+      [
+        "purple",
+        "list-checks",
+        "Grille complète",
+        summary?.complete_notes ?? 0,
+        "Tous les critères notés",
+      ],
+      [
+        "gray",
+        "circle-dashed",
+        "Incomplets",
+        summary?.incomplete_notes ?? 0,
+        "Critères restant à noter",
+      ],
+    ];
+
+    $("#fuccsKpis").innerHTML = cards.map(
+      ([tone, iconName, label, value, detail]) => `
+        <article class="cert-kpi ${tone}">
+          <span>${icon(iconName)}</span>
+          <div>
+            <small>${escapeHtml(label)}</small>
+            <strong>${escapeHtml(value)}</strong>
+            <em>${escapeHtml(detail)}</em>
+          </div>
+        </article>
+      `
+    ).join("");
+
+    refreshIcons();
+  }
+
+  function renderRows(payload) {
+    total = Number(payload?.total || 0);
+    const items = Array.isArray(payload?.items)
+      ? payload.items
+      : [];
+
+    renderKpis(payload?.summary || {});
+
+    $("#fuccsCount").textContent =
+      `${total} contrôle${total > 1 ? "s" : ""}`;
+
+    const start = total ? offset + 1 : 0;
+    const end = Math.min(offset + items.length, total);
+
+    $("#fuccsRange").textContent = total
+      ? `${start}–${end} sur ${total}`
+      : "Aucun contrôle";
+
+    $("#fuccsPagination").textContent = total
+      ? `Affichage ${start} à ${end}`
+      : "0 résultat";
+
+    $("#fuccsPrev").disabled = offset <= 0;
+    $("#fuccsNext").disabled =
+      offset + PAGE_SIZE >= total;
+
+    const tbody = $("#fuccsRows");
+    const empty = $("#fuccsEmpty");
+
+    if (!items.length) {
+      tbody.innerHTML = "";
+      empty.hidden = false;
+      refreshIcons();
+      return;
+    }
+
+    empty.hidden = true;
+
+    tbody.innerHTML = items.map((item) => {
+      const criteria = Number(item.criteria_count || 0);
+      const notes = Number(item.notes_count || 0);
+
+      const progress = criteria > 0
+        ? Math.min(
+            100,
+            Math.round((notes / criteria) * 100)
+          )
+        : 0;
+
+      return `
+        <tr
+          data-control-id="${escapeHtml(item.control_id)}"
+          tabindex="0"
+        >
+          <td>
+            <div class="cert-stack">
+              <strong>
+                ${escapeHtml(item.controller_name || "Contrôleur")}
+              </strong>
+              <small>
+                Début ${escapeHtml(formatDate(item.started_on))}
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <div class="cert-stack">
+              <strong>
+                ${escapeHtml(item.entreprise_name || "Entreprise non liée")}
+              </strong>
+              <small>
+                ${escapeHtml(item.entreprise_identifiant || "—")}
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <div class="cert-stack">
+              <strong>
+                ${escapeHtml(item.verification_opinion || "—")}
+              </strong>
+              <small>
+                Risque ${escapeHtml(item.verification_risk || "—")}
+                · ${escapeHtml(item.mission_code || "Mission")}
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <div class="cert-stack">
+              <strong>
+                ${escapeHtml(item.grid_code || item.grid_label || "FUCCS")}
+              </strong>
+              <small>
+                v${escapeHtml(item.grid_version || "—")}
+                · ${escapeHtml(criteria)} critère(s)
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <div class="fuccs-progress-cell">
+              <div>
+                <span style="width:${progress}%"></span>
+              </div>
+              <small>
+                ${escapeHtml(notes)} / ${escapeHtml(criteria)}
+                · ${progress} %
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <div class="cert-stack">
+              <strong>
+                ${escapeHtml(item.raw_score ?? "0")}
+                /
+                ${escapeHtml(item.maximum_score ?? "0")}
+              </strong>
+              <small>
+                ${escapeHtml(item.rate || "0.00")} %
+              </small>
+            </div>
+          </td>
+
+          <td>
+            <span
+              class="cert-status ${statusClass(item.control_status)}"
+            >
+              <i></i>
+              ${escapeHtml(item.control_status || "Non renseigné")}
+            </span>
+          </td>
+
+          <td>
+            <button
+              class="more-button"
+              type="button"
+              aria-label="Ouvrir"
+            >
+              ${icon("chevron-right")}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    tbody
+      .querySelectorAll("[data-control-id]")
+      .forEach((row) => {
+        const open = () => {
+          location.hash =
+            `#/controle/${row.dataset.controlId}`;
+        };
+
+        row.addEventListener("click", open);
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") open();
+        });
+      });
+
+    refreshIcons();
+  }
+
+  function renderEligible(payload) {
+    const container = $("#fuccsEligible");
+    const items = Array.isArray(payload?.items)
+      ? payload.items
+      : [];
+
+    if (!items.length) {
+      container.innerHTML = `
+        <div class="priority-empty">
+          Aucun dossier de vérification admissible au FUCCS.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = items.map((item) => `
+      <article class="cert-doc-row fuccs-eligible-row">
+        <span>${icon("folder-check")}</span>
+
+        <div>
+          <strong>
+            ${escapeHtml(
+              item.entreprise_name || "Entreprise non renseignée"
+            )}
+          </strong>
+
+          <small>
+            ${escapeHtml(item.mission_code || "Mission")}
+            · ${escapeHtml(item.campaign_code || "—")}
+            · ${escapeHtml(item.zone_name || "—")}
+            · avis ${escapeHtml(item.verification_opinion || "—")}
+            · risque ${escapeHtml(item.verification_risk || "—")}
+            · clôturée ${escapeHtml(formatDate(item.verification_closed_on))}
+          </small>
+        </div>
+
+        <div class="fuccs-existing-control">
+          ${
+            item.controls_count
+              ? `
+                <strong>
+                  ${escapeHtml(item.controls_count)}
+                  contrôle(s)
+                </strong>
+                <small>
+                  Dernier : ${escapeHtml(item.latest_control_status || "—")}
+                </small>
+              `
+              : `
+                <strong>Aucun contrôle</strong>
+                <small>Dossier prêt</small>
+              `
+          }
+        </div>
+
+        ${
+          item.latest_control_id
+            ? `
+              <a
+                href="#/controle/${escapeHtml(item.latest_control_id)}"
+                class="btn btn-outline-secondary app-btn"
+              >
+                ${icon("eye")}
+                Voir le dernier
+              </a>
+            `
+            : ""
+        }
+
+        ${
+          hasPermission("FUCCS.CONTROLER")
+          && activeGrid
+            ? `
+              <button
+                class="btn btn-primary app-btn"
+                type="button"
+                data-start-fuccs="${escapeHtml(item.dossier_id)}"
+              >
+                ${icon("play")}
+                Démarrer
+              </button>
+            `
+            : ""
+        }
+      </article>
+    `).join("");
+
+    container
+      .querySelectorAll("[data-start-fuccs]")
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          (event) => startControl(
+            event,
+            button.dataset.startFuccs
+          )
+        );
+      });
+
+    refreshIcons();
+  }
+
+  function queryString() {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(offset));
+
+    return params.toString();
+  }
+
+  async function loadFilters() {
+    const payload = await apiGet(
+      "/api/v1/fuccs/workspace/filters"
+    );
+
+    activeGrid = payload.active_grid || null;
+
+    fillSelect(
+      $("#fuccsStatus"),
+      "Tous les statuts",
+      payload.statuses
+    );
+
+    renderGridBanner();
+  }
+
+  async function loadRegistry({
+    button = null,
+    message = "Chargement des contrôles",
+  } = {}) {
+    hideState();
+
+    const task = async () => {
+      const payload = await apiGet(
+        `/api/v1/fuccs/workspace/registry?${queryString()}`
+      );
+
+      renderRows(payload);
+    };
+
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button,
+          title: "Contrôle FUCCS",
+          message,
+          detail: "Lecture des contrôles et scores enregistrés.",
+          minVisibleMs: 300,
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(
+        error?.message || "Erreur de chargement.",
+        { error: true }
+      );
+    }
+  }
+
+  async function loadEligible() {
+    try {
+      const params = new URLSearchParams({
+        limit: "20",
+        offset: "0",
+      });
+
+      if (filters.search) {
+        params.set("search", filters.search);
+      }
+
+      const payload = await apiGet(
+        `/api/v1/fuccs/workspace/eligible-verifications?${params}`
+      );
+
+      renderEligible(payload);
+    } catch (error) {
+      $("#fuccsEligible").innerHTML = `
+        <div class="priority-empty">
+          ${escapeHtml(
+            error?.message
+            || "Impossible de charger les dossiers admissibles."
+          )}
+        </div>
+      `;
+    }
+  }
+
+  async function startControl(event, dossierId) {
+    if (!activeGrid) {
+      showState(
+        "Aucune grille FUCCS publiée active.",
+        { error: true }
+      );
+      return;
+    }
+
+    const task = async () => {
+      const control = await apiPost(
+        `/api/v1/verifications/${dossierId}/fuccs-controles`,
+        {
+          grille_fuccs_id: activeGrid.id,
+        }
+      );
+
+      location.hash =
+        `#/controle/${control.id}`;
+    };
+
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: event.currentTarget,
+          title: "Nouveau contrôle FUCCS",
+          message: "Initialisation du contrôle",
+          detail: "La grille publiée active est figée sur ce contrôle.",
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(
+        error?.message || "Création impossible.",
+        { error: true }
+      );
+    }
+  }
+
+  function bind() {
+    $("#fuccsSearch").addEventListener(
+      "input",
+      (event) => {
+        clearTimeout(timer);
+
+        timer = setTimeout(async () => {
+          filters.search = event.target.value.trim();
+          offset = 0;
+
+          await Promise.all([
+            loadRegistry({
+              message: "Recherche des contrôles",
+            }),
+            loadEligible(),
+          ]);
+        }, 350);
+      }
+    );
+
+    $("#fuccsStatus").addEventListener(
+      "change",
+      async (event) => {
+        filters.statut = event.target.value;
+        offset = 0;
+
+        await loadRegistry({
+          message: "Filtrage par statut",
+        });
+      }
+    );
+
+    $("#fuccsSort").addEventListener(
+      "change",
+      async (event) => {
+        filters.sort = event.target.value;
+        offset = 0;
+
+        await loadRegistry({
+          message: "Application du tri",
+        });
+      }
+    );
+
+    $("#resetFuccs").addEventListener(
+      "click",
+      async (event) => {
+        Object.assign(filters, {
+          search: "",
+          statut: "",
+          sort: "started",
+        });
+
+        offset = 0;
+
+        $("#fuccsSearch").value = "";
+        $("#fuccsStatus").value = "";
+        $("#fuccsSort").value = "started";
+
+        await Promise.all([
+          loadRegistry({
+            button: event.currentTarget,
+            message: "Réinitialisation",
+          }),
+          loadEligible(),
+        ]);
+      }
+    );
+
+    $("#fuccsPrev").addEventListener(
+      "click",
+      async (event) => {
+        offset = Math.max(0, offset - PAGE_SIZE);
+
+        await loadRegistry({
+          button: event.currentTarget,
+          message: "Page précédente",
+        });
+      }
+    );
+
+    $("#fuccsNext").addEventListener(
+      "click",
+      async (event) => {
+        offset += PAGE_SIZE;
+
+        await loadRegistry({
+          button: event.currentTarget,
+          message: "Page suivante",
+        });
+      }
+    );
+  }
+
+  async function bootstrap() {
+    const api = await import("/static/js/core/api.js");
+
+    apiGet = api.apiGet;
+    apiPost = api.apiPost;
+
+    bind();
+
+    try {
+      currentUser = await apiGet("/api/v1/me");
+
+      await loadFilters();
+
+      await Promise.all([
+        loadRegistry(),
+        loadEligible(),
+      ]);
+    } catch (error) {
+      showState(
+        error?.message || "Erreur de chargement.",
+        { error: true }
+      );
+    }
+
+    refreshIcons();
+  }
+
+  bootstrap();
+})();

@@ -57,6 +57,82 @@ class VerificationDossierListResponse(BaseModel):
     offset: int
     items: list[VerificationDossierResponse] = Field(default_factory=list)
 
+
+class VerificationOption(BaseModel):
+    id: UUID
+    label: str
+    code: str | None = None
+
+class VerificationWorkspaceFiltersResponse(BaseModel):
+    statuses: list[str] = Field(default_factory=list)
+    opinions: list[str] = Field(default_factory=list)
+    priorities: list[str] = Field(default_factory=list)
+    verifiers: list[VerificationOption] = Field(default_factory=list)
+
+class VerificationRegistryItem(BaseModel):
+    dossier_id: UUID
+    fiche_collecte_id: UUID
+    dossier_status: str | None = None
+    opinion: str | None = None
+    priority: str | None = None
+    risk_level: str | None = None
+    opened_on: date | None = None
+    closed_on: date | None = None
+    mission_id: UUID
+    mission_code: str | None = None
+    campaign_code: str | None = None
+    campaign_name: str | None = None
+    zone_name: str | None = None
+    entreprise_id: UUID | None = None
+    entreprise_name: str | None = None
+    entreprise_identifiant: str | None = None
+    fiche_status: str | None = None
+    fiche_revision: int | None = None
+    completeness: float | None = None
+    submitted_at: datetime | None = None
+    points_count: int = 0
+    anomalies_count: int = 0
+    unresolved_anomalies_count: int = 0
+    confirmations_pending_count: int = 0
+    assignments_count: int = 0
+    assigned_names: str | None = None
+    documents_count: int = 0
+
+class VerificationRegistrySummary(BaseModel):
+    total: int = 0
+    open: int = 0
+    finished: int = 0
+    unassigned: int = 0
+    with_unresolved_anomalies: int = 0
+    with_pending_confirmations: int = 0
+
+class VerificationRegistryResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    summary: VerificationRegistrySummary
+    items: list[VerificationRegistryItem] = Field(default_factory=list)
+
+class VerificationEligibleFicheItem(BaseModel):
+    fiche_id: UUID
+    mission_id: UUID
+    mission_code: str | None = None
+    campaign_code: str | None = None
+    campaign_name: str | None = None
+    zone_name: str | None = None
+    entreprise_id: UUID | None = None
+    entreprise_name: str | None = None
+    entreprise_identifiant: str | None = None
+    fiche_revision: int | None = None
+    completeness: float | None = None
+    submitted_at: datetime | None = None
+
+class VerificationEligibleFichesResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[VerificationEligibleFicheItem] = Field(default_factory=list)
+
 class VerificationAssignmentCreateRequest(BaseModel):
     verificateur_id: UUID
     date_debut: date | None = None

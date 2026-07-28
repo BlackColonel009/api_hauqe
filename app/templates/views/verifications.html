@@ -1,0 +1,20 @@
+<div class="page-content container-fluid certifications-page">
+  <section class="page-heading"><div><p class="eyebrow">Contrôle après collecte</p><h1>Vérification documentaire</h1><p>Ouvrez les fiches soumises, affectez les vérificateurs, contrôlez les preuves et prononcez un avis avant le FUCCS.</p></div></section>
+  <section class="dashboard-api-state" id="verificationApiState" hidden></section>
+  <section class="cert-kpis" id="verificationKpis"></section>
+  <section class="cert-filters">
+    <label class="cert-search"><i data-lucide="search"></i><input id="verificationSearch" type="search" placeholder="Entreprise, mission, campagne, zone…"></label>
+    <label><span>Statut</span><select id="verificationStatus" disabled><option>Chargement…</option></select></label>
+    <label><span>Avis</span><select id="verificationOpinion" disabled><option>Chargement…</option></select></label>
+    <label><span>Priorité</span><select id="verificationPriority" disabled><option>Chargement…</option></select></label>
+    <label><span>Vérificateur</span><select id="verificationVerifier" disabled><option>Chargement…</option></select></label>
+    <button class="reset-filter" id="resetVerifications" type="button"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+  </section>
+  <section class="panel certifications-panel">
+    <div class="cert-list-head"><div><strong id="verificationCount">0 dossier</strong><small id="verificationRange">Dossiers de vérification</small></div><select id="verificationSort"><option value="opened">Ouverture récente</option><option value="recent">Création récente</option><option value="priority">Priorité</option><option value="company">Entreprise A–Z</option><option value="status">Statut A–Z</option></select></div>
+    <div class="table-responsive"><table class="table cert-table"><thead><tr><th>Dossier</th><th>Entreprise</th><th>Mission</th><th>Vérificateur(s)</th><th>Contrôles</th><th>Alertes</th><th>Statut</th><th></th></tr></thead><tbody id="verificationRows"></tbody></table></div>
+    <div class="cert-empty" id="verificationEmpty" hidden><i data-lucide="search-x"></i><strong>Aucun dossier trouvé</strong><span>Les fiches soumises à ouvrir sont affichées ci-dessous.</span></div>
+    <footer class="companies-footer"><span id="verificationPagination"></span><div><button class="btn btn-outline-secondary app-btn" id="verificationPrev" type="button">Précédent</button><button class="btn btn-outline-secondary app-btn" id="verificationNext" type="button">Suivant</button></div></footer>
+  </section>
+  <section class="panel mt-4"><div class="panel-heading"><div><h2>Fiches soumises en attente d’ouverture</h2><p>Une fiche SOUMISE peut devenir un dossier de vérification. L’ouverture ne vaut pas validation définitive.</p></div></div><div class="cert-doc-list" id="eligibleVerificationFiches"></div></section>
+</div>

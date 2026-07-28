@@ -76,8 +76,14 @@ async def frontend_view(
         "collectes": "views/collectes.html",
         "collecte-form": "views/collecte-form.html",
 
+        "verifications": "views/verifications.html",
+        "verification-detail": "views/verification-detail.html",
+        
         "validations": "views/validations.html",
+        
         "controle": "views/controle.html",
+        "controle-detail": "views/controle-detail.html",
+        
         "scoring": "views/scoring.html",
 
         "rapports": "views/rapports.html",

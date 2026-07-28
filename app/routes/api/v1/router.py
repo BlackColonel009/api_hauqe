@@ -83,6 +83,9 @@ from app.routes.api.v1.fiches_collecte import (
 # ============================================================
 
 from app.routes.api.v1.verifications import router as verifications_router
+from app.routes.api.v1.fuccs_workspace import (
+    router as fuccs_workspace_router,
+)
 from app.routes.api.v1.fuccs import (
     router as fuccs_router,
     verification_fuccs_router,
@@ -265,6 +268,10 @@ api_router.include_router(
 
 api_router.include_router(
     verifications_router
+)
+
+api_router.include_router(
+    fuccs_workspace_router
 )
 
 api_router.include_router(

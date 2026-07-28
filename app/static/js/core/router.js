@@ -18,6 +18,7 @@ const routes = Object.freeze({
   "collecte-form": { view: "/views/collecte-form", script: "/static/js/collecte-form.js", title: "Fiche de collecte" },
   validations: { view: "/views/validations", script: "/static/js/validations.js", title: "Validation des collectes" },
   controle: { view: "/views/controle", script: "/static/js/controle.js", title: "Grille de contrôle" },
+  "controle-detail": { view: "/views/controle-detail", script: "/static/js/controle-detail.js", title: "Contrôle FUCCS" },
   scoring: { view: "/views/scoring", script: "/static/js/scoring.js", title: "Scoring et conformité" },
   rapports: { view: "/views/rapports", script: "/static/js/rapports.js", title: "Rapports et exports" },
   utilisateurs: { view: "/views/utilisateurs", script: "/static/js/utilisateurs.js", title: "Gestion des utilisateurs" },
@@ -27,7 +28,8 @@ const routes = Object.freeze({
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },
   "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js", title: "Mot de passe oublié" },
   profil: { view: "/views/profil", script: "/static/js/profil.js", title: "Mon profil" },
-  verifications: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Vérification documentaire" },
+  verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
+  "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
   integrations: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Intégration BNEC" },
   infc: { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "INFC" },
   "classement-sncc": { view: "/views/governance-module", script: "/static/js/governance-modules.js", title: "Classement SNCC" },
@@ -52,7 +54,7 @@ let currentRoute = null;
 
 function routeName() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
-  const name = parts[0] === "entreprises" && ["nouveau", "modifier"].includes(parts[1]) ? "entreprise-form" : parts[0] === "entreprises" && parts[1] ? "entreprise-detail" : parts[0] === "certifications" && ["nouveau", "modifier"].includes(parts[1]) ? "certification-form" : parts[0] === "certifications" && parts[1] ? "certification-detail" : parts[0] === "organismes" && ["nouveau", "modifier"].includes(parts[1]) ? "organisme-form" : parts[0] === "organismes" && parts[1] ? "organisme-detail" : parts[0] === "collectes" && ["nouveau", "modifier"].includes(parts[1]) ? "collecte-form" : parts[0] === "tableaux-de-bord" && parts[1] ? `tableau-${parts[1]}` : parts[0];
+  const name = parts[0] === "entreprises" && ["nouveau", "modifier"].includes(parts[1]) ? "entreprise-form" : parts[0] === "entreprises" && parts[1] ? "entreprise-detail" : parts[0] === "certifications" && ["nouveau", "modifier"].includes(parts[1]) ? "certification-form" : parts[0] === "certifications" && parts[1] ? "certification-detail" : parts[0] === "organismes" && ["nouveau", "modifier"].includes(parts[1]) ? "organisme-form" : parts[0] === "organismes" && parts[1] ? "organisme-detail" : parts[0] === "collectes" && ["nouveau", "modifier"].includes(parts[1]) ? "collecte-form" : parts[0] === "verifications" && parts[1] ? "verification-detail" : parts[0] === "controle" && parts[1] ? "controle-detail" : parts[0] === "tableaux-de-bord" && parts[1] ? `tableau-${parts[1]}` : parts[0];
   return routes[name] ? name : APP_CONFIG.defaultRoute;
 }
 

@@ -44,6 +44,39 @@ def confirmation_response(x):
         resultat=x.resultat,document_id=x.document_id,statut=x.statut,created_at=x.created_at,updated_at=x.updated_at)
 
 class VerificationService:
+
+    @staticmethod
+    def workspace_item_response(row):
+        x=row[0]
+        return VerificationRegistryItem(
+            dossier_id=x.id,fiche_collecte_id=x.fiche_collecte_id,dossier_status=x.statut,opinion=x.avis,priority=x.priorite,risk_level=x.niveau_risque,opened_on=x.date_ouverture,closed_on=x.date_fin,
+            mission_id=row.mission_id,mission_code=row.mission_code,campaign_code=row.campaign_code,campaign_name=row.campaign_name,zone_name=row.zone_name,
+            entreprise_id=row.entreprise_id,entreprise_name=row.entreprise_name or row.entreprise_trade_name,entreprise_identifiant=row.entreprise_identifiant,
+            fiche_status=row.fiche_status,fiche_revision=row.fiche_revision,completeness=float(row.completeness) if row.completeness is not None else None,submitted_at=row.submitted_at,
+            points_count=int(row.points_count or 0),anomalies_count=int(row.anomalies_count or 0),unresolved_anomalies_count=int(row.unresolved_anomalies_count or 0),confirmations_pending_count=int(row.confirmations_pending_count or 0),assignments_count=int(row.assignments_count or 0),assigned_names=row.assigned_names,documents_count=int(row.documents_count or 0))
+
+    @staticmethod
+    async def workspace_filters(db):
+        return VerificationWorkspaceFiltersResponse(**(await VerificationRepository.workspace_filters(db)))
+
+    @staticmethod
+    async def workspace_registry(db, **kw):
+        rows,total=await VerificationRepository.workspace_registry(db,**kw)
+        summary=await VerificationRepository.workspace_summary(db,search=kw['search'],statut=kw['statut'],avis=kw['avis'],priorite=kw['priorite'],verificateur_id=kw['verificateur_id'])
+        return VerificationRegistryResponse(total=total,limit=kw['limit'],offset=kw['offset'],summary=VerificationRegistrySummary(**summary),items=[VerificationService.workspace_item_response(r) for r in rows])
+
+    @staticmethod
+    async def workspace_item(db,dossier_id):
+        row=await VerificationRepository.workspace_item(db,dossier_id)
+        if row is None: raise HTTPException(404,"Dossier de vérification introuvable.")
+        return VerificationService.workspace_item_response(row)
+
+    @staticmethod
+    async def eligible_fiches(db, *,search,limit,offset):
+        rows,total=await VerificationRepository.eligible_fiches(db,search=search,limit=limit,offset=offset)
+        items=[VerificationEligibleFicheItem(fiche_id=r.fiche_id,mission_id=r.mission_id,mission_code=r.mission_code,campaign_code=r.campaign_code,campaign_name=r.campaign_name,zone_name=r.zone_name,entreprise_id=r.entreprise_id,entreprise_name=r.entreprise_name or r.entreprise_trade_name,entreprise_identifiant=r.entreprise_identifiant,fiche_revision=r.fiche_revision,completeness=float(r.completeness) if r.completeness is not None else None,submitted_at=r.submitted_at) for r in rows]
+        return VerificationEligibleFichesResponse(total=total,limit=limit,offset=offset,items=items)
+
     @staticmethod
     async def get(db, dossier_id):
         x = await VerificationRepository.get_dossier(db, dossier_id)
