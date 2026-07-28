@@ -1,22 +1,140 @@
 <div class="page-content container-fluid collectes-page">
   <section class="page-heading">
-    <div><p class="eyebrow">Collecte et contrôle</p><h1>Missions de collecte</h1><p>Planifiez les missions, suivez la saisie des fiches et préparez leur validation par la HAUQE.</p></div>
-    <div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="exportCollectes"><i data-lucide="download"></i>Exporter</button><a href="#/collectes/nouveau" class="btn btn-primary app-btn"><i data-lucide="plus"></i>Nouvelle collecte</a></div>
+    <div>
+      <p class="eyebrow">Collecte terrain</p>
+      <h1>Campagnes, missions & collecte</h1>
+      <p>
+        Suivez les missions, les affectations et la fiche courante
+        jusqu’à sa soumission.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <a
+        href="#/collectes/nouveau"
+        class="btn btn-primary app-btn"
+        id="newCollectionAction"
+        hidden
+      >
+        <i data-lucide="plus"></i>
+        Nouvelle mission / collecte
+      </a>
+    </div>
   </section>
+
+  <section
+    class="dashboard-api-state"
+    id="collectApiState"
+    hidden
+  ></section>
+
   <section class="collecte-kpis" id="collecteKpis"></section>
-  <section class="collecte-progress panel">
-    <div><span class="progress-icon"><i data-lucide="activity"></i></span><div><small>Progression globale de la campagne — juillet 2026</small><strong id="globalProgressLabel">0 %</strong></div></div>
-    <div class="progress-track"><span id="globalProgressBar"></span></div><p><b id="completedCount">0</b> fiches finalisées sur <b id="totalCount">0</b> missions planifiées</p>
+
+  <section class="collecte-toolbar panel">
+    <div class="collecte-search">
+      <i data-lucide="search"></i>
+      <input
+        id="collecteSearch"
+        type="search"
+        placeholder="Mission, campagne, zone ou entreprise…"
+      >
+    </div>
+
+    <select id="collecteCampaign" disabled>
+      <option value="">Chargement des campagnes…</option>
+    </select>
+
+    <select id="collecteMissionStatus" disabled>
+      <option value="">Statut mission</option>
+    </select>
+
+    <select id="collecteFicheStatus" disabled>
+      <option value="">Statut fiche</option>
+    </select>
+
+    <select id="collecteZone" disabled>
+      <option value="">Zone</option>
+    </select>
+
+    <select id="collecteAgent" disabled>
+      <option value="">Agent</option>
+    </select>
+
+    <button
+      class="reset-filter"
+      id="resetCollectes"
+      type="button"
+    >
+      <i data-lucide="rotate-ccw"></i>
+      Réinitialiser
+    </button>
   </section>
-  <section class="cert-filters collecte-filters">
-    <label class="cert-search"><i data-lucide="search"></i><input id="collecteSearch" type="search" placeholder="Entreprise, zone, agent ou référence…"></label>
-    <label><span>Statut</span><select id="collecteStatus"><option value="all">Tous les statuts</option><option value="planned">Planifiée</option><option value="progress">En cours</option><option value="draft">Brouillon</option><option value="submitted">Soumise</option><option value="validated">Validée</option><option value="correction">À corriger</option></select></label>
-    <label><span>Agent affecté</span><select id="collecteAgent"><option value="all">Tous les agents</option></select></label>
-    <label><span>Région</span><select id="collecteRegion"><option value="all">Toutes les régions</option></select></label>
-    <button class="reset-filter" id="resetCollectes"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
-  </section>
-  <section class="panel collecte-panel">
-    <div class="cert-list-head"><div><strong id="collecteCount"></strong><small>Campagne nationale de collecte</small></div><div class="view-switch"><button class="active" data-view="table"><i data-lucide="list"></i>Liste</button><button data-view="cards"><i data-lucide="layout-grid"></i>Cartes</button></div></div>
-    <div id="collecteResults"></div>
+
+  <section class="panel collectes-panel">
+    <div class="collectes-list-head">
+      <div>
+        <strong id="collecteCount">0 mission</strong>
+        <small id="collecteRange">Données PostgreSQL</small>
+      </div>
+
+      <select id="collecteSort">
+        <option value="planned">Date prévue</option>
+        <option value="recent">Création récente</option>
+        <option value="campaign">Campagne</option>
+        <option value="zone">Zone</option>
+        <option value="completion">Complétude</option>
+        <option value="status">Statut</option>
+      </select>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table collecte-table">
+        <thead>
+          <tr>
+            <th>Mission</th>
+            <th>Campagne</th>
+            <th>Zone</th>
+            <th>Agent(s)</th>
+            <th>Entreprise</th>
+            <th>Fiche courante</th>
+            <th>Prévue</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="collecteRows"></tbody>
+      </table>
+    </div>
+
+    <div class="collecte-empty" id="collecteEmpty" hidden>
+      <i data-lucide="clipboard-x"></i>
+      <strong>Aucune mission trouvée</strong>
+      <span>
+        Le registre n’affiche aucune donnée fictive.
+      </span>
+    </div>
+
+    <footer class="companies-footer">
+      <span id="collectePagination"></span>
+
+      <div>
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="collectePrev"
+          type="button"
+        >
+          <i data-lucide="chevron-left"></i>
+          Précédent
+        </button>
+
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="collecteNextPage"
+          type="button"
+        >
+          Suivant
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </footer>
   </section>
 </div>

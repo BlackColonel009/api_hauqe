@@ -1,1 +1,66 @@
-<div class="page-content container-fluid company-form-page"><nav class="detail-breadcrumb"><a href="#/organismes">Organismes</a><i data-lucide="chevron-right"></i><span id="bodyFormMode">Nouvel organisme</span></nav><section class="page-heading"><div><p class="eyebrow">Registre national</p><h1 id="bodyFormTitle">Ajouter un organisme certificateur</h1><p>Renseignez son identité, ses accréditations et les preuves nécessaires à sa reconnaissance.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="saveBodyDraft"><i data-lucide="save"></i>Enregistrer le brouillon</button><button class="btn btn-primary app-btn" id="submitBody"><i data-lucide="check"></i>Enregistrer</button></div></section><section class="form-stepper" id="bodyStepper"><button class="active" data-step="1"><span>1</span><div><strong>Identification</strong><small>Identité officielle</small></div></button><i></i><button data-step="2"><span>2</span><div><strong>Coordonnées</strong><small>Siège et contacts</small></div></button><i></i><button data-step="3"><span>3</span><div><strong>Accréditations</strong><small>Référentiels</small></div></button><i></i><button data-step="4"><span>4</span><div><strong>Documents</strong><small>Preuves</small></div></button><i></i><button data-step="5"><span>5</span><div><strong>Vérification</strong><small>Contrôle final</small></div></button></section><form novalidate><section id="bodyFormContent"></section><footer class="form-navigation"><button type="button" class="btn btn-outline-secondary app-btn" id="bodyPrevious" hidden>Précédent</button><span id="bodyProgress">Étape 1 sur 5</span><button type="button" class="btn btn-primary app-btn" id="bodyNext">Continuer</button></footer></form><div class="save-indicator" id="bodyToast" hidden><i data-lucide="circle-check"></i><span></span></div></div>
+<div class="page-content container-fluid company-form-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/organismes">Organismes</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="bodyFormMode">Nouvel organisme</span>
+  </nav>
+
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Registre national</p>
+      <h1 id="bodyFormTitle">Ajouter un organisme certificateur</h1>
+      <p>
+        Renseignez son identité, ses coordonnées, ses accréditations
+        et les documents disponibles.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <a href="#/organismes" class="btn btn-outline-secondary app-btn">
+        <i data-lucide="x"></i>Annuler
+      </a>
+
+      <button class="btn btn-primary app-btn" id="submitBody" type="button">
+        <i data-lucide="check"></i>Enregistrer
+      </button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="bodyFormState" hidden></section>
+
+  <section class="form-stepper" id="bodyStepper">
+    <button class="active" data-step="1" type="button">
+      <span>1</span><div><strong>Identification</strong><small>Identité officielle</small></div>
+    </button>
+    <i></i>
+    <button data-step="2" type="button">
+      <span>2</span><div><strong>Coordonnées</strong><small>Siège et contacts</small></div>
+    </button>
+    <i></i>
+    <button data-step="3" type="button">
+      <span>3</span><div><strong>Accréditations</strong><small>Portées et périodes</small></div>
+    </button>
+    <i></i>
+    <button data-step="4" type="button">
+      <span>4</span><div><strong>Documents</strong><small>Preuves disponibles</small></div>
+    </button>
+    <i></i>
+    <button data-step="5" type="button">
+      <span>5</span><div><strong>Vérification</strong><small>Contrôle final</small></div>
+    </button>
+  </section>
+
+  <form id="bodyForm" novalidate>
+    <section id="bodyFormContent"></section>
+
+    <footer class="form-navigation">
+      <button type="button" class="btn btn-outline-secondary app-btn" id="bodyPrevious" hidden>
+        Précédent
+      </button>
+      <span id="bodyProgress">Étape 1 sur 5</span>
+      <button type="button" class="btn btn-primary app-btn" id="bodyNext">
+        Continuer
+      </button>
+    </footer>
+  </form>
+</div>

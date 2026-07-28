@@ -3252,3 +3252,85 @@ Tests code : node --check ✅. Runtime navigateur/API ⏳.
 
 Prochaine étape : recette écran par écran puis seulement Étape 03 — Organismes.
 
+## ÉTAPE 03 — ORGANISMES CERTIFICATEURS
+
+Statut : 🟡 **Raccordement API produit — recette utilisateur à venir**
+
+Pages raccordées :
+
+```text
+#/organismes
+#/organismes/{uuid}
+#/organismes/nouveau
+#/organismes/modifier/{uuid}
+```
+
+Suppression des données fictives :
+- Bureau Veritas / SGS / Ecocert codés en dur : supprimés ;
+- KPI 14 / 11 / 2 / 1 / 143 : supprimés ;
+- faux identifiants `/organismes/1` : supprimés ;
+- accréditations et certificats de démonstration : supprimés ;
+- brouillon localStorage du formulaire : supprimé.
+
+Fonctionnalités :
+- registre paginé ;
+- recherche ;
+- filtres statut/pays/accréditeur/domaine depuis PostgreSQL ;
+- tri ;
+- export serveur avec motif ;
+- détail réel ;
+- accréditations réelles ;
+- certifications liées réelles ;
+- documents réels et téléchargement sécurisé ;
+- vérification de l'organisme ;
+- création/modification ;
+- ajout/modification d'accréditations ;
+- dépôt de documents ;
+- Action Loader sur les traitements réseau.
+
+Étape suivante après validation :
+`04 — Certifications`.
+
+## ÉTAPE 05 — CAMPAGNES → MISSIONS → COLLECTE
+
+Statut : 🟡 **raccordement API réel — recette navigateur à faire**
+
+Pages :
+- `#/collectes`
+- `#/collectes/nouveau`
+- `#/collectes/modifier/{mission_uuid}`
+
+Décisions de raccordement :
+- suppression complète de `localStorage` ;
+- suppression des campagnes, agents, entreprises et certifications fictifs ;
+- suppression du faux calcul frontend de complétude ;
+- la complétude affichée vient uniquement de `fiches_collecte.taux_completude` ;
+- la soumission reste contrôlée par la règle publiée
+  `COLLECTE_COMPLETUDE` côté backend ;
+- la collecte référence une entreprise existante du registre au lieu de
+  recopier toute sa fiche identité ;
+- offres et certifications déclarées sont persistées dans leurs tables ;
+- documents déposés via le stockage privé ;
+- une fiche soumise devient lecture seule ;
+- une nouvelle révision est créée par l'endpoint métier existant.
+
+Le formulaire est organisé en 6 niveaux :
+1. mission ;
+2. entreprise et déclarant ;
+3. offres déclarées ;
+4. certifications déclarées ;
+5. preuves et observations ;
+6. contrôle backend et soumission.
+
+Aucun critère FUCCS n'est saisi ici.
+
+
+## ÉTAPE 06 — VÉRIFICATION DOCUMENTAIRE
+Statut : 🟡 vraie page raccordée — recette navigateur à faire.
+
+Routes UI : `#/verifications` et `#/verifications/{dossier_uuid}`.
+Le placeholder `governance-module` n'est plus utilisé.
+
+Fonctions : dossiers réels, fiches SOUMISES éligibles, affectations, documents,
+points, anomalies, confirmations externes, paramètres risque/priorité/synthèse,
+clôture et réouverture.

@@ -59,6 +59,10 @@ from app.schemas.organismes_certifications import (
     EvenementCertificationResponse,
     NormeResponse,
     OrganismeCreateRequest,
+    OrganismeFiltersResponse,
+    OrganismeRegistryItem,
+    OrganismeRegistryResponse,
+    OrganismeRegistrySummary,
     OrganismeResponse,
     OrganismeUpdateRequest,
     OrganismeVerificationRequest,
@@ -306,6 +310,135 @@ class OrganismeService:
             "offset": offset,
             "items": [organisme_response(x) for x in items],
         }
+
+
+    @staticmethod
+    async def filters(
+        db: AsyncSession,
+    ) -> OrganismeFiltersResponse:
+        payload = await OrganismeRepository.filters(db)
+        return OrganismeFiltersResponse(**payload)
+
+    @staticmethod
+    async def registry(
+        db: AsyncSession,
+        *,
+        search: str | None,
+        statut: str | None,
+        pays: str | None,
+        type_organisme: str | None,
+        accrediteur: str | None,
+        domaine: str | None,
+        sort: str,
+        limit: int,
+        offset: int,
+    ) -> OrganismeRegistryResponse:
+        rows, total, summary = await OrganismeRepository.registry(
+            db,
+            search=search,
+            statut=statut,
+            pays=pays,
+            type_organisme=type_organisme,
+            accrediteur=accrediteur,
+            domaine=domaine,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+        )
+
+        items = []
+
+        for row in rows:
+            organisme = row[0]
+
+            items.append(
+                OrganismeRegistryItem(
+                    id=organisme.id,
+                    identifiant_national=organisme.identifiant_national,
+                    nom_officiel=organisme.nom_officiel,
+                    sigle=organisme.sigle,
+                    type_organisme=organisme.type_organisme,
+                    pays=organisme.pays,
+                    statut=organisme.statut,
+                    date_derniere_verification=(
+                        organisme.date_derniere_verification
+                    ),
+                    accreditation_count=int(
+                        row.accreditation_count or 0
+                    ),
+                    certification_count=int(
+                        row.certification_count or 0
+                    ),
+                    accreditors=row.accreditors,
+                    domains=row.domains,
+                    next_accreditation_expiration=(
+                        row.next_accreditation_expiration
+                    ),
+                )
+            )
+
+        return OrganismeRegistryResponse(
+            total=total,
+            limit=limit,
+            offset=offset,
+            summary=OrganismeRegistrySummary(**summary),
+            items=items,
+        )
+
+    @staticmethod
+    async def export_registry(
+        db: AsyncSession,
+        *,
+        search: str | None,
+        statut: str | None,
+        pays: str | None,
+        type_organisme: str | None,
+        accrediteur: str | None,
+        domaine: str | None,
+        sort: str,
+        motif: str,
+        actor: AuthContext,
+        request: Request,
+    ) -> OrganismeRegistryResponse:
+        data = await OrganismeService.registry(
+            db,
+            search=search,
+            statut=statut,
+            pays=pays,
+            type_organisme=type_organisme,
+            accrediteur=accrediteur,
+            domaine=domaine,
+            sort=sort,
+            limit=200,
+            offset=0,
+        )
+
+        await write_audit_event(
+            db,
+            action="ORGANISMES_EXPORT",
+            categorie="EXPORT",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="organisme",
+            adresse_ip=client_ip(request),
+            contexte={
+                "motif": clean_text(motif),
+                "filtres": {
+                    "search": search,
+                    "statut": statut,
+                    "pays": pays,
+                    "type_organisme": type_organisme,
+                    "accrediteur": accrediteur,
+                    "domaine": domaine,
+                    "sort": sort,
+                },
+                "nombre": data.total,
+            },
+        )
+
+        await db.commit()
+
+        return data
 
     @staticmethod
     async def detail(db: AsyncSession, organisme_id: UUID) -> OrganismeResponse:

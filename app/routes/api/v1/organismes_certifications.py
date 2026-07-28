@@ -8,8 +8,10 @@ intégration. Les permissions restent contrôlées côté serveur.
 from __future__ import annotations
 
 from uuid import UUID
+import csv
+import io
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -34,6 +36,8 @@ from app.schemas.organismes_certifications import (
     EvenementCertificationResponse,
     NormeResponse,
     OrganismeCreateRequest,
+    OrganismeFiltersResponse,
+    OrganismeRegistryResponse,
     OrganismeResponse,
     OrganismeUpdateRequest,
     OrganismeVerificationRequest,
@@ -42,6 +46,16 @@ from app.schemas.organismes_certifications import (
     RenouvellementResponse,
     RenouvellementUpdateRequest,
 )
+
+from app.schemas.certification_registry import (
+    CertificationFiltersResponse,
+    CertificationRegistryItem,
+    CertificationRegistryResponse,
+)
+from app.services.certification_registry_service import (
+    CertificationRegistryService,
+)
+
 from app.services.auth_service import AuthContext
 from app.services.organismes_certifications_service import (
     AccreditationService,
@@ -83,6 +97,146 @@ async def get_norme(
 # ============================================================
 # ORGANISMES
 # ============================================================
+
+
+@router.get(
+    "/organismes/filters",
+    response_model=OrganismeFiltersResponse,
+    tags=["Organismes"],
+)
+async def organisme_filters(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("ORGANISMES.LIRE")),
+):
+    return await OrganismeService.filters(db)
+
+
+@router.get(
+    "/organismes/registry",
+    response_model=OrganismeRegistryResponse,
+    tags=["Organismes"],
+)
+async def organisme_registry(
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    pays: str | None = Query(default=None, max_length=255),
+    type_organisme: str | None = Query(default=None, max_length=255),
+    accrediteur: str | None = Query(default=None, max_length=255),
+    domaine: str | None = Query(default=None, max_length=255),
+    sort: str = Query(default="name_asc", max_length=64),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("ORGANISMES.LIRE")),
+):
+    return await OrganismeService.registry(
+        db,
+        search=search,
+        statut=statut,
+        pays=pays,
+        type_organisme=type_organisme,
+        accrediteur=accrediteur,
+        domaine=domaine,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/organismes/export",
+    tags=["Organismes"],
+)
+async def export_organismes(
+    request: Request,
+    motif: str = Query(min_length=3, max_length=500),
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    pays: str | None = Query(default=None, max_length=255),
+    type_organisme: str | None = Query(default=None, max_length=255),
+    accrediteur: str | None = Query(default=None, max_length=255),
+    domaine: str | None = Query(default=None, max_length=255),
+    sort: str = Query(default="name_asc", max_length=64),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("ORGANISMES.EXPORTER")
+    ),
+):
+    data = await OrganismeService.export_registry(
+        db,
+        search=search,
+        statut=statut,
+        pays=pays,
+        type_organisme=type_organisme,
+        accrediteur=accrediteur,
+        domaine=domaine,
+        sort=sort,
+        motif=motif,
+        actor=actor,
+        request=request,
+    )
+
+    buffer = io.StringIO()
+    writer = csv.writer(
+        buffer,
+        delimiter=";",
+        quoting=csv.QUOTE_MINIMAL,
+    )
+
+    writer.writerow(
+        [
+            "Identifiant",
+            "Organisme",
+            "Sigle",
+            "Type",
+            "Pays",
+            "Statut",
+            "Accréditations",
+            "Accréditeurs",
+            "Domaines",
+            "Certifications",
+            "Dernière vérification",
+            "Prochaine expiration accréditation",
+        ]
+    )
+
+    for item in data.items:
+        writer.writerow(
+            [
+                item.identifiant_national or "",
+                item.nom_officiel or "",
+                item.sigle or "",
+                item.type_organisme or "",
+                item.pays or "",
+                item.statut or "",
+                item.accreditation_count,
+                item.accreditors or "",
+                item.domains or "",
+                item.certification_count,
+                (
+                    item.date_derniere_verification.isoformat()
+                    if item.date_derniere_verification
+                    else ""
+                ),
+                (
+                    item.next_accreditation_expiration.isoformat()
+                    if item.next_accreditation_expiration
+                    else ""
+                ),
+            ]
+        )
+
+    content = "\ufeff" + buffer.getvalue()
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition":
+                'attachment; filename="hauqe-organismes.csv"'
+        },
+    )
+
 
 @router.get("/organismes", tags=["Organismes"])
 async def list_organismes(
@@ -217,6 +371,289 @@ async def decide_accreditation(
 # ============================================================
 # CERTIFICATIONS
 # ============================================================
+
+
+# ------------------------------------------------------------
+# Projection registre Certifications
+#
+# IMPORTANT :
+# Ces routes statiques sont déclarées AVANT
+# /certifications/{certification_id}. FastAPI teste les routes
+# dans l'ordre ; cela évite que "filters", "registry" ou "export"
+# soient interprétés comme un UUID.
+# ------------------------------------------------------------
+
+@router.get(
+    "/certifications/filters",
+    response_model=CertificationFiltersResponse,
+    tags=["Certifications - Registre"],
+)
+async def certification_filters(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.LIRE")
+    ),
+):
+    return await CertificationRegistryService.filters(db)
+
+
+@router.get(
+    "/certifications/registry",
+    response_model=CertificationRegistryResponse,
+    tags=["Certifications - Registre"],
+)
+async def certification_registry(
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    entreprise_id: UUID | None = Query(default=None),
+    organisme_id: UUID | None = Query(default=None),
+    norme_id: UUID | None = Query(default=None),
+    deadline: str | None = Query(default=None, max_length=32),
+    verification: str | None = Query(default=None, max_length=32),
+    sort: str = Query(default="deadline", max_length=32),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.LIRE")
+    ),
+):
+    return await CertificationRegistryService.registry(
+        db,
+        search=search,
+        statut=statut,
+        entreprise_id=entreprise_id,
+        organisme_id=organisme_id,
+        norme_id=norme_id,
+        deadline=deadline,
+        verification=verification,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def _certification_registry_csv(
+    data: CertificationRegistryResponse,
+) -> str:
+    buffer = io.StringIO()
+
+    writer = csv.writer(
+        buffer,
+        delimiter=";",
+        quoting=csv.QUOTE_MINIMAL,
+    )
+
+    writer.writerow(
+        [
+            "Identifiant national",
+            "Numéro certificat",
+            "Entreprise",
+            "Organisme",
+            "Norme",
+            "Version",
+            "Portée",
+            "Date obtention",
+            "Date expiration",
+            "Jours restants",
+            "Statut",
+            "Authenticité vérifiée",
+            "Certification stratégique",
+            "Renouvellement ouvert",
+        ]
+    )
+
+    for item in data.items:
+        writer.writerow(
+            [
+                item.identifiant_national,
+                item.numero_certificat or "",
+                item.entreprise_name,
+                item.organisme_name,
+                item.norme_code or item.norme_name or "",
+                item.norme_version or "",
+                item.portee or "",
+                (
+                    item.date_obtention.isoformat()
+                    if item.date_obtention
+                    else ""
+                ),
+                (
+                    item.date_expiration.isoformat()
+                    if item.date_expiration
+                    else ""
+                ),
+                (
+                    item.days_remaining
+                    if item.days_remaining is not None
+                    else ""
+                ),
+                item.statut or "",
+                (
+                    "OUI"
+                    if item.authenticite_verifiee
+                    else "NON"
+                ),
+                (
+                    "OUI"
+                    if item.certification_strategique
+                    else "NON"
+                ),
+                (
+                    "OUI"
+                    if item.renewal_open
+                    else "NON"
+                ),
+            ]
+        )
+
+    return "\ufeff" + buffer.getvalue()
+
+
+@router.get(
+    "/certifications/export",
+    tags=["Certifications - Registre"],
+)
+async def export_certifications_registry(
+    request: Request,
+    motif: str = Query(min_length=3, max_length=500),
+    search: str | None = Query(default=None, max_length=255),
+    statut: str | None = Query(default=None, max_length=255),
+    entreprise_id: UUID | None = Query(default=None),
+    organisme_id: UUID | None = Query(default=None),
+    norme_id: UUID | None = Query(default=None),
+    deadline: str | None = Query(default=None, max_length=32),
+    verification: str | None = Query(default=None, max_length=32),
+    sort: str = Query(default="deadline", max_length=32),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.EXPORTER")
+    ),
+):
+    filters = {
+        "search": search,
+        "statut": statut,
+        "entreprise_id": (
+            str(entreprise_id)
+            if entreprise_id
+            else None
+        ),
+        "organisme_id": (
+            str(organisme_id)
+            if organisme_id
+            else None
+        ),
+        "norme_id": (
+            str(norme_id)
+            if norme_id
+            else None
+        ),
+        "deadline": deadline,
+        "verification": verification,
+        "sort": sort,
+    }
+
+    data = await CertificationRegistryService.registry(
+        db,
+        search=search,
+        statut=statut,
+        entreprise_id=entreprise_id,
+        organisme_id=organisme_id,
+        norme_id=norme_id,
+        deadline=deadline,
+        verification=verification,
+        sort=sort,
+        limit=5000,
+        offset=0,
+    )
+
+    await CertificationRegistryService.audit_export(
+        db,
+        actor=actor,
+        request=request,
+        motif=motif,
+        filters=filters,
+        count=data.total,
+    )
+
+    return Response(
+        content=_certification_registry_csv(data),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition":
+                'attachment; filename="hauqe-certifications.csv"'
+        },
+    )
+
+
+@router.get(
+    "/certifications/{certification_id}/context",
+    response_model=CertificationRegistryItem,
+    tags=["Certifications - Registre"],
+)
+async def certification_context(
+    certification_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.LIRE")
+    ),
+):
+    return await CertificationRegistryService.item(
+        db,
+        certification_id,
+    )
+
+
+@router.get(
+    "/certifications/{certification_id}/export",
+    tags=["Certifications - Registre"],
+)
+async def export_certification_registry_item(
+    certification_id: UUID,
+    request: Request,
+    motif: str = Query(min_length=3, max_length=500),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.EXPORTER")
+    ),
+):
+    item = await CertificationRegistryService.item(
+        db,
+        certification_id,
+    )
+
+    data = CertificationRegistryResponse(
+        total=1,
+        limit=1,
+        offset=0,
+        summary={
+            "total": 1,
+        },
+        items=[item],
+    )
+
+    await CertificationRegistryService.audit_export(
+        db,
+        actor=actor,
+        request=request,
+        motif=motif,
+        filters={},
+        count=1,
+        certification_id=certification_id,
+    )
+
+    return Response(
+        content=_certification_registry_csv(data),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; "
+                f'filename="certification-{certification_id}.csv"'
+            )
+        },
+    )
+
+
 
 @router.get("/certifications", response_model=CertificationListResponse, tags=["Certifications"])
 async def list_certifications(

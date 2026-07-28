@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import distinct, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.accreditation import Accreditation
@@ -99,6 +99,302 @@ class OrganismeRepository:
 
         return list(result.scalars().all()), int(total_result.scalar_one())
 
+
+    @staticmethod
+    async def filters(db: AsyncSession) -> dict:
+        async def distinct_strings(column):
+            result = await db.execute(
+                select(column)
+                .where(
+                    column.is_not(None),
+                    func.trim(column) != "",
+                )
+                .distinct()
+                .order_by(column)
+            )
+            return [
+                str(value).strip()
+                for value in result.scalars().all()
+                if value
+            ]
+
+        zones_result = await db.execute(
+            select(
+                ZoneAdministrative.id,
+                ZoneAdministrative.nom,
+                ZoneAdministrative.type_zone,
+            )
+            .where(
+                or_(
+                    ZoneAdministrative.statut.is_(None),
+                    func.upper(ZoneAdministrative.statut) == "ACTIF",
+                )
+            )
+            .order_by(
+                ZoneAdministrative.type_zone,
+                ZoneAdministrative.nom,
+            )
+        )
+
+        zones = [
+            {
+                "id": str(row.id),
+                "name": row.nom or "",
+                "type": row.type_zone or "",
+            }
+            for row in zones_result.all()
+        ]
+
+        return {
+            "statuses": await distinct_strings(Organisme.statut),
+            "countries": await distinct_strings(Organisme.pays),
+            "types": await distinct_strings(Organisme.type_organisme),
+            "accreditors": await distinct_strings(Accreditation.accrediteur),
+            "domains": await distinct_strings(Accreditation.domaine_technique),
+            "zones": zones,
+        }
+
+    @staticmethod
+    def registry_filters(
+        *,
+        search: str | None,
+        statut: str | None,
+        pays: str | None,
+        type_organisme: str | None,
+        accrediteur: str | None,
+        domaine: str | None,
+    ):
+        filters = []
+
+        if statut:
+            filters.append(
+                func.upper(Organisme.statut)
+                == statut.strip().upper()
+            )
+
+        if pays:
+            filters.append(
+                func.upper(Organisme.pays)
+                == pays.strip().upper()
+            )
+
+        if type_organisme:
+            filters.append(
+                func.upper(Organisme.type_organisme)
+                == type_organisme.strip().upper()
+            )
+
+        if search and search.strip():
+            pattern = f"%{search.strip()}%"
+            filters.append(
+                or_(
+                    Organisme.identifiant_national.ilike(pattern),
+                    Organisme.nom_officiel.ilike(pattern),
+                    Organisme.sigle.ilike(pattern),
+                    Organisme.numero_enregistrement.ilike(pattern),
+                    Organisme.pays.ilike(pattern),
+                )
+            )
+
+        if accrediteur:
+            filters.append(
+                select(Accreditation.id)
+                .where(
+                    Accreditation.organisme_id == Organisme.id,
+                    func.upper(Accreditation.accrediteur)
+                    == accrediteur.strip().upper(),
+                )
+                .exists()
+            )
+
+        if domaine:
+            filters.append(
+                select(Accreditation.id)
+                .where(
+                    Accreditation.organisme_id == Organisme.id,
+                    func.upper(Accreditation.domaine_technique)
+                    == domaine.strip().upper(),
+                )
+                .exists()
+            )
+
+        return filters
+
+    @staticmethod
+    async def registry(
+        db: AsyncSession,
+        *,
+        search: str | None,
+        statut: str | None,
+        pays: str | None,
+        type_organisme: str | None,
+        accrediteur: str | None,
+        domaine: str | None,
+        sort: str,
+        limit: int,
+        offset: int,
+    ):
+        filters = OrganismeRepository.registry_filters(
+            search=search,
+            statut=statut,
+            pays=pays,
+            type_organisme=type_organisme,
+            accrediteur=accrediteur,
+            domaine=domaine,
+        )
+
+        accreditation_count = (
+            select(func.count(Accreditation.id))
+            .where(Accreditation.organisme_id == Organisme.id)
+            .correlate(Organisme)
+            .scalar_subquery()
+        )
+
+        certification_count = (
+            select(func.count(Certification.id))
+            .where(Certification.organisme_id == Organisme.id)
+            .correlate(Organisme)
+            .scalar_subquery()
+        )
+
+        accreditors = (
+            select(
+                func.string_agg(
+                    distinct(Accreditation.accrediteur),
+                    literal(", "),
+                )
+            )
+            .where(
+                Accreditation.organisme_id == Organisme.id,
+                Accreditation.accrediteur.is_not(None),
+                func.trim(Accreditation.accrediteur) != "",
+            )
+            .correlate(Organisme)
+            .scalar_subquery()
+        )
+
+        domains = (
+            select(
+                func.string_agg(
+                    distinct(Accreditation.domaine_technique),
+                    literal(", "),
+                )
+            )
+            .where(
+                Accreditation.organisme_id == Organisme.id,
+                Accreditation.domaine_technique.is_not(None),
+                func.trim(Accreditation.domaine_technique) != "",
+            )
+            .correlate(Organisme)
+            .scalar_subquery()
+        )
+
+        next_expiration = (
+            select(func.min(Accreditation.date_expiration))
+            .where(
+                Accreditation.organisme_id == Organisme.id,
+                Accreditation.date_expiration >= func.current_date(),
+            )
+            .correlate(Organisme)
+            .scalar_subquery()
+        )
+
+        order_by = {
+            "name_desc": Organisme.nom_officiel.desc(),
+            "certifications_desc": certification_count.desc(),
+            "verification_desc":
+                Organisme.date_derniere_verification
+                .desc()
+                .nullslast(),
+        }.get(
+            sort,
+            Organisme.nom_officiel.asc(),
+        )
+
+        result = await db.execute(
+            select(
+                Organisme,
+                accreditation_count.label("accreditation_count"),
+                certification_count.label("certification_count"),
+                accreditors.label("accreditors"),
+                domains.label("domains"),
+                next_expiration.label(
+                    "next_accreditation_expiration"
+                ),
+            )
+            .where(*filters)
+            .order_by(order_by, Organisme.sigle)
+            .limit(limit)
+            .offset(offset)
+        )
+
+        count_result = await db.execute(
+            select(func.count(Organisme.id)).where(*filters)
+        )
+        total = int(count_result.scalar_one() or 0)
+
+        base_ids = (
+            select(Organisme.id)
+            .where(*filters)
+        )
+
+        cert_total_result = await db.execute(
+            select(func.count(Certification.id)).where(
+                Certification.organisme_id.in_(base_ids)
+            )
+        )
+
+        status_rows = await db.execute(
+            select(
+                func.upper(
+                    func.coalesce(
+                        Organisme.statut,
+                        "NON_RENSEIGNE",
+                    )
+                ),
+                func.count(Organisme.id),
+            )
+            .where(*filters)
+            .group_by(Organisme.statut)
+        )
+
+        status_counts = {
+            str(key or "NON_RENSEIGNE"): int(value or 0)
+            for key, value in status_rows.all()
+        }
+
+        recognized = sum(
+            status_counts.get(key, 0)
+            for key in ("RECONNU", "VALIDE", "ACTIF")
+        )
+
+        to_verify = sum(
+            status_counts.get(key, 0)
+            for key in (
+                "A_VERIFIER",
+                "À_VERIFIER",
+                "A VERIFIER",
+            )
+        )
+
+        suspended = sum(
+            status_counts.get(key, 0)
+            for key in ("SUSPENDU", "SUSPENDED")
+        )
+
+        return (
+            result.all(),
+            total,
+            {
+                "total": total,
+                "recognized": recognized,
+                "to_verify": to_verify,
+                "suspended": suspended,
+                "certifications_total": int(
+                    cert_total_result.scalar_one() or 0
+                ),
+            },
+        )
 
 class AccreditationRepository:
     @staticmethod

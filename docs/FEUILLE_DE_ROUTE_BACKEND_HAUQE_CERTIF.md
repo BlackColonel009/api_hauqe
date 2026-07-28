@@ -5846,571 +5846,144 @@ app/static/js/core/api.js
 + MFA challenge si actif
 ```
 
-# DÉMARRAGE RACCORDEMENT API ↔ FRONTEND — AUTH + PROFIL
+## ÉTAPE 04 — CERTIFICATIONS
 
-## Statut
+Statut : 🟡 projection registre ajoutée, recette runtime à confirmer.
 
-🟡 **Raccordement commencé — non validé runtime**
+Le CRUD métier Certifications existant n'a pas été remplacé.
 
-Premier vertical frontend traité :
-
-```text
-connexion.html
-+
-profil.html
-+
-client API central
-+
-verrouillage de reprise
-```
-
-Bundle :
+Un sous-module de lecture/export a été ajouté afin de fournir au frontend
+un registre joint et crédible sans multiplier les appels par ligne :
 
 ```text
-HAUQE_FRONTEND_AUTH_PROFILE_INTEGRATION.zip
+GET /api/v1/certifications/filters
+GET /api/v1/certifications/registry
+GET /api/v1/certifications/{id}/context
+GET /api/v1/certifications/export
+GET /api/v1/certifications/{id}/export
 ```
 
-## Fichiers frontend créés/modifiés
+Les opérations CRUD existantes restent souveraines :
 
 ```text
-app/templates/index.html
-app/templates/views/connexion.html
-app/templates/views/profil.html
-
-app/static/js/core/api.js
-app/static/js/core/auth.js
-app/static/js/core/router.js
-app/static/js/core/app-shell.js
-app/static/js/core/session-lock.js
-
-app/static/js/connexion.js
-app/static/js/profil.js
-
-app/static/css/auth-profile-api.css
+GET/POST/PATCH /api/v1/certifications...
+/verification
+/status
+/history
+/audits
+/renewals
+/couvertures
 ```
 
-## Avancement fonctionnel
-
-### Client API central
-
-Implémenté en code :
+Permission ajoutée :
 
 ```text
-Bearer token
-JSON
-timeout réseau
-401
-403
-409
-422
-423
-5xx
-```
-
-Token :
-- `sessionStorage` par défaut ;
-- `localStorage` seulement si « Rester connecté » est coché ;
-- autorité serveur inchangée.
-
-### Login
-
-Raccordement code :
-
-```text
-POST /api/v1/auth/login
-GET  /api/v1/me
-POST /api/v1/auth/logout
-POST /api/v1/auth/mfa/verify
-```
-
-Le frontend sait désormais gérer :
-
-```text
-email + mot de passe
-       ↓
-mfa_required ?
-       ↓ oui
-challenge MFA
-       ↓
-validation MFA
-       ↓
-Bearer token
-```
-
-Runtime encore à tester avec le backend intégré.
-
-### Profil
-
-Raccordement code :
-
-```text
-GET   /api/v1/me/profile
-PATCH /api/v1/me/profile
-POST  /api/v1/me/password/change
-
-GET/POST /api/v1/me/mfa...
-
-GET/PATCH /api/v1/me/notification-preferences
-
-GET/POST /api/v1/me/sessions...
-
-GET/PATCH/POST /api/v1/me/security-lock...
-```
-
-Le PATCH profil est différentiel.
-
-Exemple :
-si seul le téléphone change :
-
-```json
-{
-  "telephone": "93356041"
-}
-```
-
-### Sessions / verrou
-
-Le code privé n'est plus stocké dans le navigateur.
-
-Flux cible :
-
-```text
-timer frontend
-→ POST /me/security-lock/lock
-→ HTTP 423 sur les routes privées
-→ écran verrouillé
-→ POST /me/security-lock/verify
-→ reprise
-```
-
-Après 5 erreurs, la révocation est gérée par FastAPI.
-
-### SMTP
-
-Toujours différé :
-
-```text
-IN_APP  → à tester
-EMAIL   → peut rester EN_ATTENTE
-SMTP    → raccordement futur
-```
-
-Le SMTP ne bloque pas la recette Auth/Profil.
-
-## Animation / léger design
-
-Une zone d'intégration dédiée est ajoutée sur la page de connexion :
-
-```text
-#authAnimationSlot
-[data-auth-animation-slot]
-```
-
-L'animation/design fourni par le projet sera appliqué à cette couche sans
-modifier le flux d'authentification.
-
-Aucune animation arbitraire n'a été inventée dans ce lot.
-
-## Tests techniques effectués
-
-```text
-Syntaxe JavaScript Node --check  ✅
-Tests navigateur/API runtime     ⏳
-```
-
-## Critère de sortie du vertical
-
-Ne pas marquer Auth/Profil « validé » avant :
-
-```text
-login backend réel             ⏳
-GET /me                        ⏳
-logout                         ⏳
-MFA non contournable           ⏳
-profil réel                    ⏳
-PATCH téléphone seul           ⏳
-mot de passe                   ⏳
-préférences                    ⏳
-sessions                       ⏳
-verrou 423                     ⏳
-5 codes privés erronés         ⏳
-animation/design demandé       ⏳ à intégrer
-```
-
-## Prochaine action exacte
-
-1. intégrer les fichiers du bundle dans le dépôt ;
-2. démarrer FastAPI ;
-3. ouvrir `#/connexion` ;
-4. tester un login réel sans MFA ;
-5. tester `GET /me` ;
-6. ouvrir `#/profil` ;
-7. tester `GET /me/profile` puis PATCH téléphone seul ;
-8. tester verrou/session ;
-9. tester MFA si un compte MFA est disponible ;
-10. appliquer l'animation/design fourni ;
-11. mettre à jour les feuilles de route après validation.
-
-# POINT D’INTÉGRATION LOCAL — 2026-07-27
-
-API FastAPI utilisée pour le raccordement frontend :
-
-```text
-http://localhost:8001
-```
-
-Lot frontend préparé :
-
-```text
-HAUQE_AUTH_PROFIL_LOCALHOST_8001.zip
-```
-
-État :
-
-```text
-configuration base API              ✅
-connexion frontend                  ✅ code
-GET /api/v1/me                      ✅ code
-profil /me/profile                  ✅ code
-MFA                                 ✅ code
-préférences notifications           ✅ code
-sessions                            ✅ code
-verrouillage de reprise / HTTP 423  ✅ code
-animation login                     ✅ code
-drapeau Togo                        ✅ code
-
-tests runtime contre localhost:8001 ⏳ à exécuter après intégration
-SMTP                                ⏸ différé
-```
-
-Aucun endpoint n’est déclaré validé runtime avant la recette navigateur.
-
-# AJUSTEMENT MON COMPTE — MOT DE PASSE / AVATAR / MFA
-
-## Statut
-
-🟡 **Code préparé — validation runtime localhost:8001 à effectuer**
-
-### Avatar personnel
-
-Nouveaux endpoints proposés :
-
-```text
-POST   /api/v1/me/avatar
-GET    /api/v1/me/avatar
-DELETE /api/v1/me/avatar
-```
-
-Ils réutilisent :
-
-```text
-preferences_utilisateur.avatar_document_id
-documents
-```
-
-Aucune nouvelle migration.
-
-Objectif :
-- permettre à chaque utilisateur de gérer uniquement son propre avatar ;
-- éviter d'accorder `DOCUMENTS.DEPOSER` pour une simple photo de compte ;
-- conserver les anciens avatars en `INACTIF` au lieu d'une suppression définitive.
-
-Patch fourni :
-
-```text
-BACKEND_AVATAR_PATCH/app/routes/api/v1/account_avatar.py
-```
-
-### MFA
-
-Le frontend MFA reste entièrement actif et conforme au flux prévu.
-
-Configuration backend encore requise :
-
-```text
-MFA_FERNET_KEY
-hook MFA dans /auth/login
-```
-
-Aucun contournement ni mode simulé ajouté.
-
-### Tests
-
-```text
-syntaxe Python patch avatar   ✅
-runtime FastAPI              ⏳
-upload réel avatar           ⏳
-MFA réel                     ⏳
-```
-
-# LOT — PRÉSENCE UTILISATEURS TOPBAR
-
-## Statut
-
-🟡 **Code produit — recette runtime localhost:8001 à effectuer**
-
-### Finalité
-
-Afficher dans le shell les utilisateurs actuellement ou récemment actifs
-sur une fenêtre de 15 minutes.
-
-### Endpoints
-
-```text
-GET  /api/v1/presence/users?minutes=15&limit=6
-POST /api/v1/presence/heartbeat
-GET  /api/v1/presence/users/{user_id}/avatar
-```
-
-### Permission
-
-```text
-PRESENCE.LIRE
-```
-
-Seed :
-
-```powershell
-python -m app.scripts.seed_presence_permission
-```
-
-### Tables réutilisées / interactions
-
-```text
-sessions_utilisateur
-  └── utilisateur_id → utilisateurs.id
-
-utilisateur_role
-  ├── utilisateur_id → utilisateurs.id
-  └── role_id → roles.id
-
-preferences_utilisateur
-  ├── utilisateur_id → utilisateurs.id
-  └── avatar_document_id → documents.id
+CERTIFICATIONS.EXPORTER
 ```
 
 Aucune migration et aucune nouvelle table.
 
-### Règles techniques
+## Correctif Étape 04 — 422 sur `/certifications/filters` et `/registry`
+
+Symptômes :
 
 ```text
-ONLINE = session vivante + activité <= 2 min
-RECENT = activité <= 15 min par défaut
+GET /api/v1/certifications/filters  -> 422
+GET /api/v1/certifications/registry -> 422
 ```
 
-Le polling de la liste ne modifie pas la session.
-
-Le heartbeat :
-- est envoyé uniquement après activité réelle du navigateur ;
-- est limité côté frontend à 1/minute ;
-- met à jour `sessions_utilisateur.derniere_activite_at`.
-
-### Audit
-
-Pas d'événement d'audit par heartbeat afin d'éviter le bruit volumétrique.
-La lecture est protégée par RBAC `PRESENCE.LIRE`.
-
-### Tests
+Diagnostic :
+les requêtes n'atteignaient pas la projection registre. FastAPI les faisait
+correspondre à la route historique :
 
 ```text
-syntaxe Python                 ✅
-intégration PostgreSQL         ⏳
-seed permission                ⏳
-présence multi-utilisateurs    ⏳
-avatar présence                ⏳
+GET /certifications/{certification_id}
 ```
 
-# LOT 01 — DASHBOARD OPÉRATIONNEL / RACCORDEMENT FRONTEND
+et tentait donc de convertir `filters` ou `registry` en UUID, d'où le 422.
 
-## Statut
+Correctif architectural :
+les routes statiques du registre sont désormais déclarées directement dans
+`organismes_certifications.py`, avant la route dynamique `{certification_id}`.
 
-🟡 **Backend Pilotage déjà produit ; raccordement frontend produit ;
-recette runtime à confirmer.**
-
-## Endpoints désormais consommés par le frontend
+Ordre contrôlé :
 
 ```text
-GET /api/v1/dashboards/filters
-GET /api/v1/dashboards/indicator-definitions
-GET /api/v1/dashboards/operational
+/certifications/filters
+/certifications/registry
+/certifications/export
+/certifications/{uuid}/context
+/certifications/{uuid}/export
+/certifications
+/certifications/{uuid}
+...
 ```
 
-## Permissions attendues
+Le router séparé `certification_registry_router` n'est plus inclus dans
+`router.py`. Il n'y a donc plus deux routeurs concurrents pour le même préfixe.
+
+Aucun changement frontend, repository, service, schéma ou base de données
+n'est nécessaire pour ce correctif.
+
+## ÉTAPE 05 — CAMPAGNES → MISSIONS → COLLECTE
+
+Statut : 🟡 **raccordement produit — recette runtime utilisateur à faire**
+
+Le backend métier déjà développé reste souverain pour toutes les écritures :
 
 ```text
-DASHBOARDS.LIRE_REFERENTIELS
-DASHBOARDS.OPERATIONNEL
+/campagnes
+/campagnes/{id}/missions
+/missions
+/missions/{id}/affectations
+/missions/{id}/fiches
+/missions/{id}/fiches/{fiche_id}
+/offres
+/certifications
+/submit
+/revision
+/history
+/documents
 ```
 
-Seed requis si non encore exécuté :
+Aucune route d'écriture métier n'a été dupliquée.
 
-```powershell
-python -m app.scripts.seed_dashboard_permissions
-```
-
-## Données consommées
+Ajout uniquement d'une projection de lecture destinée à l'écran central :
 
 ```text
-kpis
-certification_statuses
-deadline_buckets
-infc_national_average
-priority_actions
-recent_certifications
-activity_series
-period
-generated_at
+GET /api/v1/collectes/filters
+GET /api/v1/collectes/registry
 ```
 
-## Interactions
+Cette projection joint :
+- campagne ;
+- mission ;
+- zone administrative ;
+- affectations actives ;
+- révision courante de la fiche ;
+- entreprise liée ;
+- statut et taux de complétude.
 
-Le frontend ne recalcule aucune formule institutionnelle.
-Il affiche les agrégats produits par `DashboardService`.
+La liste des agents proposée au coordonnateur n'est pas basée sur un rôle
+codé en dur : elle expose les utilisateurs actifs possédant réellement
+`COLLECTE.CREER` ou `COLLECTE.MODIFIER`.
 
-Filtres envoyés au backend :
+Aucune migration Alembic.
+Aucune nouvelle table.
+Aucune nouvelle permission.
 
-```text
-days
-zone_id
-sector
-norm_id
-organisme_id
-```
 
-## Audit / sécurité
+## ÉTAPE 06 — VÉRIFICATION DOCUMENTAIRE
+Statut : 🟡 raccordement produit — recette runtime à confirmer.
 
-- Bearer token via `core/api.js`.
-- 403 traité explicitement.
-- aucun chiffre mock utilisé dans le Dashboard opérationnel.
-- aucun nouvel événement d'audit créé côté frontend.
-- aucune modification de schéma / FK.
+Le backend Vérification existant reste souverain pour ouverture, affectations,
+points, anomalies, confirmations externes, clôture/réouverture et audit.
 
-## Tests
+Extensions de lecture :
+- GET `/api/v1/verifications/filters`
+- GET `/api/v1/verifications/registry`
+- GET `/api/v1/verifications/eligible-fiches`
+- GET `/api/v1/verifications/{dossier_id}/context`
 
-```text
-contrat frontend ↔ endpoints     ✅ code
-syntaxe JavaScript               ✅
-permissions seed                 ⏳ environnement local
-PostgreSQL réel                  ⏳
-rendu avec données réelles       ⏳
-filtres réels                    ⏳
-```
-
-## Prochaine étape après validation
-
-```text
-02 — Entreprises
-```
-
-## Correctif runtime Dashboard — PostgreSQL GROUP BY / COALESCE
-
-Erreur observée :
-
-```text
-GET /api/v1/dashboards/operational?days=7
-500 Internal Server Error
-
-psycopg.errors.GroupingError:
-certifications.statut doit apparaître dans GROUP BY
-```
-
-Cause :
-SQLAlchemy construisait deux expressions `COALESCE(..., "NON_RENSEIGNE")`
-distinctes dans le `SELECT` et le `GROUP BY`, donc avec deux paramètres liés
-différents côté PostgreSQL.
-
-Correctif appliqué dans :
-
-```text
-app/repositories/dashboard_repository.py
-```
-
-Les regroupements utilisent désormais la colonne source, tandis que
-`COALESCE` reste uniquement dans le `SELECT`.
-
-Cas corrigés préventivement :
-
-```text
-Certification.statut
-SNCC classe / niveau_risque
-Entreprise.activite_principale
-Validation.decision
-```
-
-Contrôle syntaxique Python : ✅
-
-Recette PostgreSQL réelle : ⏳ à confirmer après remplacement du fichier.
-
-## Clôture Dashboard 01 — suppression des données fictives
-
-Statut : 🟡 code complété, recette runtime finale à confirmer.
-
-Correctifs :
-- export CSV serveur : `GET /api/v1/dashboards/operational/export` ;
-- filtres dashboard réellement issus de la base ;
-- expirations de certificats calculées depuis `certifications.date_expiration` ;
-- liste réelle des certificats expirant dans les 180 jours ;
-- filtres région/secteur/norme/organisme appliqués aux agrégats certifications ;
-- alertes/échéances prioritaires restreintes au périmètre filtré lorsque la ressource est Entreprise/Certification ;
-- certifications récentes et série 6 mois filtrées ;
-- contrôles à planifier filtrables par région/secteur ;
-- aucune migration.
-
-Sources de filtres :
-- régions : `zones_administratives` actives ;
-- secteurs : valeurs distinctes `entreprises.activite_principale` ;
-- normes : `normes` ;
-- organismes : `organismes`.
-
-À valider runtime :
-- export ;
-- filtres combinés ;
-- échéances réelles ;
-- actions prioritaires ;
-- absence totale de valeurs fictives.
-
-## Correctif web-route Dashboard 01
-
-`app/main.py` servait encore `legacy/index.html` pour `/views/dashboard`, ce qui
-court-circuitait le nouveau Dashboard API déjà présent dans le projet.
-
-Correction :
-
-```python
-"dashboard": "views/dashboard.html",
-```
-
-Aucune règle métier, table, migration ou endpoint API modifié dans ce correctif.
-Le backend Pilotage existant reste souverain.
-
-Statut : code compilé ; recette Uvicorn locale à confirmer.
-
-## ÉTAPE 02 — ENTREPRISES — RACCORDEMENT COMPLET PRÉPARÉ
-
-Statut : 🟡 code intégré, recette runtime/PostgreSQL à confirmer.
-
-Endpoints ajoutés/complétés :
-- GET `/api/v1/entreprises/filters`
-- GET `/api/v1/entreprises/registry`
-- GET `/api/v1/entreprises/export`
-- GET `/api/v1/entreprises/{id}/export`
-- GET `/api/v1/entreprises/{id}/controls-summary`
-- GET `/api/v1/entreprises` accepte désormais `secteur`.
-
-Endpoints existants désormais consommés : CRUD/archives entreprise, contacts, sites, offres, certifications, classification, documents, audit.
-
-Règles renforcées :
-- RM-11 RCCM unique côté serveur ;
-- RM-12 RCCM absent -> `EN_ATTENTE_REGULARISATION` ;
-- RM-13 raison sociale + adresse/localité + zone + téléphone ou email minimum ;
-- archivage logique uniquement ;
-- export avec permission `ENTREPRISES.EXPORTER` + motif + audit.
-
-Interactions/FK : entreprise -> zone, contacts, sites, offres, certifications ; contrôles FUCCS via fiche_collecte/dossier_verification.
-
-Audit : `ENTREPRISE_CREATE`, `ENTREPRISE_UPDATE`, archivage/restauration existants, `ENTREPRISES_EXPORT`, `ENTREPRISE_DOSSIER_EXPORT`.
-
-Tests code : py_compile ✅. Runtime PostgreSQL ⏳.
-
-Prochaine étape : recette complète Entreprises ; ne pas démarrer Organismes avant validation.
-
+Aucune migration, nouvelle table ou nouvelle permission.
+`DOCUMENTS.VERIFIER` reste distinct de `VERIFICATION.VERIFIER`.

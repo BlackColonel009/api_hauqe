@@ -25,7 +25,11 @@
   function enhanceBody(){
     const status=qs('[name="status"]');if(status&&!status.querySelector('option[value="Non accrédité"]'))status.insertAdjacentHTML("beforeend",'<option value="Non accrédité">Non accrédité — certificats à vérifier</option>');
     if(status)note(status,"Un organisme non accrédité peut être conservé. Ses certificats sont automatiquement placés sous vérification.");
-    const acc=qs("#accList");if(acc&&!acc.querySelector(".rule-accreditation-note"))acc.insertAdjacentHTML("afterend",'<div class="rule-note rule-accreditation-note"><i data-lucide="shield-alert"></i><span>Une suspension, un retrait ou une perte d’accréditation déclenche la vérification des certificats concernés, sans invalidation automatique.</span></div>');
+    const acc=qs("#accList");
+    if(acc&&acc.dataset.rmAccreditationNote!=="true"){
+      acc.dataset.rmAccreditationNote="true";
+      acc.insertAdjacentHTML("afterend",'<div class="rule-note rule-accreditation-note"><i data-lucide="shield-alert"></i><span>Une suspension, un retrait ou une perte d’accréditation déclenche la vérification des certificats concernés, sans invalidation automatique.</span></div>');
+    }
   }
   function enhanceUsers(){
     const role=qs('select[name="role"]');if(!role||role.dataset.rmEnhanced)return;role.dataset.rmEnhanced="true";

@@ -105,6 +105,48 @@ class OrganismeResponse(BaseModel):
     updated_at: datetime
 
 
+
+class OrganismeRegistryItem(BaseModel):
+    id: UUID
+    identifiant_national: str | None = None
+    nom_officiel: str | None = None
+    sigle: str | None = None
+    type_organisme: str | None = None
+    pays: str | None = None
+    statut: str | None = None
+    date_derniere_verification: date | None = None
+    accreditation_count: int = 0
+    certification_count: int = 0
+    accreditors: str | None = None
+    domains: str | None = None
+    next_accreditation_expiration: date | None = None
+
+
+class OrganismeRegistrySummary(BaseModel):
+    total: int = 0
+    recognized: int = 0
+    to_verify: int = 0
+    suspended: int = 0
+    certifications_total: int = 0
+
+
+class OrganismeRegistryResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    summary: OrganismeRegistrySummary
+    items: list[OrganismeRegistryItem] = Field(default_factory=list)
+
+
+class OrganismeFiltersResponse(BaseModel):
+    statuses: list[str] = Field(default_factory=list)
+    countries: list[str] = Field(default_factory=list)
+    types: list[str] = Field(default_factory=list)
+    accreditors: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    zones: list[dict[str, str]] = Field(default_factory=list)
+
+
 # ============================================================
 # ACCRÉDITATIONS
 # ============================================================

@@ -55,9 +55,20 @@ from app.routes.api.v1.organismes_certifications import (
 from app.routes.api.v1.documents import router as documents_router
 
 # ============================================================
-# MODULE MISSIONS DE COLLECTE
+# MODULE CERTIFICATION REGISTRY
 # ============================================================
 
+
+from app.routes.api.v1.certification_registry import (
+    router as certification_registry_router,
+)
+
+# ============================================================
+# MODULE MISSIONS DE COLLECTE
+# ============================================================
+from app.routes.api.v1.collecte_workspace import (
+    router as collecte_workspace_router,
+)
 from app.routes.api.v1.campagnes import router as campagnes_router
 from app.routes.api.v1.missions_collecte import (
     global_router as missions_collecte_router,
@@ -225,7 +236,15 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    certification_registry_router
+)
+
+api_router.include_router(
     documents_router
+)
+
+api_router.include_router(
+    collecte_workspace_router
 )
 
 api_router.include_router(

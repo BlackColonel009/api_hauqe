@@ -1,2 +1,115 @@
-﻿<div class="page-content container-fluid certifications-page"><section class="page-heading"><div><p class="eyebrow">Registre national</p><h1>Organismes certificateurs</h1><p>Consultez les organismes, leurs accréditations et les certifications qu’ils ont délivrées.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn"><i data-lucide="download"></i>Exporter</button><a href="#/organismes/nouveau" class="btn btn-primary app-btn"><i data-lucide="plus"></i>Nouvel organisme</a></div></section><section class="cert-kpis" id="bodyKpis"></section><section class="cert-filters"><label class="cert-search"><i data-lucide="search"></i><input id="bodySearch" type="search" placeholder="Nom, pays, accréditation ou référentiel…"></label><label><span>Statut</span><select id="bodyStatus"><option value="all">Tous les statuts</option><option value="recognized">Reconnu</option><option value="verify">À vérifier</option><option value="suspended">Suspendu</option></select></label><label><span>Pays</span><select id="bodyCountry"><option value="all">Tous les pays</option><option>Togo</option><option>France</option><option>Ghana</option></select></label><label><span>Référentiel</span><select id="bodyStandard"><option value="all">Tous les référentiels</option><option>ISO 22000</option><option>HACCP</option><option>BIO</option><option>COTAG</option></select></label><button class="reset-filter" id="resetBodies"><i data-lucide="rotate-ccw"></i>Réinitialiser</button></section><section class="panel certifications-panel"><div class="cert-list-head"><div><strong id="bodyCount"></strong><small>Annuaire actualisé</small></div><select><option>Nom A–Z</option><option>Plus de certificats</option></select></div><div class="table-responsive"><table class="table cert-table"><thead><tr><th>Organisme</th><th>Pays</th><th>Accréditation</th><th>Domaines couverts</th><th>Certificats</th><th>Dernière vérification</th><th>Statut</th><th></th></tr></thead><tbody id="bodyRows"></tbody></table></div></section></div>
+<div class="page-content container-fluid certifications-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Registre national</p>
+      <h1>Organismes certificateurs</h1>
+      <p>
+        Consultez les organismes enregistrés, leurs accréditations
+        et les certifications associées.
+      </p>
+    </div>
 
+    <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn" id="bodyExport" type="button">
+        <i data-lucide="download"></i>Exporter
+      </button>
+
+      <a href="#/organismes/nouveau" class="btn btn-primary app-btn">
+        <i data-lucide="plus"></i>Nouvel organisme
+      </a>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="bodyApiState" hidden></section>
+
+  <section class="cert-kpis" id="bodyKpis"></section>
+
+  <section class="cert-filters">
+    <label class="cert-search">
+      <i data-lucide="search"></i>
+      <input
+        id="bodySearch"
+        type="search"
+        placeholder="Nom, sigle, identifiant ou numéro d’enregistrement…"
+      >
+    </label>
+
+    <label>
+      <span>Statut</span>
+      <select id="bodyStatus" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Pays</span>
+      <select id="bodyCountry" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Accréditeur</span>
+      <select id="bodyAccreditor" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Domaine</span>
+      <select id="bodyDomain" disabled>
+        <option value="">Chargement…</option>
+      </select>
+    </label>
+
+    <button class="reset-filter" id="resetBodies" type="button">
+      <i data-lucide="rotate-ccw"></i>Réinitialiser
+    </button>
+  </section>
+
+  <section class="panel certifications-panel">
+    <div class="cert-list-head">
+      <div>
+        <strong id="bodyCount">0 organisme</strong>
+        <small id="bodyRange">Données PostgreSQL</small>
+      </div>
+
+      <select id="bodySort">
+        <option value="name_asc">Nom A–Z</option>
+        <option value="name_desc">Nom Z–A</option>
+        <option value="certifications_desc">Plus de certifications</option>
+        <option value="verification_desc">Vérification récente</option>
+      </select>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table cert-table">
+        <thead>
+          <tr>
+            <th>Organisme</th>
+            <th>Pays</th>
+            <th>Accréditations</th>
+            <th>Domaines</th>
+            <th>Certifications</th>
+            <th>Dernière vérification</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bodyRows"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar">
+      <span id="bodyPaginationInfo"></span>
+      <div>
+        <button class="btn btn-outline-secondary app-btn" id="bodyPrev" type="button">
+          <i data-lucide="chevron-left"></i>Précédent
+        </button>
+        <button class="btn btn-outline-secondary app-btn" id="bodyNext" type="button">
+          Suivant<i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

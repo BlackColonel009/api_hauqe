@@ -1,6 +1,146 @@
-<div class="page-content container-fluid company-form-page collecte-form-page">
-  <nav class="detail-breadcrumb"><a href="#/collectes">Collectes & contrôles</a><i data-lucide="chevron-right"></i><span id="collectFormMode">Nouvelle fiche</span></nav>
-  <section class="page-heading"><div><p class="eyebrow">Fiche numérique de collecte</p><h1 id="collectFormTitle">Créer une mission de collecte</h1><p>Renseignez progressivement les informations recueillies et les justificatifs associés.</p></div><div class="heading-actions"><span class="autosave-state"><i data-lucide="cloud-check"></i><span id="autosaveLabel">Brouillon local</span></span><button class="btn btn-outline-secondary app-btn" id="saveCollectDraft"><i data-lucide="save"></i>Enregistrer le brouillon</button><button class="btn btn-primary app-btn" id="submitCollect"><i data-lucide="send"></i>Soumettre à la HAUQE</button></div></section>
-  <section class="form-stepper collect-stepper" id="collectStepper"><button class="active" data-step="1"><span>1</span><div><strong>Mission</strong><small>Planification</small></div></button><i></i><button data-step="2"><span>2</span><div><strong>Entreprise</strong><small>Identification</small></div></button><i></i><button data-step="3"><span>3</span><div><strong>Activités</strong><small>Produits & marchés</small></div></button><i></i><button data-step="4"><span>4</span><div><strong>Certifications</strong><small>Référentiels</small></div></button><i></i><button data-step="5"><span>5</span><div><strong>Justificatifs</strong><small>Documents</small></div></button><i></i><button data-step="6"><span>6</span><div><strong>Soumission</strong><small>Contrôle final</small></div></button></section>
-  <form id="collectForm" novalidate><section id="collectFormContent"></section><footer class="form-navigation"><button type="button" class="btn btn-outline-secondary app-btn" id="collectPrevious" hidden><i data-lucide="arrow-left"></i>Précédent</button><span id="collectProgress">Étape 1 sur 6</span><button type="button" class="btn btn-primary app-btn" id="collectNext">Continuer<i data-lucide="arrow-right"></i></button></footer></form><div class="save-indicator" id="collectToast" hidden><i data-lucide="circle-check"></i><span></span></div>
+<div class="page-content container-fluid company-form-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/collectes">Collectes</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="collectFormMode">Nouvelle mission</span>
+  </nav>
+
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Collecte terrain</p>
+      <h1 id="collectFormTitle">
+        Préparer une mission et sa fiche de collecte
+      </h1>
+      <p>
+        Le brouillon est enregistré côté serveur.
+        Aucun stockage local n’est utilisé.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <a
+        href="#/collectes"
+        class="btn btn-outline-secondary app-btn"
+      >
+        <i data-lucide="x"></i>
+        Fermer
+      </a>
+
+      <button
+        class="btn btn-outline-secondary app-btn"
+        id="createRevision"
+        type="button"
+        hidden
+      >
+        <i data-lucide="git-branch-plus"></i>
+        Nouvelle révision
+      </button>
+
+      <button
+        class="btn btn-outline-secondary app-btn"
+        id="saveCollectDraft"
+        type="button"
+      >
+        <i data-lucide="save"></i>
+        Enregistrer le brouillon
+      </button>
+
+      <button
+        class="btn btn-primary app-btn"
+        id="submitCollect"
+        type="button"
+      >
+        <i data-lucide="send"></i>
+        Soumettre
+      </button>
+    </div>
+  </section>
+
+  <section
+    class="dashboard-api-state"
+    id="collectFormState"
+    hidden
+  ></section>
+
+  <section class="form-stepper" id="collectStepper">
+    <button class="active" data-step="1" type="button">
+      <span>1</span>
+      <div>
+        <strong>Mission</strong>
+        <small>Campagne, zone, affectation</small>
+      </div>
+    </button>
+    <i></i>
+
+    <button data-step="2" type="button">
+      <span>2</span>
+      <div>
+        <strong>Entreprise</strong>
+        <small>Titulaire & déclarant</small>
+      </div>
+    </button>
+    <i></i>
+
+    <button data-step="3" type="button">
+      <span>3</span>
+      <div>
+        <strong>Offres</strong>
+        <small>Produits & services déclarés</small>
+      </div>
+    </button>
+    <i></i>
+
+    <button data-step="4" type="button">
+      <span>4</span>
+      <div>
+        <strong>Certifications</strong>
+        <small>Déclarations terrain</small>
+      </div>
+    </button>
+    <i></i>
+
+    <button data-step="5" type="button">
+      <span>5</span>
+      <div>
+        <strong>Preuves</strong>
+        <small>Documents & observations</small>
+      </div>
+    </button>
+    <i></i>
+
+    <button data-step="6" type="button">
+      <span>6</span>
+      <div>
+        <strong>Soumission</strong>
+        <small>Contrôle backend</small>
+      </div>
+    </button>
+  </section>
+
+  <form id="collectForm" novalidate>
+    <section id="collectFormContent"></section>
+
+    <footer class="form-navigation">
+      <button
+        type="button"
+        class="btn btn-outline-secondary app-btn"
+        id="collectPrevious"
+        hidden
+      >
+        <i data-lucide="arrow-left"></i>
+        Précédent
+      </button>
+
+      <span id="collectProgress">Étape 1 sur 6</span>
+
+      <button
+        type="button"
+        class="btn btn-primary app-btn"
+        id="collectNext"
+      >
+        Continuer
+        <i data-lucide="arrow-right"></i>
+      </button>
+    </footer>
+  </form>
 </div>

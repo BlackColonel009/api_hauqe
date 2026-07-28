@@ -24,8 +24,10 @@ from app.models.role_permission import RolePermission
 PERMISSIONS = [
     ("ORGANISMES.CREER", "ORGANISMES", "CREER", "Créer un organisme certificateur."),
     ("ORGANISMES.MODIFIER", "ORGANISMES", "MODIFIER", "Modifier un organisme et ses accréditations."),
+    ("ORGANISMES.EXPORTER", "ORGANISMES", "EXPORTER", "Exporter le registre des organismes avec motif et audit."),
     ("CERTIFICATIONS.CREER", "CERTIFICATIONS", "CREER", "Créer une certification officielle."),
     ("CERTIFICATIONS.MODIFIER", "CERTIFICATIONS", "MODIFIER", "Modifier une certification et ses sous-modules."),
+    ("CERTIFICATIONS.EXPORTER", "CERTIFICATIONS", "EXPORTER", "Exporter le registre des certifications avec motif et audit."),
     ("DOCUMENTS.VERIFIER", "DOCUMENTS", "VERIFIER", "Vérifier, désactiver ou restaurer un document."),
 ]
 
