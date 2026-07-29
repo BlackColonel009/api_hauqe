@@ -68,3 +68,23 @@ class CollecteRegistryResponse(BaseModel):
     offset: int
     summary: CollecteRegistrySummary
     items: list[CollecteRegistryItem] = Field(default_factory=list)
+
+class CollecteQuickEnterpriseCreateRequest(BaseModel):
+    raison_sociale: str = Field(min_length=2, max_length=255)
+    zone_siege_id: UUID
+    adresse_siege: str | None = Field(default=None, max_length=255)
+    telephone_principal: str | None = Field(default=None, max_length=255)
+    email_principal: str | None = Field(default=None, max_length=255)
+
+
+class CollecteQuickEnterpriseResponse(BaseModel):
+    id: UUID
+    identifiant_national: str
+    raison_sociale: str
+    zone_siege_id: UUID
+    adresse_siege: str | None = None
+    telephone_principal: str | None = None
+    email_principal: str | None = None
+    statut: str
+    source_donnee: str
+

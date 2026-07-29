@@ -268,6 +268,8 @@
           row.querySelector('[name="decl_cert_expiry"]')?.value || "",
         copie_disponible:
           row.querySelector('[name="decl_cert_copy"]')?.value || "",
+        situation_declaree:
+          row.querySelector('[name="decl_cert_situation"]')?.value || "",
         certification_officielle_id:
           row.dataset.officialId || null,
         statut_rapprochement:
@@ -340,15 +342,16 @@
             }
           )}
 
-          ${select(
-            "zone_id",
-            "Zone administrative",
-            zoneOptions(),
-            {
-              required: true,
-              disabled: !canPlan,
-            }
-          )}
+          <div class="form-field full zone-picker-field">
+            <label>Zone administrative <b>*</b></label>
+            <input type="hidden" name="zone_id" value="${escapeHtml(state.zone_id || "")}">
+            <div class="zone-picker-control">
+              ${icon("search")}
+              <input id="collectZoneSearch" type="search" value="${escapeHtml((workspace.zones || []).find(z => String(z.id) === String(state.zone_id))?.label || "")}" placeholder="Rechercher une région, préfecture, commune ou localité…" autocomplete="off" ${!canPlan ? "disabled" : ""}>
+              ${canPlan ? `<button type="button" id="openQuickZone" class="btn btn-outline-secondary app-btn"><i data-lucide="map-pin-plus"></i>Créer</button>` : ""}
+            </div>
+            <div class="zone-picker-results" id="collectZoneResults"></div>
+          </div>
 
           ${select(
             "priority",
@@ -603,15 +606,12 @@
         </div>
 
         ${
-          hasPermission("ENTREPRISES.CREER")
+          hasPermission("COLLECTE.CREER")
             ? `
-              <div class="review-warning">
+              <div class="review-warning quick-enterprise-cta">
                 ${icon("info")}
-                Entreprise absente du registre ?
-                <a href="#/entreprises/nouveau">
-                  Créer d’abord l’entreprise
-                </a>,
-                puis revenir sur cette mission.
+                <span>Entreprise absente du registre ? Précréez son dossier incomplet sans quitter la collecte.</span>
+                <button class="btn btn-outline-secondary app-btn" id="openQuickEnterprise" type="button"><i data-lucide="building-2"></i>Précréer</button>
               </div>
             `
             : ""
@@ -830,6 +830,23 @@
           {
             type: "date",
             value: item.date_expiration || "",
+          }
+        )}
+
+        ${select(
+          "decl_cert_situation",
+          "Situation actuelle déclarée",
+          [
+            ["PRESENTE", "1 — Présente"],
+            ["ABSENTE", "2 — Absente"],
+            ["AUDIT_SURVEILLANCE_1", "3 — Audit de surveillance 1"],
+            ["AUDIT_SURVEILLANCE_2", "4 — Audit de surveillance 2"],
+            ["AUDIT_SURVEILLANCE_3", "5 — Audit de surveillance 3"],
+            ["RENOUVELLEMENT", "6 — Renouvellement"],
+          ],
+          {
+            current: item.situation_declaree || "",
+            placeholder: "Sélectionner la situation",
           }
         )}
 
@@ -1133,6 +1150,11 @@
       });
     }
 
+    $("#collectZoneSearch")?.addEventListener("focus", event => renderZoneMatches(event.target.value));
+    $("#collectZoneSearch")?.addEventListener("input", event => renderZoneMatches(event.target.value));
+    $("#openQuickZone")?.addEventListener("click", openQuickZoneDialog);
+    $("#openQuickEnterprise")?.addEventListener("click", () => openQuickEnterpriseDialog());
+
     $("#changeEnterprise")?.addEventListener("click", () => {
       if (!isDraft()) return;
       selectedEnterprise = null;
@@ -1275,10 +1297,13 @@
 
       if (!items.length) {
         container.innerHTML = `
-          <div class="document-placeholder">
-            Aucune entreprise trouvée.
+          <div class="document-placeholder quick-empty-company">
+            <span>Aucune entreprise trouvée.</span>
+            ${hasPermission("COLLECTE.CREER") ? `<button type="button" class="btn btn-outline-secondary app-btn" id="createFromEnterpriseSearch"><i data-lucide="building-2"></i>Précréer « ${escapeHtml(query)} »</button>` : ""}
           </div>
         `;
+        $("#createFromEnterpriseSearch")?.addEventListener("click", () => openQuickEnterpriseDialog(query));
+        refreshIcons();
         return;
       }
 
@@ -1328,6 +1353,99 @@
       `;
     }
   }
+
+
+function activeZoneOptions(excludeId = null) {
+  return (workspace.zones || []).filter(z => String(z.id) !== String(excludeId || ""));
+}
+
+function renderZoneMatches(query = "") {
+  const box = $("#collectZoneResults");
+  if (!box) return;
+  const q = query.trim().toLowerCase();
+  const matches = activeZoneOptions().filter(z => !q || String(z.label || z.nom || "").toLowerCase().includes(q)).slice(0, 12);
+  box.innerHTML = matches.map(z => `<button type="button" data-collect-zone="${escapeHtml(z.id)}"><span>${icon("map-pin")}</span><div><strong>${escapeHtml(z.label || z.nom || "Zone")}</strong><small>${escapeHtml(z.type_zone || "")}</small></div></button>`).join("") || `<div class="document-placeholder">Aucune zone correspondante.</div>`;
+  box.querySelectorAll('[data-collect-zone]').forEach(button => button.onclick = () => {
+    const zone = activeZoneOptions().find(z => String(z.id) === String(button.dataset.collectZone));
+    if (!zone) return;
+    state.zone_id = zone.id;
+    const hidden = document.querySelector('[name="zone_id"]');
+    if (hidden) hidden.value = zone.id;
+    const search = $("#collectZoneSearch");
+    if (search) search.value = zone.label || zone.nom || "";
+    box.innerHTML = "";
+  });
+  refreshIcons();
+}
+
+function openQuickZoneDialog() {
+  const parent = $("#quickZoneParent");
+  parent.innerHTML = '<option value="">Aucune</option>' + activeZoneOptions().map(z => `<option value="${escapeHtml(z.id)}">${escapeHtml(z.label || z.nom || "Zone")}</option>`).join("");
+  $("#quickZoneName").value = $("#collectZoneSearch")?.value.trim() || "";
+  $("#quickZoneCode").value = "";
+  $("#quickZoneType").value = "LOCALITE";
+  $("#quickZoneDialog").showModal();
+  refreshIcons();
+}
+
+async function saveQuickZone(event) {
+  event.preventDefault();
+  try {
+    const created = await apiPost('/api/v1/zones-administratives/quick-create', {
+      type_zone: $("#quickZoneType").value,
+      code: $("#quickZoneCode").value.trim() || null,
+      nom: $("#quickZoneName").value.trim(),
+      parent_id: $("#quickZoneParent").value || null,
+    });
+    workspace.zones = [...(workspace.zones || []), {id: created.id, label: created.path || created.nom, nom: created.nom, type_zone: created.type_zone}];
+    state.zone_id = created.id;
+    $("#quickZoneDialog").close();
+    render();
+    showState('Zone créée et sélectionnée dans la mission.');
+  } catch (error) { showState(error?.message || 'Création de la zone impossible.', {error:true}); }
+}
+
+function openQuickEnterpriseDialog(defaultName = "") {
+  if (!state.zone_id) { showState('Sélectionnez d’abord la zone administrative de la mission.', {error:true}); return; }
+  const zone = (workspace.zones || []).find(z => String(z.id) === String(state.zone_id));
+  $("#quickEnterpriseName").value = defaultName || $("#enterpriseSearch")?.value.trim() || "";
+  $("#quickEnterpriseZoneLabel").value = zone?.label || zone?.nom || state.zone_id;
+  $("#quickEnterpriseAddress").value = zone?.label || zone?.nom || "";
+  $("#quickEnterprisePhone").value = state.telephone_declarant || "";
+  $("#quickEnterpriseEmail").value = state.email_declarant || "";
+  $("#quickEnterpriseDialog").showModal();
+  refreshIcons();
+}
+
+async function saveQuickEnterprise(event) {
+  event.preventDefault();
+  try {
+    const created = await apiPost('/api/v1/collectes/quick-enterprises', {
+      raison_sociale: $("#quickEnterpriseName").value.trim(),
+      zone_siege_id: state.zone_id,
+      adresse_siege: $("#quickEnterpriseAddress").value.trim() || null,
+      telephone_principal: $("#quickEnterprisePhone").value.trim() || null,
+      email_principal: $("#quickEnterpriseEmail").value.trim() || null,
+    });
+    selectedEnterprise = created;
+    state.entreprise_id = created.id;
+    $("#quickEnterpriseDialog").close();
+    render();
+    showState('Entreprise précréée. Son dossier reste marqué À compléter dans le registre.');
+  } catch (error) {
+    const detail = error?.detail;
+    const enterpriseId = detail?.entreprise_id;
+    if (enterpriseId) {
+      selectedEnterprise = await apiGet(`/api/v1/entreprises/${enterpriseId}`);
+      state.entreprise_id = selectedEnterprise.id;
+      $("#quickEnterpriseDialog").close();
+      render();
+      showState('Une entreprise identique existait déjà : elle a été sélectionnée.');
+      return;
+    }
+    showState(error?.message || 'Précréation impossible.', {error:true});
+  }
+}
 
   function validateDates(start, end, label) {
     if (start && end && end < start) {
@@ -1683,6 +1801,8 @@
         item.date_expiration || null,
       copie_disponible:
         copy,
+      situation_declaree:
+        item.situation_declaree || null,
     };
   }
 
@@ -1700,6 +1820,7 @@
         item.portee,
         item.date_obtention,
         item.date_expiration,
+        item.situation_declaree,
       ].some((value) => (
         value !== null
         && value !== undefined
@@ -2049,6 +2170,11 @@
     $("#collectFormTitle").textContent =
       `Mission ${mission.code || mission.id}`;
   }
+
+  document.addEventListener("submit", event => {
+    if (event.target.id === "quickZoneForm") saveQuickZone(event);
+    if (event.target.id === "quickEnterpriseForm") saveQuickEnterprise(event);
+  }, true);
 
   async function bootstrap() {
     const api = await import("/static/js/core/api.js");

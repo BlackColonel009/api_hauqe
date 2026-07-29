@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.service import write_audit_event
+from app.models.entreprise import Entreprise
 from app.repositories.collecte_workspace_repository import (
     CollecteWorkspaceRepository,
 )
@@ -12,7 +15,14 @@ from app.schemas.collecte_workspace import (
     CollecteRegistryResponse,
     CollecteRegistrySummary,
     CollecteWorkspaceFiltersResponse,
+    CollecteQuickEnterpriseCreateRequest,
+    CollecteQuickEnterpriseResponse,
 )
+from app.services.auth_service import AuthContext
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
 
 
 class CollecteWorkspaceService:
@@ -102,4 +112,89 @@ class CollecteWorkspaceService:
             offset=offset,
             summary=CollecteRegistrySummary(**summary),
             items=items,
+        )
+
+    @staticmethod
+    async def quick_create_enterprise(
+        db: AsyncSession,
+        *,
+        payload: CollecteQuickEnterpriseCreateRequest,
+        actor: AuthContext,
+        request: Request,
+    ) -> CollecteQuickEnterpriseResponse:
+        name = payload.raison_sociale.strip()
+        zone = await CollecteWorkspaceRepository.get_zone(
+            db,
+            payload.zone_siege_id,
+        )
+        if zone is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Zone administrative active introuvable.",
+            )
+
+        existing = await CollecteWorkspaceRepository.find_exact_enterprise(
+            db,
+            name=name,
+            zone_id=payload.zone_siege_id,
+        )
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": (
+                        "Une entreprise portant exactement ce nom "
+                        "existe déjà dans cette zone."
+                    ),
+                    "entreprise_id": str(existing.id),
+                },
+            )
+
+        item = Entreprise(
+            identifiant_national=f"TMP-COL-{uuid4().hex[:12].upper()}",
+            raison_sociale=name,
+            zone_siege_id=payload.zone_siege_id,
+            adresse_siege=(
+                payload.adresse_siege
+                or zone.nom
+                or "À compléter"
+            ).strip(),
+            telephone_principal=payload.telephone_principal,
+            email_principal=payload.email_principal,
+            statut="INCOMPLET_COLLECTE",
+            source_donnee="COLLECTE_TERRAIN",
+        )
+        db.add(item)
+        await db.flush()
+
+        await write_audit_event(
+            db,
+            action="COLLECTE_ENTERPRISE_QUICK_CREATE",
+            categorie="COLLECTE",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="entreprise",
+            ressource_id=item.id,
+            adresse_ip=_client_ip(request),
+            valeurs_apres={
+                "identifiant_national": item.identifiant_national,
+                "raison_sociale": item.raison_sociale,
+                "zone_siege_id": str(item.zone_siege_id),
+                "statut": item.statut,
+                "source_donnee": item.source_donnee,
+            },
+        )
+        await db.commit()
+        await db.refresh(item)
+
+        return CollecteQuickEnterpriseResponse(
+            id=item.id,
+            identifiant_national=item.identifiant_national,
+            raison_sociale=item.raison_sociale or name,
+            zone_siege_id=item.zone_siege_id,
+            adresse_siege=item.adresse_siege,
+            telephone_principal=item.telephone_principal,
+            email_principal=item.email_principal,
+            statut=item.statut or "INCOMPLET_COLLECTE",
+            source_donnee=item.source_donnee or "COLLECTE_TERRAIN",
         )

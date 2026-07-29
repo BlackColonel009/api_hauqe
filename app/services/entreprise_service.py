@@ -562,6 +562,13 @@ class EntrepriseService:
             email_principal=prospective_email,
         )
 
+        if (entreprise.statut or "").strip().upper() == "INCOMPLET_COLLECTE":
+            changes["statut"] = (
+                "EN_ATTENTE_REGULARISATION"
+                if not normalize_code(changes.get("rccm", entreprise.rccm))
+                else None
+            )
+
         if "rccm" in changes:
             normalized_rccm = normalize_code(changes.get("rccm"))
             changes["rccm"] = normalized_rccm

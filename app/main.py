@@ -96,6 +96,7 @@ async def frontend_view(
         "rapports": "views/rapports.html",
         "utilisateurs": "views/utilisateurs.html",
         "referentiels": "views/referentiels.html",
+        "zones-administratives": "views/zones-administratives.html",
 
         "regles-codification": "views/regles-codification.html",
         "journal-audit": "views/journal-audit.html",

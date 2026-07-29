@@ -1,4 +1,5 @@
 import { installActionLoader } from "./action-loader.js?v=20260729-1";
+import { installDialogManager } from "./dialog-manager.js?v=20260729-2";
 import { initRouter } from "./router.js";
 import { initSessionLock } from "./session-lock.js";
 import {
@@ -14,12 +15,13 @@ import {
 } from "./api.js";
 
 installActionLoader();
+installDialogManager();
 
 /* ============================================================
    SIDEBAR MOBILE ROBUSTE
    ------------------------------------------------------------
    - délégation stable, même si le shell évolue ;
-   - réaction dès le pointerup sur écran tactile ;
+   - réaction dès le pointerdown sur écran tactile ;
    - backdrop, fermeture par Échap et fermeture après navigation ;
    - synchronisation aria-expanded / aria-hidden ;
    - blocage du scroll arrière-plan pendant l'ouverture.
@@ -86,7 +88,7 @@ function initMobileSidebar() {
 
   let lastPointerToggleAt = 0;
 
-  menuToggle.addEventListener("pointerup", (event) => {
+  menuToggle.addEventListener("pointerdown", (event) => {
     lastPointerToggleAt = performance.now();
     toggleSidebar(event);
   });

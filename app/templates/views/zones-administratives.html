@@ -1,0 +1,59 @@
+<div class="page-content container-fluid zones-admin-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Administration géographique</p>
+      <h1>Zones administratives</h1>
+      <p>Gérez la hiérarchie Région → Préfecture → Commune → Localité utilisée dans les missions, entreprises et affectations.</p>
+    </div>
+    <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn" id="refreshZones" type="button"><i data-lucide="refresh-cw"></i>Actualiser</button>
+      <button class="btn btn-primary app-btn" id="newZone" type="button"><i data-lucide="map-pinned"></i>Nouvelle zone</button>
+    </div>
+  </section>
+  <section class="dashboard-api-state" id="zonesApiState" hidden></section>
+  <section class="zones-summary" id="zonesSummary"></section>
+  <section class="panel zones-panel">
+    <header>
+      <div><h2>Référentiel géographique</h2><p>La désactivation conserve l’historique et les liaisons existantes.</p></div>
+    </header>
+    <div class="zones-toolbar">
+      <label class="zones-search"><i data-lucide="search"></i><input id="zoneSearch" type="search" placeholder="Nom, code ou chemin…"></label>
+      <label><span>Type</span><select id="zoneType"><option value="">Tous</option><option>REGION</option><option>PREFECTURE</option><option>COMMUNE</option><option>LOCALITE</option><option>AUTRE</option></select></label>
+      <label><span>Statut</span><select id="zoneStatus"><option value="">Tous</option><option>ACTIF</option><option>INACTIF</option></select></label>
+      <button class="reset-filter" id="resetZoneFilters" type="button"><i data-lucide="rotate-ccw"></i>Réinitialiser</button>
+    </div>
+    <div class="zones-table-wrap">
+      <table class="table zones-table">
+        <thead><tr><th>Zone</th><th>Type</th><th>Code</th><th>Zone parente</th><th>Coordonnées</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="zoneRows"></tbody>
+      </table>
+      <div class="priority-empty" id="zonesEmpty" hidden>Aucune zone trouvée.</div>
+    </div>
+  </section>
+
+  <dialog class="hauqe-dialog zone-dialog" id="zoneDialog">
+    <form id="zoneForm" method="post" novalidate>
+      <header><div><p class="eyebrow">Référentiel géographique</p><h2 id="zoneDialogTitle">Nouvelle zone</h2></div><button class="dialog-close" type="button" data-dialog-close><i data-lucide="x"></i></button></header>
+      <div class="dialog-body" data-dialog-scroll>
+        <div class="zone-form-grid">
+          <label><span>Type de zone <b>*</b></span><select id="zoneFormType" required><option value="">Sélectionner</option><option>REGION</option><option>PREFECTURE</option><option>COMMUNE</option><option>LOCALITE</option><option>AUTRE</option></select></label>
+          <label><span>Code</span><input id="zoneFormCode" maxlength="255" placeholder="Ex. TG-MAR-ANE"></label>
+          <label class="full"><span>Nom <b>*</b></span><input id="zoneFormName" maxlength="255" required></label>
+          <label class="full"><span>Zone parente</span><select id="zoneFormParent"><option value="">Aucune — niveau racine</option></select><small>Une région n’a normalement pas de parent.</small></label>
+          <label><span>Latitude</span><input id="zoneFormLatitude" type="number" step="0.0001" min="-90" max="90"></label>
+          <label><span>Longitude</span><input id="zoneFormLongitude" type="number" step="0.0001" min="-180" max="180"></label>
+          <label><span>Statut</span><select id="zoneFormStatus"><option>ACTIF</option><option>INACTIF</option></select></label>
+        </div>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-dialog-close>Annuler</button><button class="btn btn-primary app-btn" id="saveZone" type="submit"><i data-lucide="save"></i>Enregistrer</button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog zone-dialog zone-status-dialog" id="zoneStatusDialog">
+    <form id="zoneStatusForm" method="post">
+      <header><div><p class="eyebrow">Cycle de vie</p><h2 id="zoneStatusTitle">Changer le statut</h2></div><button class="dialog-close" type="button" data-dialog-close><i data-lucide="x"></i></button></header>
+      <div class="dialog-body" data-dialog-scroll><label><span>Nouveau statut</span><select id="zoneNewStatus"><option>ACTIF</option><option>INACTIF</option></select></label><label><span>Motif</span><textarea id="zoneStatusReason" rows="4" maxlength="1000"></textarea></label></div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-dialog-close>Annuler</button><button class="btn btn-primary app-btn" type="submit">Appliquer</button></footer>
+    </form>
+  </dialog>
+</div>

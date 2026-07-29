@@ -118,6 +118,30 @@ def offre_response(item: OffreDeclaree) -> OffreDeclareeResponse:
     )
 
 
+
+DECLARED_CERTIFICATION_SITUATIONS = {
+    "PRESENTE",
+    "ABSENTE",
+    "AUDIT_SURVEILLANCE_1",
+    "AUDIT_SURVEILLANCE_2",
+    "AUDIT_SURVEILLANCE_3",
+    "RENOUVELLEMENT",
+}
+
+
+def normalize_declared_situation(value: str | None) -> str | None:
+    normalized = clean_text(value)
+    if normalized is None:
+        return None
+    normalized = normalized.upper()
+    if normalized not in DECLARED_CERTIFICATION_SITUATIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Situation déclarée de certification invalide.",
+        )
+    return normalized
+
+
 def certification_response(
     item: CertificationDeclaree,
 ) -> CertificationDeclareeResponse:
@@ -132,6 +156,7 @@ def certification_response(
         date_obtention=item.date_obtention,
         date_expiration=item.date_expiration,
         copie_disponible=item.copie_disponible,
+        situation_declaree=item.situation_declaree,
         certification_officielle_id=item.certification_officielle_id,
         score_rapprochement=item.score_rapprochement,
         statut_rapprochement=item.statut_rapprochement,
@@ -480,7 +505,9 @@ class FicheCollecteService:
         }
 
         for field, value in changes.items():
-            if field in text_fields:
+            if field == "situation_declaree":
+                value = normalize_declared_situation(value)
+            elif field in text_fields:
                 value = clean_text(value)
             setattr(item, field, value)
 
@@ -972,6 +999,7 @@ class FicheCollecteService:
             date_obtention=payload.date_obtention,
             date_expiration=payload.date_expiration,
             copie_disponible=payload.copie_disponible,
+            situation_declaree=normalize_declared_situation(payload.situation_declaree),
             certification_officielle_id=None,
             score_rapprochement=None,
             statut_rapprochement=None,
@@ -996,6 +1024,7 @@ class FicheCollecteService:
                 "organisme_declare": item.organisme_declare,
                 "norme_declaree": item.norme_declaree,
                 "copie_disponible": item.copie_disponible,
+                "situation_declaree": item.situation_declaree,
             },
         )
 
@@ -1066,6 +1095,7 @@ class FicheCollecteService:
                 if item.date_expiration else None
             ),
             "copie_disponible": item.copie_disponible,
+            "situation_declaree": item.situation_declaree,
         }
 
         text_fields = {
@@ -1106,6 +1136,7 @@ class FicheCollecteService:
                     if item.date_expiration else None
                 ),
                 "copie_disponible": item.copie_disponible,
+                "situation_declaree": item.situation_declaree,
             },
         )
 

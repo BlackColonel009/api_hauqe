@@ -11,11 +11,12 @@
 | 07 | Contrôle FUCCS | 🟡 tests utilisateur |
 | 08 | Validation + corrections | 🟡 tests utilisateur |
 | **09** | **Intégration BNEC** | **🟡 raccordée / tests à faire** |
-| **10** | **Classification entreprise / INFC / SNCC** | **⏭️ prochaine étape** |
-| 11 | Échéances / Alertes / Notifications / Veille | ⬜ |
-| 12 | Dashboards tactique / stratégique / annuel / public | ⬜ |
+| **10** | **Classification entreprise / INFC / SNCC** |  🟡 tests utilisateur |
+| 11 | Échéances / Alertes / Notifications / Veille |  🟡 tests utilisateur |
+| 12 | Dashboards tactique / stratégique / annuel / public | **⏭️ prochaine étape** |
 | 13 | Documents / échanges / décisions / mises à jour | ⬜ |
 | 14 | Gouvernance / qualité / audit / continuité | ⬜ |
 | 15 | Rapports / administration / recette transversale | ⬜ |
 
 `COLLECTE_COMPLETUDE` reste réservé à Gouvernance / Règles et codification.
+une partie de la gouvernance à été implémenté voir feuille de route

@@ -734,52 +734,35 @@
     }
 
     try {
-      const created = await run(
-        () => api.apiPost(
-          "/api/v1/users",
-          {
-            email: $("#userEmail").value.trim(),
-            password,
-            nom: $("#userLastName").value.trim() || null,
-            prenoms: $("#userFirstNames").value.trim() || null,
-            telephone: $("#userPhone").value.trim() || null,
-            fonction: $("#userFunction").value.trim() || null,
-            statut: $("#userInitialStatus").value,
-          }
-        ),
-        {
-          button: event.submitter,
-          title: "Utilisateur",
-          message: "Création du compte",
-          detail: "Le mot de passe est haché par le backend.",
-        }
-      );
 
-      const assigned = [];
-      const roleErrors = [];
+const selectedRoleIds = selectedRoles.map(node => node.value);
+const created = await run(
+  () => api.apiPost(
+    "/api/v1/users",
+    {
+      email: $("#userEmail").value.trim(),
+      password,
+      nom: $("#userLastName").value.trim() || null,
+      prenoms: $("#userFirstNames").value.trim() || null,
+      telephone: $("#userPhone").value.trim() || null,
+      fonction: $("#userFunction").value.trim() || null,
+      statut: $("#userInitialStatus").value,
+      role_ids: selectedRoleIds,
+    }
+  ),
+  {
+    button: event.submitter || $("#saveUser"),
+    title: "Utilisateur",
+    message: "Création du compte et attribution des rôles",
+    detail: "L’opération est enregistrée dans une seule transaction.",
+  }
+);
 
-      for (const checkbox of selectedRoles) {
-        const role = roles.find(
-          (item) => String(item.id) === String(checkbox.value)
-        );
-
-        try {
-          await api.apiPost(
-            `/api/v1/users/${created.id}/roles`,
-            {
-              role_id: checkbox.value,
-              motif: "Attribution initiale depuis l’administration MVP",
-            }
-          );
-
-          if (role) assigned.push(role.libelle);
-        } catch (error) {
-          roleErrors.push(
-            `${role?.libelle || checkbox.dataset.roleCode}: `
-            + `${error?.message || "échec"}`
-          );
-        }
-      }
+const assigned = selectedRoles.map(checkbox => {
+  const role = roles.find(item => String(item.id) === String(checkbox.value));
+  return role?.libelle || checkbox.dataset.roleCode;
+});
+const roleErrors = [];
 
       $("#userDialog").close();
       await loadData();
@@ -957,7 +940,11 @@
     };
 
     $("#createUserButton").onclick = openCreateDialog;
-    $("#userForm").onsubmit = saveUser;
+    // La délégation résiste aux vues SPA réinjectées et aux remplacements Lucide.
+    document.addEventListener("submit", event => {
+      if (event.target.id === "userForm") saveUser(event);
+      if (event.target.id === "userStatusForm") saveStatus(event);
+    }, true);
 
     $("#generateUserPassword").onclick = generatePassword;
     $("#copyUserPassword").onclick = () =>
@@ -999,7 +986,7 @@
     };
 
     $("#changeUserStatus").onclick = openStatusDialog;
-    $("#userStatusForm").onsubmit = saveStatus;
+
     $("#saveUserRoles").onclick = saveRoles;
 
     $$("[data-close-user-dialog]").forEach((button) => {

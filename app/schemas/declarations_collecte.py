@@ -72,6 +72,7 @@ class CertificationDeclareeCreateRequest(BaseModel):
     date_obtention: date | None = None
     date_expiration: date | None = None
     copie_disponible: bool | None = None
+    situation_declaree: str | None = Field(default=None, max_length=255)
 
 
 class CertificationDeclareeUpdateRequest(BaseModel):
@@ -83,6 +84,7 @@ class CertificationDeclareeUpdateRequest(BaseModel):
     date_obtention: date | None = None
     date_expiration: date | None = None
     copie_disponible: bool | None = None
+    situation_declaree: str | None = Field(default=None, max_length=255)
 
 
 class CertificationDeclareeResponse(BaseModel):
@@ -96,6 +98,7 @@ class CertificationDeclareeResponse(BaseModel):
     date_obtention: date | None = None
     date_expiration: date | None = None
     copie_disponible: bool | None = None
+    situation_declaree: str | None = None
     certification_officielle_id: UUID | None = None
     score_rapprochement: Decimal | None = None
     statut_rapprochement: str | None = None

@@ -106,6 +106,13 @@ class CertificationInfcWorkspaceItem(CertificationWorkspaceBase):
 
 
 class CertificationSnccWorkspaceItem(CertificationWorkspaceBase):
+    eligible: bool = False
+    eligibility_reasons: list[str] = Field(default_factory=list)
+    latest_infc_id: UUID | None = None
+    latest_infc_score: Decimal | None = None
+    latest_infc_level: int | None = None
+    latest_infc_status: str | None = None
+    latest_infc_date: date | None = None
     current_sncc_id: UUID | None = None
     current_sncc_class: str | None = None
     current_admin_status: str | None = None

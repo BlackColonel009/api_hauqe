@@ -24,6 +24,7 @@ const routes = Object.freeze({
   rapports: { view: "/views/rapports", script: "/static/js/rapports.js", title: "Rapports et exports" },
   utilisateurs: { view: "/views/utilisateurs", script: "/static/js/utilisateurs.js", title: "Gestion des utilisateurs" },
   referentiels: { view: "/views/referentiels", script: "/static/js/referentiels.js", title: "Référentiels" },
+  "zones-administratives": { view: "/views/zones-administratives", script: "/static/js/zones-administratives.js", title: "Zones administratives" },
   "regles-codification": { view: "/views/regles-codification", script: "/static/js/regles-codification.js", title: "Règles et codification" },
   "journal-audit": { view: "/views/journal-audit", script: "/static/js/journal-audit.js", title: "Journal d’audit" },
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },

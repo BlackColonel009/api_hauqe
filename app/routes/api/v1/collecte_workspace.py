@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -10,6 +10,8 @@ from app.permissions.auth import require_permission
 from app.schemas.collecte_workspace import (
     CollecteRegistryResponse,
     CollecteWorkspaceFiltersResponse,
+    CollecteQuickEnterpriseCreateRequest,
+    CollecteQuickEnterpriseResponse,
 )
 from app.services.auth_service import AuthContext
 from app.services.collecte_workspace_service import (
@@ -67,3 +69,19 @@ async def collecte_workspace_registry(
         limit=limit,
         offset=offset,
     )
+
+@router.post(
+    "/quick-enterprises",
+    response_model=CollecteQuickEnterpriseResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def quick_create_enterprise(
+    payload: CollecteQuickEnterpriseCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.CREER")),
+):
+    return await CollecteWorkspaceService.quick_create_enterprise(
+        db, payload=payload, actor=actor, request=request
+    )
+

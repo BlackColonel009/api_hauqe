@@ -65,6 +65,11 @@ class CertificationDeclaree(
         nullable=True,
     )
 
+    situation_declaree: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     certification_officielle_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("certifications.id"),

@@ -17,6 +17,10 @@ from app.routes.api.v1.roles import (
     router as roles_router,
 )
 
+from app.routes.api.v1.zones_administratives import (
+    router as zones_administratives_router,
+)
+
 # ============================================================
 # MODULE ENTREPRISES
 # ============================================================
@@ -226,6 +230,10 @@ api_router.include_router(
 
 api_router.include_router(
     roles_router
+)
+
+api_router.include_router(
+    zones_administratives_router
 )
 
 api_router.include_router(

@@ -214,6 +214,33 @@ class UserService:
                 detail="Statut utilisateur invalide.",
             )
 
+
+        role_ids = list(dict.fromkeys(payload.role_ids))
+        roles = []
+        if role_ids:
+            if "UTILISATEURS.GERER_ROLES" not in actor.permissions:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Permission UTILISATEURS.GERER_ROLES requise "
+                        "pour attribuer les rôles initiaux."
+                    ),
+                )
+
+            for role_id in role_ids:
+                role = await UserRepository.get_role_by_id(db, role_id)
+                if role is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Un rôle initial est introuvable.",
+                    )
+                if (role.statut or "").strip().upper() != "ACTIF":
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Le rôle {role.code} n'est pas actif.",
+                    )
+                roles.append(role)
+
         user = Utilisateur(
             email=email,
 
@@ -235,6 +262,18 @@ class UserService:
 
         db.add(user)
 
+        await db.flush()
+
+        for role in roles:
+            db.add(
+                UtilisateurRole(
+                    utilisateur_id=user.id,
+                    role_id=role.id,
+                    attribue_par_id=actor.user.id,
+                    motif="Attribution initiale transactionnelle",
+                    statut="ACTIF",
+                )
+            )
         await db.flush()
 
         # ----------------------------------------------------
@@ -260,6 +299,7 @@ class UserService:
                 "prenoms": user.prenoms,
                 "fonction": user.fonction,
                 "statut": user.statut,
+                "roles": [role.code for role in roles],
             },
         )
 

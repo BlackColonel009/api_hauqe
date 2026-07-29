@@ -272,6 +272,34 @@ class ScoringWorkspaceService:
             items.append(
                 CertificationSnccWorkspaceItem(
                     **common,
+                    eligible=(
+                        str(row.latest_infc_status or "").upper() == "VALIDE"
+                        and str(certification.statut or "").upper() != "ARCHIVE"
+                    ),
+                    eligibility_reasons=(
+                        []
+                        if (
+                            str(row.latest_infc_status or "").upper() == "VALIDE"
+                            and str(certification.statut or "").upper() != "ARCHIVE"
+                        )
+                        else [
+                            *(
+                                []
+                                if str(certification.statut or "").upper() != "ARCHIVE"
+                                else ["Certification archivée"]
+                            ),
+                            *(
+                                []
+                                if str(row.latest_infc_status or "").upper() == "VALIDE"
+                                else ["Résultat INFC validé requis"]
+                            ),
+                        ]
+                    ),
+                    latest_infc_id=row.latest_infc_id,
+                    latest_infc_score=row.latest_infc_score,
+                    latest_infc_level=row.latest_infc_level,
+                    latest_infc_status=row.latest_infc_status,
+                    latest_infc_date=row.latest_infc_date,
                     current_sncc_id=row.current_sncc_id,
                     current_sncc_class=row.current_sncc_class,
                     current_admin_status=row.current_admin_status,

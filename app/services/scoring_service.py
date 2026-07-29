@@ -1376,6 +1376,23 @@ class ScoringService:
         if await ScoringRepository.get_certification(db, certification_id) is None:
             raise HTTPException(404, "Certification introuvable.")
 
+        latest_infc = await ScoringRepository.latest_infc_result(
+            db,
+            certification_id,
+        )
+        if (
+            latest_infc is None
+            or (latest_infc.statut or "").strip().upper() != "VALIDE"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Le classement SNCC exige un résultat INFC validé. "
+                    "Finalisez l’INFC après l’intégration BNEC avant "
+                    "de classer la certification."
+                ),
+            )
+
         current = await ScoringRepository.current_sncc(
             db,
             certification_id,
@@ -1436,6 +1453,23 @@ class ScoringService:
     ) -> SnccResponse:
         if await ScoringRepository.get_certification(db, certification_id) is None:
             raise HTTPException(404, "Certification introuvable.")
+
+        latest_infc = await ScoringRepository.latest_infc_result(
+            db,
+            certification_id,
+        )
+        if (
+            latest_infc is None
+            or (latest_infc.statut or "").strip().upper() != "VALIDE"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Le classement SNCC exige un résultat INFC validé. "
+                    "Finalisez l’INFC après l’intégration BNEC avant "
+                    "de classer la certification."
+                ),
+            )
 
         current = await ScoringRepository.current_sncc(
             db,

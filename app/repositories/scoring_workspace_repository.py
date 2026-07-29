@@ -357,6 +357,7 @@ class ScoringWorkspaceRepository:
         limit: int,
     ):
         current = aliased(ClassementSncc)
+        latest_infc = aliased(ResultatInfc)
         condition = ScoringWorkspaceRepository.certification_search(search)
         filters = [condition] if condition is not None else []
 
@@ -368,10 +369,19 @@ class ScoringWorkspaceRepository:
                 current.statut_administratif.label("current_admin_status"),
                 current.niveau_risque.label("current_risk_level"),
                 current.date_effet.label("current_effective_date"),
+                latest_infc.id.label("latest_infc_id"),
+                latest_infc.score_global.label("latest_infc_score"),
+                latest_infc.niveau.label("latest_infc_level"),
+                latest_infc.statut.label("latest_infc_status"),
+                latest_infc.date_calcul.label("latest_infc_date"),
             )
             .outerjoin(
                 current,
                 current.id == ScoringWorkspaceRepository.current_sncc_id(),
+            )
+            .outerjoin(
+                latest_infc,
+                latest_infc.id == ScoringWorkspaceRepository.latest_infc_id(),
             )
             .where(*filters)
             .order_by(

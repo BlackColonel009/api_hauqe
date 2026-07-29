@@ -66,6 +66,8 @@ class UserCreateRequest(BaseModel):
         max_length=255,
     )
 
+    role_ids: list[UUID] = Field(default_factory=list)
+
 
 # ============================================================
 # MODIFICATION D'UN UTILISATEUR

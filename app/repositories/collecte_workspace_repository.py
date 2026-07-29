@@ -520,3 +520,36 @@ class CollecteWorkspaceRepository:
             "corrections": int(row.corrections or 0),
             "average_completeness": row.average_completeness,
         }
+
+    @staticmethod
+    async def find_exact_enterprise(
+        db: AsyncSession,
+        *,
+        name: str,
+        zone_id: UUID,
+    ) -> Entreprise | None:
+        result = await db.execute(
+            select(Entreprise).where(
+                func.lower(func.trim(Entreprise.raison_sociale))
+                == name.strip().lower(),
+                Entreprise.zone_siege_id == zone_id,
+                or_(
+                    Entreprise.statut.is_(None),
+                    Entreprise.statut != "ARCHIVE",
+                ),
+            )
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_zone(db: AsyncSession, zone_id: UUID) -> ZoneAdministrative | None:
+        result = await db.execute(
+            select(ZoneAdministrative).where(
+                ZoneAdministrative.id == zone_id,
+                or_(
+                    ZoneAdministrative.statut.is_(None),
+                    func.upper(ZoneAdministrative.statut) == "ACTIF",
+                ),
+            )
+        )
+        return result.scalar_one_or_none()
