@@ -111,6 +111,9 @@ from app.routes.api.v1.integrations_bnec import (
 # MODULE SCORING
 # ============================================================
 
+from app.routes.api.v1.scoring_workspace import (
+    router as scoring_workspace_router,
+)
 from app.routes.api.v1.scoring import (
     scoring_router,
     enterprise_classification_router,
@@ -120,11 +123,15 @@ from app.routes.api.v1.scoring import (
     cert_sncc_router,
 )
 
+
 # ============================================================
 # MODULE VEILLE, ALERTES ET NOTIFICATIONS
 # ============================================================
 
 
+from app.routes.api.v1.watch_workspace import (
+    router as watch_workspace_router,
+)
 from app.routes.api.v1.veille import (
     deadline_router,
     alert_router,
@@ -136,6 +143,9 @@ from app.routes.api.v1.veille import (
 # MODULE GOUVERNANCE, QUALITE ET AUDIT
 # ============================================================
 
+from app.routes.api.v1.institutional_setup import (
+    router as institutional_setup_router,
+)
 from app.routes.api.v1.governance import (
     governance_router,
     quality_router,
@@ -308,6 +318,10 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    scoring_workspace_router
+)
+
+api_router.include_router(
     scoring_router
 )
 
@@ -341,6 +355,14 @@ api_router.include_router(
 
 api_router.include_router(
     notification_router
+)
+
+api_router.include_router(
+    watch_workspace_router
+)
+
+api_router.include_router(
+    institutional_setup_router
 )
 
 api_router.include_router(

@@ -13,29 +13,16 @@ Les données déclarées restent séparées des données officielles de la BNEC.
 
 COMPLÉTUDE
 ----------
-Le backend ne code pas en dur les champs obligatoires d'une fiche tant que
-la fiche officielle n'est pas validée. Il lit une règle métier publiée :
+Le backend ne code pas en dur les exigences institutionnelles de soumission.
+Il résout la version publiée applicable du code logique
+`COLLECTE_COMPLETUDE`.
 
-    regles_metier.code = COLLECTE_COMPLETUDE
-
-`parametres` attendu :
-{
-  "required_fields": [
-    "entreprise_id",
-    "version_formulaire",
-    "nom_declarant",
-    "consentement_obtenu",
-    "signature_declarant"
-  ],
-  "minimum_submission_rate": 100
-}
-
-Une alternative peut être exprimée avec `|`, par exemple :
-    "telephone_declarant|email_declarant"
+La règle peut contenir des exigences FIELD (ALL / ANY) et COUNT
+(documents, offres ou certifications déclarées). Le format historique
+`required_fields` reste lisible pour compatibilité.
 
 Si aucune règle publiée n'existe, le brouillon reste utilisable mais la
-soumission est bloquée. Cela évite de publier une règle provisoire comme
-règle institutionnelle.
+soumission est bloquée.
 """
 
 from __future__ import annotations
@@ -54,6 +41,9 @@ from app.models.fiche_collecte import FicheCollecte
 from app.models.offre_declaree import OffreDeclaree
 from app.repositories.fiche_collecte_repository import (
     FicheCollecteRepository,
+)
+from app.rules.collecte_completeness import (
+    evaluate as evaluate_completeness_rule,
 )
 from app.schemas.declarations_collecte import (
     CertificationDeclareeCreateRequest,
@@ -256,11 +246,19 @@ class FicheCollecteService:
         await db.flush()
         return event
 
+
+
     @staticmethod
     async def calculate_completeness(
         db: AsyncSession,
         fiche: FicheCollecte,
     ) -> tuple[Decimal | None, dict | None]:
+        """
+        Calcule la complétude à partir de la version publiée applicable
+        de COLLECTE_COMPLETUDE.
+
+        La règle reste paramétrique : FIELD (ALL/ANY) et COUNT.
+        """
         rule = await FicheCollecteRepository.get_completeness_rule(db)
 
         if rule is None:
@@ -268,60 +266,26 @@ class FicheCollecteService:
             return None, None
 
         params = rule.parametres or {}
-        required = params.get("required_fields") or []
 
-        if not isinstance(required, list) or not required:
+        try:
+            evaluation = await evaluate_completeness_rule(
+                db,
+                fiche,
+                params,
+            )
+        except ValueError as exc:
             fiche.taux_completude = None
-            return None, params
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "La règle COLLECTE_COMPLETUDE publiée est invalide : "
+                    f"{exc}"
+                ),
+            ) from exc
 
-        fulfilled = 0
-
-        for expression in required:
-            if not isinstance(expression, str) or not expression.strip():
-                continue
-
-            alternatives = [
-                x.strip()
-                for x in expression.split("|")
-                if x.strip()
-            ]
-
-            ok = False
-
-            for field in alternatives:
-                if not hasattr(fiche, field):
-                    continue
-
-                value = getattr(fiche, field)
-
-                if isinstance(value, bool):
-                    # Pour un consentement obligatoire, False ne satisfait
-                    # pas la règle ; pour les autres booléens, la règle
-                    # publiée doit être conçue en conséquence.
-                    if field == "consentement_obtenu":
-                        ok = value is True
-                    else:
-                        ok = value is not None
-                elif value is not None and str(value).strip():
-                    ok = True
-
-                if ok:
-                    break
-
-            if ok:
-                fulfilled += 1
-
-        denominator = len(required)
-        rate = (
-            Decimal(fulfilled * 100) / Decimal(denominator)
-        ).quantize(
-            Decimal("0.01"),
-            rounding=ROUND_HALF_UP,
-        )
-
+        rate = evaluation["rate"]
         fiche.taux_completude = rate
-        return rate, params
-
+        return rate, evaluation["normalized"]
     @staticmethod
     async def list_revisions(
         db: AsyncSession,

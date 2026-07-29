@@ -184,21 +184,51 @@ def ensure_model_rule(rule: dict[str, Any]) -> str:
     return mode
 
 
+
+def _score_in_interval(row: dict[str, Any], score: Decimal) -> bool:
+    """Teste une plage dont la borne basse ou haute peut être absente."""
+    try:
+        min_value = (
+            Decimal(str(row["min"]))
+            if row.get("min") is not None
+            else None
+        )
+        max_value = (
+            Decimal(str(row["max"]))
+            if row.get("max") is not None
+            else None
+        )
+    except Exception:
+        return False
+
+    if min_value is not None and score < min_value:
+        return False
+    if max_value is not None and score > max_value:
+        return False
+    return min_value is not None or max_value is not None
+
+
 def find_class(rule: dict[str, Any], score: Decimal) -> str | None:
     classes = rule.get("classes") or []
+    default_code = None
+
     for row in classes:
         if not isinstance(row, dict):
             continue
+
         code = clean_text(str(row.get("code", "")))
         if not code:
             continue
-        try:
-            min_value = Decimal(str(row.get("min")))
-            max_value = Decimal(str(row.get("max")))
-        except Exception:
+
+        if row.get("default") is True:
+            default_code = code
             continue
-        if min_value <= score <= max_value:
+
+        if _score_in_interval(row, score):
             return code
+
+    if default_code is not None:
+        return default_code
 
     if classes:
         raise HTTPException(
@@ -210,7 +240,6 @@ def find_class(rule: dict[str, Any], score: Decimal) -> str | None:
         )
     return None
 
-
 def find_level(rule: dict[str, Any], score: Decimal) -> int | None:
     levels = rule.get("levels") or []
     for row in levels:
@@ -218,11 +247,9 @@ def find_level(rule: dict[str, Any], score: Decimal) -> int | None:
             continue
         try:
             level = int(row.get("niveau"))
-            min_value = Decimal(str(row.get("min")))
-            max_value = Decimal(str(row.get("max")))
         except Exception:
             continue
-        if min_value <= score <= max_value:
+        if _score_in_interval(row, score):
             return level
 
     if levels:
@@ -234,8 +261,6 @@ def find_level(rule: dict[str, Any], score: Decimal) -> int | None:
             ),
         )
     return None
-
-
 def weight_response(item: PonderationScoring) -> ScoringWeightResponse:
     return ScoringWeightResponse(
         id=item.id,

@@ -58,8 +58,9 @@ async def frontend_view(
 ):
     allowed_pages = {
         "dashboard": "views/dashboard.html",
-        "alertes": "legacy/alertes.html",
-        "echeances": "legacy/echeances.html",
+        "alertes": "views/alertes.html",
+        "echeances": "views/echeances.html",
+        "veille": "views/veille.html",
         "entreprises": "views/entreprises.html",
 
         "entreprise-detail": "views/entreprise-detail.html",
@@ -89,6 +90,8 @@ async def frontend_view(
         "controle-detail": "views/controle-detail.html",
         
         "scoring": "views/scoring.html",
+        "infc": "views/infc.html",
+        "classement-sncc": "views/classement-sncc.html",
 
         "rapports": "views/rapports.html",
         "utilisateurs": "views/utilisateurs.html",

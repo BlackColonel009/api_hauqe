@@ -1,0 +1,348 @@
+<div class="page-content container-fluid governance-page watch-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Cellule de veille des certifications</p>
+      <h1>Veille & suivi</h1>
+      <p>
+        Centralisez les dossiers de veille, relances et rapports produits à partir des certifications réelles.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn" id="watchScan" type="button" hidden>
+        <i data-lucide="radar"></i>Scan quotidien
+      </button>
+
+      <button class="btn btn-primary app-btn" id="newWatchCase" type="button" hidden>
+        <i data-lucide="folder-plus"></i>Ouvrir un dossier
+      </button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="watchApiState" hidden></section>
+
+  <section class="watch-dashboard-kpis" id="watchDashboardKpis"></section>
+
+  <div class="detail-tabs watch-tabs">
+    <button class="active" data-watch-tab="cases" type="button">Dossiers</button>
+    <button data-watch-tab="reports" type="button">Rapports</button>
+  </div>
+
+  <section id="watchCasesTab">
+    <section class="gov-toolbar watch-toolbar panel">
+      <label class="gov-search">
+        <i data-lucide="search"></i>
+        <input id="watchSearch" type="search" placeholder="Certification, entreprise ou événement…">
+      </label>
+
+      <label>
+        <span>Statut</span>
+        <select id="watchStatus" disabled><option value="">Chargement…</option></select>
+      </label>
+
+      <label>
+        <span>Priorité</span>
+        <select id="watchPriority" disabled><option value="">Chargement…</option></select>
+      </label>
+
+      <button class="reset-filter" id="watchReset" type="button">
+        <i data-lucide="rotate-ccw"></i>Réinitialiser
+      </button>
+    </section>
+
+    <section class="watch-layout">
+      <article class="gov-panel panel">
+        <header>
+          <div>
+            <h2>File de veille</h2>
+            <p>Certifications actuellement suivies.</p>
+          </div>
+          <strong id="watchCaseCount">0 dossier</strong>
+        </header>
+
+        <div id="watchCaseList" class="watch-case-list"></div>
+      </article>
+
+      <aside class="gov-panel panel watch-case-detail" id="watchCaseDetail">
+        <div class="priority-empty">Sélectionnez un dossier.</div>
+      </aside>
+    </section>
+  </section>
+
+  <section id="watchReportsTab" hidden>
+    <section class="gov-panel panel">
+      <header>
+        <div>
+          <h2>Rapports de veille</h2>
+          <p>
+            Les indicateurs sont générés depuis la base ; la production PDF sera raccordée au domaine Rapports.
+          </p>
+        </div>
+
+        <button class="btn btn-primary app-btn" id="generateWatchReport" type="button" hidden>
+          <i data-lucide="file-plus-2"></i>Générer
+        </button>
+      </header>
+
+      <div id="watchReportList" class="watch-report-list"></div>
+    </section>
+  </section>
+
+
+<dialog
+  class="hauqe-dialog operational-form-dialog watch-case-dialog"
+  id="watchCaseDialog"
+>
+  <form method="dialog" id="watchCaseForm">
+    <header class="operational-dialog-header">
+      <div class="operational-dialog-title">
+        <span class="operational-dialog-icon">
+          <i data-lucide="folder-search-2"></i>
+        </span>
+
+        <div>
+          <p class="eyebrow">Cellule de veille</p>
+          <h2>Ouvrir un dossier de veille</h2>
+          <small>
+            Organisez le suivi d’une certification, affectez un responsable
+            et programmez la prochaine action.
+          </small>
+        </div>
+      </div>
+
+      <button
+        class="dialog-close operational-dialog-close"
+        type="button"
+        aria-label="Fermer"
+        data-close-watch-dialog="watchCaseDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="operational-dialog-body">
+      <div class="operational-form-notice">
+        <span><i data-lucide="radar"></i></span>
+        <div>
+          <strong>Un dossier actif par certification et événement</strong>
+          <small>
+            Le backend empêchera l’ouverture d’un doublon actif lorsque
+            le même suivi existe déjà.
+          </small>
+        </div>
+      </div>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="badge-check"></i></span>
+          <div>
+            <strong>Certification suivie</strong>
+            <small>
+              La certification constitue la source officielle du dossier.
+            </small>
+          </div>
+          <b>01</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Certification <b>*</b></span>
+            <select id="watchCertification" required></select>
+            <small>
+              Entreprise, certificat et norme sont affichés dans la liste.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="activity"></i></span>
+          <div>
+            <strong>Nature du suivi</strong>
+            <small>
+              Qualifiez l’événement et son niveau de priorité.
+            </small>
+          </div>
+          <b>02</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field">
+            <span>Type d’événement <b>*</b></span>
+            <input
+              id="watchEventType"
+              maxlength="255"
+              placeholder="Ex. RENOUVELLEMENT_PROCHE"
+              required
+            >
+          </label>
+
+          <label class="operational-field">
+            <span>Priorité</span>
+            <input
+              id="watchCasePriority"
+              maxlength="255"
+              placeholder="Ex. HAUTE"
+            >
+            <small>
+              Facultatif, selon la codification de veille.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="user-round-cog"></i></span>
+          <div>
+            <strong>Pilotage du dossier</strong>
+            <small>
+              Désignez le responsable et préparez la prochaine action.
+            </small>
+          </div>
+          <b>03</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field">
+            <span>Responsable <b>*</b></span>
+            <select id="watchResponsible" required></select>
+          </label>
+
+          <label class="operational-field">
+            <span>Prochaine action</span>
+            <input id="watchNextAction" type="datetime-local">
+            <small>
+              Peut être complétée ultérieurement si elle n’est pas connue.
+            </small>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <footer class="operational-dialog-footer">
+      <div class="operational-footer-note">
+        <i data-lucide="history"></i>
+        <span>Les relances et réponses seront rattachées à ce dossier.</span>
+      </div>
+
+      <div class="operational-footer-actions">
+        <button
+          class="btn btn-outline-secondary app-btn"
+          type="button"
+          data-close-watch-dialog="watchCaseDialog"
+        >
+          Annuler
+        </button>
+
+        <button
+          class="btn btn-primary app-btn"
+          type="submit"
+        >
+          <i data-lucide="folder-plus"></i>
+          Ouvrir le dossier
+        </button>
+      </div>
+    </footer>
+  </form>
+</dialog>
+
+  <dialog class="hauqe-dialog" id="followupDialog">
+    <form method="dialog" id="followupForm">
+      <header>
+        <div><p class="eyebrow">Relance</p><h2>Nouvelle relance</h2></div>
+        <button class="dialog-close" type="button" data-close-watch-dialog="followupDialog"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Destinataire <b>*</b></span><input id="followupRecipient" maxlength="255" required></label>
+        <label><span>Canal <b>*</b></span><input id="followupChannel" maxlength="255" required></label>
+        <label><span>Objet <b>*</b></span><input id="followupSubject" maxlength="255" required></label>
+        <label><span>Date d’envoi</span><input id="followupSendDate" type="date"></label>
+        <label><span>Échéance de réponse</span><input id="followupDueDate" type="date"></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="followupDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Enregistrer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog" id="followupResponseDialog">
+    <form method="dialog" id="followupResponseForm">
+      <header>
+        <div><p class="eyebrow">Réponse à une relance</p><h2>Enregistrer la réponse</h2></div>
+        <button class="dialog-close" type="button" data-close-watch-dialog="followupResponseDialog"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Date de réponse</span><input id="followupResponseDate" type="date"></label>
+        <label><span>Réponse <b>*</b></span><textarea id="followupResponseText" rows="4" required></textarea></label>
+        <label><span>Résultat</span><textarea id="followupResult" rows="3"></textarea></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="followupResponseDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog" id="closeWatchCaseDialog">
+    <form method="dialog" id="closeWatchCaseForm">
+      <header>
+        <div><p class="eyebrow">Clôture</p><h2>Clôturer le dossier</h2></div>
+        <button class="dialog-close" type="button" data-close-watch-dialog="closeWatchCaseDialog"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Motif <b>*</b></span><textarea id="closeWatchReason" rows="4" required></textarea></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="closeWatchCaseDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="lock"></i>Clôturer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog" id="watchReportDialog">
+    <form method="dialog" id="watchReportForm">
+      <header>
+        <div><p class="eyebrow">Rapport de veille</p><h2>Générer les indicateurs</h2></div>
+        <button class="dialog-close" type="button" data-close-watch-dialog="watchReportDialog"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Type de rapport <b>*</b></span><input id="watchReportType" maxlength="255" required></label>
+        <label><span>Début <b>*</b></span><input id="watchReportStart" type="date" required></label>
+        <label><span>Fin <b>*</b></span><input id="watchReportEnd" type="date" required></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="watchReportDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="file-chart-column"></i>Générer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog" id="validateWatchReportDialog">
+    <form method="dialog" id="validateWatchReportForm">
+      <header>
+        <div><p class="eyebrow">Validation rapport</p><h2>Valider le rapport de veille</h2></div>
+        <button class="dialog-close" type="button" data-close-watch-dialog="validateWatchReportDialog"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Commentaire</span><textarea id="watchReportValidationComment" rows="4"></textarea></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="validateWatchReportDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="badge-check"></i>Valider</button>
+      </footer>
+    </form>
+  </dialog>
+</div>

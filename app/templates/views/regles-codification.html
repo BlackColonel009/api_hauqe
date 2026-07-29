@@ -1,11 +1,790 @@
-<div class="page-content container-fluid rules-page">
-  <section class="page-heading"><div><p class="eyebrow">Administration</p><h1>Règles et codification</h1><p>Configurez les seuils, calculs, pondérations et modèles de codes appliqués par la plateforme.</p></div><div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="compareVersions"><i data-lucide="git-compare-arrows"></i>Comparer les versions</button><button class="btn btn-outline-secondary app-btn" id="saveRulesDraft"><i data-lucide="save"></i>Enregistrer le brouillon</button><button class="btn btn-primary app-btn" id="publishRules"><i data-lucide="rocket"></i>Publier la version</button></div></section>
-  <section class="rule-version panel"><div><span><i data-lucide="git-branch"></i></span><div><small>Version active</small><strong>Règles métier v1.4</strong><em>Publiée le 02 juin 2026 par Amévi Dossou</em></div></div><div class="version-state"><span><i></i>Brouillon v1.5 en cours</span><small id="unsavedRules">Aucune modification non enregistrée</small></div><button id="viewVersionHistory">Historique des versions<i data-lucide="chevron-right"></i></button></section>
-  <section class="rule-warning panel"><i data-lucide="triangle-alert"></i><div><strong>Configuration sensible</strong><small>La publication peut modifier les alertes, scores et codes futurs. Les dossiers déjà finalisés conserveront la version utilisée lors de leur calcul.</small></div></section>
-  <div class="rules-layout"><aside class="panel rules-nav"><header><h2>Paramètres métier</h2><p>Choisissez une famille de règles.</p></header><nav><button class="active" data-rule-tab="alerts"><span><i data-lucide="bell-ring"></i></span><div><strong>Seuils d’alerte</strong><small>Échéances et relances</small></div><b>4</b></button><button data-rule-tab="scoring"><span><i data-lucide="gauge"></i></span><div><strong>Calcul et scoring</strong><small>Seuils de conformité</small></div><b>5</b></button><button data-rule-tab="weights"><span><i data-lucide="scale"></i></span><div><strong>Pondérations</strong><small>Poids des domaines</small></div><b>7</b></button><button data-rule-tab="codes"><span><i data-lucide="binary"></i></span><div><strong>Modèles de codes</strong><small>Identifiants automatiques</small></div><b>5</b></button><button data-rule-tab="workflow"><span><i data-lucide="workflow"></i></span><div><strong>Circuits et délais</strong><small>Validation et correction</small></div><b>6</b></button></nav><footer><i data-lucide="shield-check"></i><span><strong>Journalisation active</strong><small>Toute publication est tracée.</small></span></footer></aside><main><section class="panel rule-editor"><header><div><span id="ruleTabIcon"><i data-lucide="bell-ring"></i></span><div><p class="eyebrow" id="ruleTabEyebrow">Pilotage</p><h2 id="ruleTabTitle">Seuils d’alerte</h2><small id="ruleTabDescription"></small></div></div><button class="btn btn-outline-secondary app-btn" id="resetRuleTab"><i data-lucide="rotate-ccw"></i>Valeurs de la version active</button></header><div id="ruleEditorContent"></div></section><section class="panel rule-simulator"><header><div><h2>Simulateur</h2><p>Vérifiez l’effet des règles avant publication.</p></div><span><i data-lucide="flask-conical"></i>Sans incidence sur les données</span></header><div id="ruleSimulatorContent"></div></section></main></div>
-  <section class="panel code-register"><header><div><h2>Exemples de codification</h2><p>Aperçu des identifiants générés avec les modèles du brouillon.</p></div><button class="btn btn-outline-secondary app-btn" id="refreshCodes"><i data-lucide="refresh-cw"></i>Régénérer les exemples</button></header><div class="code-example-grid" id="codeExamples"></div></section>
-  <div class="publish-modal" id="publishModal" hidden><div><header><div><p class="eyebrow">Publication des règles</p><h2>Publier la version 1.5</h2></div><button id="closePublish"><i data-lucide="x"></i></button></header><div class="publish-summary"><span><i data-lucide="git-commit-horizontal"></i></span><div><strong>Une nouvelle version immuable sera créée</strong><small>Elle s’appliquera aux nouveaux calculs et nouvelles codifications.</small></div></div><label>Motif de la modification <b>*</b><textarea id="publishReason" rows="4" placeholder="Décrivez les règles modifiées et la décision qui les autorise…"></textarea></label><label>Référence de validation<input id="approvalReference" placeholder="Ex. PV-HAUQE-2026-014"></label><label class="publish-check"><input id="publishConfirm" type="checkbox">Je confirme que ces règles ont été vérifiées et autorisées.</label><footer><button class="btn btn-outline-secondary app-btn" id="cancelPublish">Annuler</button><button class="btn btn-primary app-btn" id="confirmPublish"><i data-lucide="rocket"></i>Publier définitivement</button></footer></div></div>
-  <div class="version-modal" id="versionModal" hidden><div><header><h2>Historique des versions</h2><button id="closeVersions"><i data-lucide="x"></i></button></header><div id="versionList"></div><footer><button class="btn btn-primary app-btn" id="closeVersionsFooter">Fermer</button></footer></div></div>
-  <div class="code-model-modal" id="codeModelModal" hidden><form id="codeModelForm"><header><div><p class="eyebrow">Modèle de codification</p><h2 id="codeModelTitle">Modifier le modèle</h2></div><button type="button" id="closeCodeModel"><i data-lucide="x"></i></button></header><div class="code-model-body"><label>Format du code <b>*</b><input id="codeModelPattern" required></label><div class="variable-picker"><strong>Variables disponibles</strong><p>Cliquez sur une variable pour l’insérer dans le format.</p><div id="codeVariables"></div></div><label>Séparateur<select id="codeSeparator"><option value="-">Tiret —</option><option value="/">Barre oblique /</option><option value=".">Point .</option></select></label><label>Prochain numéro de séquence<input id="codeSequence" type="number" min="1" value="1"></label><div class="code-preview"><span>Aperçu généré</span><strong id="codeModelPreview"></strong><small id="codeModelValidation">Format valide</small></div><div class="code-model-help"><i data-lucide="info"></i><span>La modification s’appliquera uniquement aux nouveaux identifiants après publication de la version.</span></div></div><footer><button type="button" class="btn btn-outline-secondary app-btn" id="cancelCodeModel">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Appliquer au brouillon</button></footer></form></div>
-  <div class="save-indicator" id="ruleToast" hidden><i data-lucide="circle-check"></i><span></span></div>
+<div class="page-content container-fluid institutional-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Gouvernance métier</p>
+      <h1>Règles, codification, grilles FUCCS & scoring</h1>
+      <p>Versionnez et publiez les paramètres qui pilotent la collecte, le contrôle FUCCS, la classification entreprise et l’INFC.</p>
+    </div>
+    <div class="heading-actions institutional-heading-actions">
+      <a
+        class="btn btn-outline-secondary app-btn institutional-guide-download"
+        href="/static/docs/guide-regles-codification-hauqe.pdf"
+        download="Guide_Regles_Codification_HAUQE.pdf"
+        target="_blank"
+        rel="noopener"
+        title="Télécharger le guide complet des règles et de la codification"
+      >
+        <i data-lucide="book-open-check"></i>
+        Guide PDF
+      </a>
+
+      <button class="btn btn-outline-secondary app-btn" id="refreshInstitutional" type="button">
+        <i data-lucide="refresh-cw"></i>Actualiser
+      </button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="institutionalApiState" hidden></section>
+  <section class="institutional-readiness" id="institutionalReadiness"></section>
+
+  <section class="institutional-doctrine panel">
+    <span><i data-lucide="shield-check"></i></span>
+    <div>
+      <strong>Une version publiée devient une référence exécutable.</strong>
+      <small>Les brouillons restent modifiables. Une version publiée est immuable : toute évolution passe par une nouvelle version et une référence d’approbation.</small>
+    </div>
+  </section>
+
+  <div class="detail-tabs institutional-tabs">
+    <button class="active" data-inst-tab="completeness" type="button">COLLECTE_COMPLETUDE</button>
+    <button data-inst-tab="rules" type="button">Règles métier</button>
+    <button data-inst-tab="scoring" type="button">Modèles de scoring</button>
+    <button data-inst-tab="fuccs" type="button">Grilles FUCCS</button>
+  </div>
+
+  <section id="completenessTab">
+    <div class="institutional-layout">
+      <article class="panel institutional-panel">
+        <header>
+          <div>
+            <p class="eyebrow">RM-35</p>
+            <h2>Concevoir COLLECTE_COMPLETUDE</h2>
+            <p>Le moteur n’impose plus une liste codée en dur. La HAUQE sélectionne les exigences et les publie.</p>
+          </div>
+          <span class="inst-status" id="activeCompletenessStatus">Non publiée</span>
+        </header>
+
+        <div class="institutional-form-grid">
+          <label><span>Version <b>*</b></span><input id="completenessVersion" value="1.0" maxlength="100"></label>
+          <label><span>Famille</span><input id="completenessFamily" value="COLLECTE" maxlength="255"></label>
+          <label class="full"><span>Libellé <b>*</b></span><input id="completenessLabel" value="Complétude minimale avant soumission d’une fiche de collecte" maxlength="255"></label>
+          <label class="full"><span>Description</span><textarea id="completenessDescription" rows="3">Règle versionnée définissant les exigences obligatoires de soumission conformément à RM-35.</textarea></label>
+          <label><span>Minimum de soumission (%) <b>*</b></span><input id="completenessMinimum" type="number" min="0" max="100" step="0.01" value="100"></label>
+        </div>
+
+        <div class="requirement-builder">
+          <div class="requirement-builder-head">
+            <div><h3>Exigences de champs</h3><p>Une ligne = une exigence. Le mode « au moins un » permet téléphone OU courriel.</p></div>
+            <button class="btn btn-outline-secondary app-btn" id="addFieldRequirement" type="button"><i data-lucide="plus"></i>Ajouter</button>
+          </div>
+          <div id="fieldRequirements"></div>
+        </div>
+
+        <div class="requirement-builder">
+          <div class="requirement-builder-head">
+            <div><h3>Exigences relationnelles</h3><p>Documents, offres ou certifications déclarées ne deviennent obligatoires que si vous les retenez.</p></div>
+            <button class="btn btn-outline-secondary app-btn" id="addCountRequirement" type="button"><i data-lucide="plus"></i>Ajouter</button>
+          </div>
+          <div id="countRequirements"></div>
+        </div>
+
+        <div class="institutional-actions">
+          <button class="btn btn-outline-secondary app-btn" id="validateCompleteness" type="button"><i data-lucide="scan-search"></i>Valider la configuration</button>
+          <button class="btn btn-primary app-btn" id="saveCompletenessDraft" type="button"><i data-lucide="save"></i>Créer le brouillon</button>
+          <button class="btn btn-primary app-btn" id="publishCompleteness" type="button" hidden><i data-lucide="rocket"></i>Publier</button>
+        </div>
+      </article>
+
+      <aside class="panel institutional-side">
+        <header><div><h2>Contrôle avant publication</h2><p>Validation structurelle côté backend.</p></div></header>
+        <div class="validation-report" id="completenessValidationReport"><div class="priority-empty">Configurez les exigences puis lancez la validation.</div></div>
+        <div class="institutional-reference"><strong>Décision acquise</strong><p>RM-35 autorise le brouillon incomplet mais interdit la soumission si une information obligatoire manque.</p></div>
+        <div class="institutional-reference warning"><strong>À définir ici</strong><p>La liste exacte des exigences obligatoires doit être choisie puis approuvée par la HAUQE.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="rulesTab" hidden>
+    <div class="institutional-layout">
+      <article class="panel institutional-panel">
+        <header>
+          <div><h2>Versions des règles métier</h2><p>Brouillons, publiées et retirées.</p></div>
+          <button class="btn btn-primary app-btn" id="newGenericRule" type="button"><i data-lucide="file-plus-2"></i>Nouvelle règle</button>
+        </header>
+        <div class="institutional-toolbar">
+          <label class="institutional-search"><i data-lucide="search"></i><input id="ruleSearch" type="search" placeholder="Code logique, libellé ou famille…"></label>
+          <label><span>Statut</span><select id="ruleStatusFilter"><option value="">Tous</option><option>BROUILLON</option><option>PUBLIE</option><option>RETIRE</option></select></label>
+        </div>
+        <div class="institutional-list" id="businessRuleList"></div>
+      </article>
+      <aside class="panel institutional-side" id="businessRuleDetail"><div class="priority-empty">Sélectionnez une version de règle.</div></aside>
+    </div>
+  </section>
+
+  <section id="scoringTab" hidden>
+    <section class="institutional-scoring-reference">
+      <article class="reference-card validated">
+        <span><i data-lucide="badge-check"></i></span>
+        <div><strong>Classification entreprise — RM-22 à RM-24</strong><p>Conforme ≥ 85 ; À surveiller ≥ 60 ; Non conforme &lt; 60. Préremplissage en brouillon uniquement.</p></div>
+        <button class="btn btn-outline-secondary app-btn" id="prefillClassificationReference" type="button">Préremplir</button>
+      </article>
+      <article class="reference-card pending">
+        <span><i data-lucide="flask-conical"></i></span>
+        <div><strong>INFC — structure documentée</strong><p>Six domaines pondérés 20/20/20/15/15/10. Les sources de calcul et le mapping numérique des niveaux restent à confirmer avant publication définitive.</p></div>
+      </article>
+    </section>
+
+    <div class="institutional-layout">
+      <article class="panel institutional-panel">
+        <header>
+          <div><h2>Modèles de scoring</h2><p>Classification entreprise et INFC restent séparés.</p></div>
+          <button class="btn btn-primary app-btn" id="newScoringModel" type="button"><i data-lucide="plus"></i>Nouveau modèle</button>
+        </header>
+        <div class="institutional-toolbar two">
+          <label><span>Objet évalué</span><select id="scoringObjectFilter"><option value="">Tous</option><option>CLASSIFICATION_ENTREPRISE</option><option>INFC</option></select></label>
+          <label><span>Statut</span><select id="scoringStatusFilter"><option value="">Tous</option><option>BROUILLON</option><option>PUBLIE</option><option>RETIRE</option></select></label>
+        </div>
+        <div class="institutional-list" id="scoringModelList"></div>
+      </article>
+      <aside class="panel institutional-side" id="scoringModelDetail"><div class="priority-empty">Sélectionnez ou créez un modèle.</div></aside>
+    </div>
+  </section>
+
+
+<section id="fuccsTab" hidden>
+  <section class="fuccs-codification-doctrine">
+    <article class="reference-card validated">
+      <span><i data-lucide="binary"></i></span>
+      <div>
+        <strong>Codification hiérarchique et stable</strong>
+        <p>
+          Le code logique de la grille reste stable. Les rubriques et
+          critères utilisent des codes techniques indépendants de la
+          version afin de conserver la comparabilité entre versions.
+        </p>
+      </div>
+    </article>
+
+    <article class="reference-card pending">
+      <span><i data-lucide="git-compare-arrows"></i></span>
+      <div>
+        <strong>Version séparée du code</strong>
+        <p>
+          La version 1.0, 1.1 ou 2.0 est portée par la grille. Elle ne doit
+          pas être insérée dans les codes des rubriques et critères.
+        </p>
+      </div>
+    </article>
+  </section>
+
+  <div class="institutional-layout fuccs-admin-layout">
+    <article class="panel institutional-panel">
+      <header>
+        <div>
+          <h2>Versions de grille FUCCS</h2>
+          <p>
+            Brouillons modifiables, versions publiées immuables et versions
+            retirées conservées dans l’historique.
+          </p>
+        </div>
+
+        <button
+          class="btn btn-primary app-btn"
+          id="newFuccsGrid"
+          type="button"
+        >
+          <i data-lucide="layout-grid"></i>
+          Nouvelle grille
+        </button>
+      </header>
+
+      <div class="institutional-toolbar fuccs-toolbar">
+        <label class="institutional-search">
+          <i data-lucide="search"></i>
+          <input
+            id="fuccsGridSearch"
+            type="search"
+            placeholder="Code, libellé ou version…"
+          >
+        </label>
+
+        <label>
+          <span>Statut</span>
+          <select id="fuccsGridStatusFilter">
+            <option value="">Tous</option>
+            <option value="BROUILLON">BROUILLON</option>
+            <option value="PUBLIE">PUBLIE</option>
+            <option value="RETIRE">RETIRE</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="institutional-list" id="fuccsGridList"></div>
+    </article>
+
+    <aside
+      class="panel institutional-side fuccs-grid-detail"
+      id="fuccsGridDetail"
+    >
+      <div class="priority-empty">
+        Sélectionnez une version de grille FUCCS.
+      </div>
+    </aside>
+  </div>
+</section>
+
+  <dialog class="hauqe-dialog institutional-dialog" id="publishDialog">
+    <form method="dialog" id="publishForm">
+      <header><div><p class="eyebrow">Publication institutionnelle</p><h2 id="publishDialogTitle">Publier</h2></div><button class="dialog-close" type="button" data-close-inst-dialog="publishDialog"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body">
+        <label><span>Référence d’approbation <b>*</b></span><input id="publishApprovalReference" maxlength="255" required></label>
+        <label><span>Date d’effet <b>*</b></span><input id="publishEffectiveDate" type="date" required></label>
+        <label id="publishCommentField"><span>Commentaire</span><textarea id="publishComment" rows="3"></textarea></label>
+        <div class="publication-warning"><i data-lucide="shield-alert"></i><span>Après publication, cette version devient immuable.</span></div>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-inst-dialog="publishDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="rocket"></i>Publier</button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog institutional-dialog" id="ruleDialog">
+    <form method="dialog" id="ruleForm">
+      <header><div><p class="eyebrow">Règle métier</p><h2 id="ruleDialogTitle">Nouvelle règle</h2></div><button class="dialog-close" type="button" data-close-inst-dialog="ruleDialog"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body">
+        <label><span>Code logique <b>*</b></span><input id="ruleCode" maxlength="200" required></label>
+        <label><span>Version <b>*</b></span><input id="ruleVersion" maxlength="100" required></label>
+        <label><span>Famille</span><input id="ruleFamily" maxlength="255"></label>
+        <label><span>Libellé <b>*</b></span><input id="ruleLabel" maxlength="255" required></label>
+        <label><span>Description</span><textarea id="ruleDescription" rows="3"></textarea></label>
+        <label><span>Paramètres JSON</span><textarea id="ruleParams" rows="11" spellcheck="false">{}</textarea></label>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-inst-dialog="ruleDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Créer le brouillon</button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog institutional-dialog model-dialog" id="modelDialog">
+    <form method="dialog" id="modelForm">
+      <header><div><p class="eyebrow">Modèle de scoring</p><h2>Nouveau modèle</h2></div><button class="dialog-close" type="button" data-close-inst-dialog="modelDialog"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body">
+        <div class="institutional-form-grid no-pad">
+          <label><span>Objet <b>*</b></span><select id="modelObject"><option>CLASSIFICATION_ENTREPRISE</option><option>INFC</option></select></label>
+          <label><span>Code <b>*</b></span><input id="modelCode" maxlength="255" required></label>
+          <label><span>Version <b>*</b></span><input id="modelVersion" maxlength="255" value="1.0" required></label>
+          <label><span>Libellé <b>*</b></span><input id="modelLabel" maxlength="255" required></label>
+          <label class="full"><span>Description</span><textarea id="modelDescription" rows="3"></textarea></label>
+          <label><span>Mode <b>*</b></span><select id="modelMode"><option>DIRECT_SCORE</option><option>WEIGHTED_AVERAGE_100</option><option>SUM_DOMAIN_POINTS</option></select></label>
+          <label><span>Arrondi</span><input id="modelRounding" type="number" min="0" max="6" value="2"></label>
+          <label><span>Score min</span><input id="modelScoreMin" type="number" value="0"></label>
+          <label><span>Score max</span><input id="modelScoreMax" type="number" value="100"></label>
+          <label class="full"><span>Classes / niveaux JSON</span><textarea id="modelIntervals" rows="9" spellcheck="false">[]</textarea></label>
+        </div>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-inst-dialog="modelDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Créer le brouillon</button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog institutional-dialog" id="weightDialog">
+    <form method="dialog" id="weightForm">
+      <header><div><p class="eyebrow">Pondération</p><h2>Ajouter un domaine</h2></div><button class="dialog-close" type="button" data-close-inst-dialog="weightDialog"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body">
+        <label><span>Domaine <b>*</b></span><input id="weightDomain" maxlength="255" required></label>
+        <label><span>Valeur / maximum <b>*</b></span><input id="weightValue" type="number" step="0.01" min="0.01" required></label>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-inst-dialog="weightDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="plus"></i>Ajouter</button></footer>
+    </form>
+  </dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog fuccs-grid-dialog"
+  id="fuccsGridDialog"
+>
+  <form method="dialog" id="fuccsGridForm">
+    <header>
+      <div>
+        <p class="eyebrow">Référentiel FUCCS</p>
+        <h2 id="fuccsGridDialogTitle">Nouvelle grille</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsGridDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="fuccs-code-preview">
+        <span><i data-lucide="binary"></i></span>
+        <div>
+          <strong id="fuccsGridCodePreview">FUCCS · v1.0</strong>
+          <small>
+            Le code identifie la famille de grille. La version identifie
+            l’édition institutionnelle.
+          </small>
+        </div>
+      </div>
+
+      <div class="institutional-form-grid no-pad">
+        <label>
+          <span>Code logique <b>*</b></span>
+          <input
+            id="fuccsGridCode"
+            maxlength="255"
+            value="FUCCS"
+            placeholder="FUCCS"
+            required
+          >
+          <small class="field-hint">
+            Majuscules, chiffres et tirets bas uniquement.
+          </small>
+        </label>
+
+        <label>
+          <span>Version <b>*</b></span>
+          <input
+            id="fuccsGridVersion"
+            maxlength="255"
+            value="1.0"
+            placeholder="1.0"
+            required
+          >
+        </label>
+
+        <label class="full">
+          <span>Libellé <b>*</b></span>
+          <input
+            id="fuccsGridLabel"
+            maxlength="255"
+            placeholder="Grille nationale de contrôle FUCCS"
+            required
+          >
+        </label>
+
+        <label>
+          <span>Date d’effet prévue</span>
+          <input id="fuccsGridEffectiveDate" type="date">
+          <small class="field-hint">
+            La date définitive sera confirmée à la publication.
+          </small>
+        </label>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsGridDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="save"></i>
+        Enregistrer le brouillon
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog fuccs-grid-dialog"
+  id="fuccsCloneDialog"
+>
+  <form method="dialog" id="fuccsCloneForm">
+    <header>
+      <div>
+        <p class="eyebrow">Version suivante</p>
+        <h2>Cloner la grille FUCCS</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsCloneDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="publication-warning">
+        <i data-lucide="copy-plus"></i>
+        <span>
+          Toutes les rubriques et tous les critères sont copiés. Leurs codes
+          restent identiques pour permettre la comparaison entre versions.
+        </span>
+      </div>
+
+      <div class="institutional-form-grid no-pad">
+        <label>
+          <span>Code logique <b>*</b></span>
+          <input id="fuccsCloneCode" maxlength="255" required>
+        </label>
+
+        <label>
+          <span>Nouvelle version <b>*</b></span>
+          <input id="fuccsCloneVersion" maxlength="255" required>
+        </label>
+
+        <label class="full">
+          <span>Libellé <b>*</b></span>
+          <input id="fuccsCloneLabel" maxlength="255" required>
+        </label>
+
+        <label>
+          <span>Date d’effet prévue</span>
+          <input id="fuccsCloneEffectiveDate" type="date">
+        </label>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsCloneDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="copy-plus"></i>
+        Créer la nouvelle version
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog fuccs-rubric-dialog"
+  id="fuccsRubricDialog"
+>
+  <form method="dialog" id="fuccsRubricForm">
+    <header>
+      <div>
+        <p class="eyebrow">Structure FUCCS</p>
+        <h2 id="fuccsRubricDialogTitle">Nouvelle rubrique</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsRubricDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="fuccs-code-preview">
+        <span><i data-lucide="folder-tree"></i></span>
+        <div>
+          <strong id="fuccsRubricCodePreview">FUCCS_R01</strong>
+          <small>
+            Le code est généré à partir du code de grille et de l’ordre.
+            Il peut être ajusté avant l’enregistrement du brouillon.
+          </small>
+        </div>
+      </div>
+
+      <div class="institutional-form-grid no-pad">
+        <label>
+          <span>Ordre <b>*</b></span>
+          <input
+            id="fuccsRubricOrder"
+            type="number"
+            min="1"
+            step="1"
+            required
+          >
+        </label>
+
+        <label>
+          <span>Code <b>*</b></span>
+          <div class="code-input-group">
+            <input id="fuccsRubricCode" maxlength="255" required>
+            <button
+              type="button"
+              class="code-generate-button"
+              id="generateFuccsRubricCode"
+              title="Générer le code"
+            >
+              <i data-lucide="wand-sparkles"></i>
+            </button>
+          </div>
+        </label>
+
+        <label class="full">
+          <span>Libellé <b>*</b></span>
+          <input id="fuccsRubricLabel" maxlength="255" required>
+        </label>
+
+        <label class="full">
+          <span>Description</span>
+          <textarea id="fuccsRubricDescription" rows="4"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsRubricDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="save"></i>
+        Enregistrer la rubrique
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog fuccs-criterion-dialog"
+  id="fuccsCriterionDialog"
+>
+  <form method="dialog" id="fuccsCriterionForm">
+    <header>
+      <div>
+        <p class="eyebrow">Critère FUCCS</p>
+        <h2 id="fuccsCriterionDialogTitle">Nouveau critère</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsCriterionDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="fuccs-code-preview">
+        <span><i data-lucide="list-checks"></i></span>
+        <div>
+          <strong id="fuccsCriterionCodePreview">FUCCS_R01_C01</strong>
+          <small>
+            Le code rattache techniquement le critère à sa rubrique sans
+            intégrer le numéro de version.
+          </small>
+        </div>
+      </div>
+
+      <div class="institutional-form-grid no-pad">
+        <label>
+          <span>Rubrique</span>
+          <input id="fuccsCriterionRubricLabel" readonly>
+        </label>
+
+        <label>
+          <span>Ordre <b>*</b></span>
+          <input
+            id="fuccsCriterionOrder"
+            type="number"
+            min="1"
+            step="1"
+            required
+          >
+        </label>
+
+        <label class="full">
+          <span>Code <b>*</b></span>
+          <div class="code-input-group">
+            <input id="fuccsCriterionCode" maxlength="255" required>
+            <button
+              type="button"
+              class="code-generate-button"
+              id="generateFuccsCriterionCode"
+              title="Générer le code"
+            >
+              <i data-lucide="wand-sparkles"></i>
+            </button>
+          </div>
+        </label>
+
+        <label class="full">
+          <span>Libellé <b>*</b></span>
+          <input id="fuccsCriterionLabel" maxlength="255" required>
+        </label>
+
+        <label class="full">
+          <span>Description</span>
+          <textarea id="fuccsCriterionDescription" rows="4"></textarea>
+        </label>
+
+        <label>
+          <span>Score maximal <b>*</b></span>
+          <input
+            id="fuccsCriterionMaxScore"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+          >
+        </label>
+
+        <label>
+          <span>Poids</span>
+          <input
+            id="fuccsCriterionWeight"
+            type="number"
+            min="0"
+            step="0.01"
+          >
+        </label>
+
+        <label class="fuccs-switch-field">
+          <input id="fuccsCriterionCommentRequired" type="checkbox">
+          <span>
+            <strong>Commentaire obligatoire</strong>
+            <small>
+              Le contrôle ne pourra pas être finalisé sans commentaire.
+            </small>
+          </span>
+        </label>
+
+        <label class="fuccs-switch-field">
+          <input id="fuccsCriterionProofRequired" type="checkbox">
+          <span>
+            <strong>Preuve obligatoire</strong>
+            <small>
+              Une preuve documentaire active sera requise.
+            </small>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsCriterionDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="save"></i>
+        Enregistrer le critère
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog"
+  id="fuccsRetireDialog"
+>
+  <form method="dialog" id="fuccsRetireForm">
+    <header>
+      <div>
+        <p class="eyebrow">Fin de validité</p>
+        <h2>Retirer la grille FUCCS</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsRetireDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <label>
+        <span>Date de fin <b>*</b></span>
+        <input id="fuccsRetireDate" type="date" required>
+      </label>
+
+      <label>
+        <span>Motif <b>*</b></span>
+        <textarea
+          id="fuccsRetireReason"
+          rows="4"
+          maxlength="2000"
+          required
+        ></textarea>
+      </label>
+
+      <div class="publication-warning">
+        <i data-lucide="archive"></i>
+        <span>
+          Le retrait n’efface ni la grille ni les contrôles qui l’utilisent.
+        </span>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsRetireDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="archive"></i>
+        Retirer la grille
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog
+  class="hauqe-dialog institutional-dialog"
+  id="fuccsDeleteDialog"
+>
+  <form method="dialog" id="fuccsDeleteForm">
+    <header>
+      <div>
+        <p class="eyebrow">Suppression du brouillon</p>
+        <h2 id="fuccsDeleteTitle">Supprimer</h2>
+      </div>
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsDeleteDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="delete-draft-warning">
+        <span><i data-lucide="trash-2"></i></span>
+        <div>
+          <strong id="fuccsDeleteLabel">Élément FUCCS</strong>
+          <small id="fuccsDeleteMessage">
+            Cette suppression concerne uniquement un élément de brouillon.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsDeleteDialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-danger app-btn" type="submit">
+        <i data-lucide="trash-2"></i>
+        Supprimer
+      </button>
+    </footer>
+  </form>
+</dialog>
+
+
+<a
+  class="institutional-guide-fab"
+  href="/static/docs/guide-regles-codification-hauqe.pdf"
+  download="Guide_Regles_Codification_HAUQE.pdf"
+  target="_blank"
+  rel="noopener"
+  aria-label="Télécharger le guide PDF des règles et de la codification"
+  title="Guide PDF - Règles et codification"
+>
+  <i data-lucide="book-open-check"></i>
+  <span>Guide PDF</span>
+</a>
+
 </div>

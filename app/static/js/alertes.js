@@ -1,30 +1,532 @@
-(function(){
+(async function () {
   "use strict";
-  const alerts=[
-    {id:1,level:"critical",type:"expiration",icon:"badge-alert",title:"Certification expirant dans 18 jours",entity:"AGROVITA SARL · ISO 22000",ref:"TG-AGRO-ISO22000-2025-014",date:"Aujourd’hui, 08:35",deadline:"03 août 2026",owner:"AD",ownerName:"Amévi D.",status:"new",unread:true,note:"Le renouvellement n’est pas encore confirmé. Contacter l’entreprise et vérifier si l’audit a été programmé."},
-    {id:2,level:"critical",type:"control",icon:"calendar-x-2",title:"Contrôle HAUQE en retard de 12 jours",entity:"ÉTABLISSEMENTS KOFFI",ref:"Contrôle CT-2026-047",date:"Hier, 16:20",deadline:"04 juillet 2026",owner:"",ownerName:"Non affectée",status:"new",unread:true,note:"Le contrôle annuel n’a pas été réalisé à la date prévue. Une nouvelle mission doit être planifiée."},
-    {id:3,level:"critical",type:"document",icon:"file-warning",title:"Suspicion sur un certificat justificatif",entity:"NATURE & SAVEURS TOGO",ref:"Certificat BIO · EC-8421",date:"Hier, 11:04",deadline:"Immédiate",owner:"KA",ownerName:"K. Agbodjan",status:"progress",unread:true,note:"Les informations visibles sur le document ne correspondent pas entièrement aux données déclarées."},
-    {id:4,level:"warning",type:"validation",icon:"file-clock",title:"Fiche en attente depuis plus de 48 heures",entity:"DÉLICES DU NORD",ref:"Collecte FC-2026-108",date:"15 juillet, 14:12",deadline:"17 juillet 2026",owner:"AD",ownerName:"Amévi D.",status:"progress",unread:true,note:"La fiche a été soumise avec toutes les pièces attendues et nécessite une validation HAUQE."},
-    {id:5,level:"warning",type:"expiration",icon:"clock-3",title:"Accréditation arrivant à échéance",entity:"SGS TOGO",ref:"Accréditation ISO/IEC 17065",date:"15 juillet, 09:46",deadline:"14 septembre 2026",owner:"KA",ownerName:"K. Agbodjan",status:"new",unread:false,note:"La preuve de renouvellement de l’accréditation doit être demandée à l’organisme."},
-    {id:6,level:"warning",type:"expiration",icon:"badge-alert",title:"Niveau 2 — renouvellement non confirmé à 90 jours",entity:"TOGO FRESH EXPORT",ref:"Certification BIO",date:"14 juillet, 17:30",deadline:"28 septembre 2026",owner:"AD",ownerName:"Amévi D.",status:"progress",unread:false,note:"L’entreprise a déclaré avoir engagé le processus de renouvellement. Une preuve officielle reste obligatoire pour maintenir le statut actif."},
-    {id:7,level:"warning",type:"document",icon:"files",title:"Pièce justificative obligatoire manquante",entity:"KATIO FOODS",ref:"Audit de surveillance 2",date:"14 juillet, 13:15",deadline:"20 juillet 2026",owner:"",ownerName:"Non affectée",status:"new",unread:false,note:"Le rapport d’audit de surveillance n’a pas été joint au dossier numérique."},
-    {id:8,level:"warning",type:"control",icon:"clipboard-clock",title:"Mission de contrôle à programmer",entity:"COOPÉRATIVE KPALIMÉ BIO",ref:"Contrôle annuel 2026",date:"13 juillet, 10:08",deadline:"31 juillet 2026",owner:"KA",ownerName:"K. Agbodjan",status:"new",unread:false,note:"La période recommandée pour le contrôle annuel arrive à échéance."},
-    {id:9,level:"info",type:"validation",icon:"badge-info",title:"Nouveau certificat soumis pour vérification",entity:"SAVANES CÉRÉALES",ref:"COTAG ARS 464",date:"12 juillet, 15:42",deadline:"Sans échéance",owner:"AD",ownerName:"Amévi D.",status:"progress",unread:false,note:"Le certificat et les informations de l’entreprise sont disponibles pour vérification."},
-    {id:10,level:"info",type:"validation",icon:"refresh-cw",title:"Renouvellement déclaré par l’entreprise",entity:"MARAÎCHERS DU LITTORAL",ref:"GLOBALG.A.P.",date:"11 juillet, 08:55",deadline:"30 juillet 2026",owner:"",ownerName:"Non affectée",status:"new",unread:false,note:"Une preuve du processus de renouvellement a été téléversée et doit être examinée."},
-    {id:11,level:"info",type:"control",icon:"circle-check-big",title:"Contrôle clôturé avec recommandations",entity:"FONIO PLUS SARL",ref:"Contrôle CT-2026-041",date:"10 juillet, 17:05",deadline:"Clôturée",owner:"KA",ownerName:"K. Agbodjan",status:"resolved",unread:false,note:"Le contrôle a été clôturé. Trois recommandations ont été communiquées à l’entreprise."},
-    {id:12,level:"info",type:"document",icon:"upload",title:"Nouveau document ajouté au dossier",entity:"AGRO TRANSFORMATION TOGO",ref:"Rapport d’audit 2026",date:"10 juillet, 12:21",deadline:"Sans échéance",owner:"AD",ownerName:"Amévi D.",status:"resolved",unread:false,note:"Le rapport d’audit a été ajouté et associé à la certification concernée."}
-  ];
-  const labels={critical:"Critique",warning:"À surveiller",info:"Information",new:"Nouvelle",progress:"En cours",resolved:"Résolue"};
-  let filters={level:"all",type:"all",status:"all",owner:"all",search:""},selected=null;
-  const $=s=>document.querySelector(s),icon=n=>`<i data-lucide="${n}"></i>`;
-  function filtered(){return alerts.filter(a=>(filters.level==="all"||a.level===filters.level)&&(filters.type==="all"||a.type===filters.type)&&(filters.status==="all"||a.status===filters.status)&&(filters.owner==="all"||(filters.owner==="me"&&a.owner==="AD")||(filters.owner==="unassigned"&&!a.owner))&&(`${a.title} ${a.entity} ${a.ref}`.toLowerCase().includes(filters.search)));}
-  function row(a){return `<div class="alert-row ${a.unread?"unread":""} ${selected===a.id?"selected":""}" data-id="${a.id}"><label class="alert-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check"><span></span></label><span class="row-level-icon ${a.level}">${icon(a.icon)}</span><div class="alert-row-copy"><strong>${a.title}</strong><span>${a.entity}</span><small>${a.ref} · ${a.date}</small></div><div class="alert-owner"><span class="owner-avatar">${a.owner||"?"}</span><span>${a.ownerName}</span></div><span class="alert-state ${a.status}">${labels[a.status]}</span>${icon("chevron-right")}</div>`;}
-  function render(){const list=filtered();$("#alertsList").innerHTML=list.map(row).join("");$("#resultsCount").textContent=`${list.length} alerte${list.length>1?"s":""}`;$("#emptyAlerts").hidden=list.length!==0;$("#alertsList").hidden=list.length===0;document.querySelectorAll(".alert-row").forEach(r=>r.onclick=()=>show(Number(r.dataset.id)));if(window.lucide)lucide.createIcons({attrs:{"stroke-width":1.8}});}
-  function show(id){selected=id;const a=alerts.find(x=>x.id===id);a.unread=false;$("#alertDetail").innerHTML=`<div class="detail-head"><div class="detail-head-top"><span class="level-pill ${a.level}">${labels[a.level]}</span><button class="more-button" aria-label="Plus d’actions">${icon("ellipsis")}</button></div><h2>${a.title}</h2><p>${a.entity} · ${a.ref}</p></div><div class="detail-body"><section class="detail-section"><h3>Informations</h3><div class="detail-grid"><div><small>Échéance</small><strong>${a.deadline}</strong></div><div><small>État</small><strong>${labels[a.status]}</strong></div><div><small>Responsable</small><strong>${a.ownerName}</strong></div><div><small>Créée</small><strong>${a.date}</strong></div></div></section><section class="detail-section"><h3>Action recommandée</h3><div class="detail-note">${a.note}</div></section><section class="detail-section"><h3>Historique récent</h3><div class="detail-grid"><div><small>Dernière action</small><strong>Consultation du dossier</strong></div><div><small>Par</small><strong>Système HAUQE</strong></div></div></section></div><div class="detail-actions"><button class="btn btn-outline-secondary app-btn" id="assignAlert">${icon("user-round-plus")}Affecter</button><button class="btn btn-primary app-btn" id="advanceAlert">${icon("check")}Traiter</button></div>`;render();$("#assignAlert").onclick=()=>{$("#assignAlertSummary").innerHTML=`<span class="row-level-icon ${a.level}">${icon(a.icon)}</span><div><strong>${a.title}</strong><small>${a.entity}</small><em>${a.ref}</em></div><span class="level-pill ${a.level}">${labels[a.level]}</span>`;const owner=document.querySelector(`[name="assignOwner"][value="${a.owner||"AD"}"]`);if(owner)owner.checked=true;const priority=document.querySelector(`[name="assignPriority"][value="${a.level}"]`);if(priority)priority.checked=true;$("#assignAlertInstruction").value=a.note;$("#assignAlertDialog").showModal();if(window.lucide)lucide.createIcons({attrs:{"stroke-width":1.8}})};$("#advanceAlert").onclick=()=>{a.status=a.status==="new"?"progress":"resolved";show(id)};}
-  document.querySelectorAll(".alert-stat").forEach(b=>b.onclick=()=>{document.querySelectorAll(".alert-stat").forEach(x=>x.classList.remove("active"));b.classList.add("active");filters.level=b.dataset.level;render()});
-  $("#alertSearch").oninput=e=>{filters.search=e.target.value.trim().toLowerCase();render()};$("#typeFilter").onchange=e=>{filters.type=e.target.value;render()};$("#statusFilter").onchange=e=>{filters.status=e.target.value;render()};$("#ownerFilter").onchange=e=>{filters.owner=e.target.value;render()};
-  $("#resetAlerts").onclick=()=>{filters={level:"all",type:"all",status:"all",owner:"all",search:""};$("#alertSearch").value="";["typeFilter","statusFilter","ownerFilter"].forEach(id=>$("#"+id).value="all");document.querySelectorAll(".alert-stat").forEach((x,i)=>x.classList.toggle("active",i===0));render()};
-  $("#markAllRead").onclick=()=>{alerts.forEach(a=>a.unread=false);render()};$("#selectAll").onchange=e=>document.querySelectorAll(".row-check").forEach(c=>c.checked=e.target.checked);
-  $("#confirmAssignAlert").onclick=()=>{const a=alerts.find(x=>x.id===selected),names={AD:"Amévi Dossou",KA:"K. Agbodjan",AF:"Ama Foli",AM:"Akouvi Mensah"};a.owner=document.querySelector('[name="assignOwner"]:checked').value;a.ownerName=names[a.owner];a.level=document.querySelector('[name="assignPriority"]:checked').value;a.status="progress";setTimeout(()=>{show(a.id);$("#alertAssignToast span").textContent=`Alerte affectée à ${a.ownerName}`;$("#alertAssignToast").hidden=false;setTimeout(()=>$("#alertAssignToast").hidden=true,1800)},0)};
-  render();show(1);
+
+  const api = await import("/static/js/core/api.js");
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  let user = null;
+  let alerts = [];
+  let selected = null;
+  let options = null;
+  let timer = null;
+
+  const filters = {
+    search: "",
+    niveau: "",
+    type_alerte: "",
+    statut: "",
+  };
+
+  function e(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function perm(code) {
+    return Array.isArray(user?.permissions)
+      && user.permissions.includes(code);
+  }
+
+  function icons() {
+    window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+
+  function state(message, error = false) {
+    const node = $("#alertApiState");
+    node.hidden = false;
+    node.className = `dashboard-api-state ${error ? "error" : ""}`.trim();
+    node.innerHTML = `
+      <i data-lucide="${error ? "triangle-alert" : "info"}"></i>
+      <div><strong>${error ? "Opération impossible" : "Information"}</strong><span>${e(message)}</span></div>
+    `;
+    icons();
+  }
+
+  function dateLabel(v) {
+    if (!v) return "—";
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit", month: "short", year: "numeric",
+    }).format(new Date(`${v}T00:00:00`));
+  }
+
+  function levelClass(level) {
+    return Number(level) === 4
+      ? "critical"
+      : Number(level) >= 2
+        ? "warning"
+        : "info";
+  }
+
+  function renderKpis(s) {
+    const cards = [
+      ["all","bell-ring","Actives",s.active,"À traiter",""],
+      ["info","info","Niveau 1",s.level_1,"Information","1"],
+      ["warning","eye","Niveau 2",s.level_2,"Surveillance","2"],
+      ["warning","clock-alert","Niveau 3",s.level_3,"Urgence","3"],
+      ["critical","triangle-alert","Niveau 4",s.level_4,"Critique","4"],
+    ];
+
+    $("#alertKpis").innerHTML = cards.map(([tone,icon,label,value,detail,level]) => `
+      <button class="alert-stat ${tone}" type="button" data-kpi-level="${level}">
+        <span class="alert-stat-icon ${tone}"><i data-lucide="${icon}"></i></span>
+        <div><small>${e(label)}</small><strong>${e(value ?? 0)}</strong><em>${e(detail)}</em></div>
+      </button>
+    `).join("");
+
+    $$("#alertKpis [data-kpi-level]").forEach((button) => {
+      button.onclick = async () => {
+        filters.niveau = button.dataset.kpiLevel;
+        $("#alertLevel").value = filters.niveau;
+        await loadAlerts();
+      };
+    });
+
+    icons();
+  }
+
+  function params() {
+    const p = new URLSearchParams({ limit: "200", offset: "0" });
+    if (filters.niveau) p.set("niveau", filters.niveau);
+    if (filters.type_alerte) p.set("type_alerte", filters.type_alerte);
+    if (filters.statut) p.set("statut", filters.statut);
+    return p;
+  }
+
+  function visible() {
+    if (!filters.search) return alerts;
+    const needle = filters.search.toLowerCase();
+
+    return alerts.filter((x) =>
+      [x.titre,x.message,x.resource_label,x.resource_subtitle,x.type_alerte]
+        .filter(Boolean).join(" ").toLowerCase().includes(needle)
+    );
+  }
+
+  function renderList() {
+    const rows = visible();
+    $("#alertCount").textContent = `${rows.length} alerte${rows.length > 1 ? "s" : ""}`;
+    $("#emptyAlerts").hidden = rows.length > 0;
+
+    $("#alertsList").innerHTML = rows.map((item) => `
+      <button class="alert-row ${selected?.id === item.id ? "selected" : ""}" type="button" data-alert="${e(item.id)}">
+        <span class="row-level-icon ${levelClass(item.niveau)}">
+          <i data-lucide="${Number(item.niveau) === 4 ? "triangle-alert" : Number(item.niveau) >= 2 ? "clock-alert" : "info"}"></i>
+        </span>
+        <div class="alert-row-copy">
+          <strong>${e(item.titre || "Alerte")}</strong>
+          <span>${e(item.resource_label || item.ressource_type || "Ressource")}</span>
+          <small>${e(item.level_label || `Niveau ${item.niveau || "—"}`)} · ${e(dateLabel(item.date_detection))}</small>
+        </div>
+        <div class="alert-owner">
+          <span class="owner-avatar">${e((item.responsable_name || "?").split(/\s+/).slice(0,2).map((p) => p[0] || "").join("").toUpperCase())}</span>
+          <span>${e(item.responsable_name || "Non affectée")}</span>
+        </div>
+        <span class="alert-state">${e(item.statut || "—")}</span>
+        <i data-lucide="chevron-right"></i>
+      </button>
+    `).join("");
+
+    $$("#alertsList [data-alert]").forEach((button) => {
+      button.onclick = () => {
+        selected = alerts.find((x) => String(x.id) === String(button.dataset.alert));
+        renderList();
+        renderDetail();
+      };
+    });
+
+    icons();
+  }
+
+  function renderDetail() {
+    const container = $("#alertDetail");
+    if (!selected) {
+      container.innerHTML = `<div class="priority-empty">Sélectionnez une alerte.</div>`;
+      return;
+    }
+
+    const resolved = String(selected.statut || "").toUpperCase() === "RESOLUE";
+
+    container.innerHTML = `
+      <div class="detail-head">
+        <div class="detail-head-top">
+          <span class="level-pill ${levelClass(selected.niveau)}">
+            N${e(selected.niveau || "—")} · ${e(selected.level_label || "Alerte")}
+          </span>
+        </div>
+        <h2>${e(selected.titre || "Alerte")}</h2>
+        <p>${e(selected.resource_label || selected.ressource_type || "Ressource")}</p>
+      </div>
+
+      <div class="detail-body">
+        <section class="detail-section">
+          <h3>Informations</h3>
+          <div class="detail-grid">
+            <div><small>Type</small><strong>${e(selected.type_alerte || "—")}</strong></div>
+            <div><small>Statut</small><strong>${e(selected.statut || "—")}</strong></div>
+            <div><small>Responsable</small><strong>${e(selected.responsable_name || "Non affectée")}</strong></div>
+            <div><small>Détection</small><strong>${e(dateLabel(selected.date_detection))}</strong></div>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <h3>Message</h3>
+          <div class="detail-note">${e(selected.message || "—")}</div>
+        </section>
+
+        <section class="detail-section">
+          <h3>Traçabilité</h3>
+          <div class="detail-grid">
+            <div><small>Règle</small><strong>${e(selected.regle_notification || "Aucune")}</strong></div>
+            <div><small>Notifications</small><strong>${e(selected.notifications_count || 0)}</strong></div>
+            <div><small>Échéance liée</small><strong>${selected.echeance_id ? "Oui" : "Non"}</strong></div>
+            <div><small>Résolution</small><strong>${e(dateLabel(selected.date_resolution))}</strong></div>
+          </div>
+        </section>
+
+        ${selected.resource_route ? `<a class="btn btn-outline-secondary app-btn" href="${e(selected.resource_route)}"><i data-lucide="arrow-up-right"></i>Ouvrir la ressource</a>` : ""}
+      </div>
+
+      <div class="detail-actions">
+        ${perm("ALERTES.AFFECTER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="assignAlert" type="button"><i data-lucide="user-round-plus"></i>Affecter</button>` : ""}
+        ${perm("NOTIFICATIONS.CREER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="notifyAlert" type="button"><i data-lucide="send"></i>Notifier</button>` : ""}
+        ${perm("ALERTES.RESOUDRE") && !resolved ? `<button class="btn btn-primary app-btn" id="resolveAlert" type="button"><i data-lucide="circle-check"></i>Résoudre</button>` : ""}
+      </div>
+    `;
+
+    $("#assignAlert")?.addEventListener("click", openAssign);
+    $("#notifyAlert")?.addEventListener("click", openNotify);
+    $("#resolveAlert")?.addEventListener("click", () => {
+      $("#alertResolution").value = "";
+      $("#closeAlertAfterResolution").checked = true;
+      $("#resolveAlertDialog").showModal();
+      icons();
+    });
+
+    icons();
+  }
+
+  async function loadAlerts() {
+    try {
+      const payload = await api.apiGet(`/api/v1/veille/workspace/alerts?${params()}`);
+      alerts = payload.items || [];
+      renderKpis(payload.summary || {});
+
+      if (selected && !alerts.some((x) => x.id === selected.id)) selected = null;
+
+      renderList();
+      renderDetail();
+    } catch (error) {
+      state(error?.message || "Chargement impossible.", true);
+    }
+  }
+
+  function fill(node, label, values) {
+    node.innerHTML = `<option value="">${e(label)}</option>`
+      + (values || []).map((v) => `<option value="${e(v)}">${e(v)}</option>`).join("");
+    node.disabled = false;
+  }
+
+  async function loadFilters() {
+    const data = await api.apiGet("/api/v1/veille/workspace/alert-filters");
+    fill($("#alertType"), "Tous les types", data.alert_types);
+    fill($("#alertStatus"), "Tous les statuts", data.alert_statuses);
+  }
+
+  async function ensureOptions() {
+    if (!options) {
+      options = await api.apiGet("/api/v1/veille/workspace/alert-options");
+    }
+    return options;
+  }
+
+  function userOptions(selectedId = "") {
+    return (options?.users || []).map((x) => `
+      <option value="${e(x.id)}" ${String(x.id) === String(selectedId) ? "selected" : ""}>
+        ${e(x.label)}
+      </option>
+    `).join("");
+  }
+
+  async function openAssign() {
+    try {
+      await ensureOptions();
+      $("#assignAlertResponsible").innerHTML = userOptions(selected?.responsable_id);
+      $("#assignAlertComment").value = "";
+      $("#assignAlertDialog").showModal();
+      icons();
+    } catch (error) {
+      state(error?.message || "Responsables indisponibles.", true);
+    }
+  }
+
+  async function assign(event) {
+    event.preventDefault();
+    if (!selected) return;
+
+    try {
+      await api.apiPost(`/api/v1/alertes/${selected.id}/assign`, {
+        responsable_id: $("#assignAlertResponsible").value,
+        commentaire: $("#assignAlertComment").value.trim() || null,
+      });
+      $("#assignAlertDialog").close();
+      await loadAlerts();
+      state("Alerte affectée.");
+    } catch (error) {
+      state(error?.message || "Affectation impossible.", true);
+    }
+  }
+
+  async function resolve(event) {
+    event.preventDefault();
+    if (!selected) return;
+
+    try {
+      await api.apiPost(`/api/v1/alertes/${selected.id}/resolve`, {
+        resolution: $("#alertResolution").value.trim(),
+        cloturer: $("#closeAlertAfterResolution").checked,
+      });
+      $("#resolveAlertDialog").close();
+      selected = null;
+      await loadAlerts();
+      state("Résolution enregistrée.");
+    } catch (error) {
+      state(error?.message || "Résolution impossible.", true);
+    }
+  }
+
+  function recipientMode() {
+    const email = $("#alertNotificationChannel").value === "EMAIL";
+    $("#internalRecipientField").hidden = email;
+    $("#externalRecipientField").hidden = !email;
+    $("#alertNotificationUser").required = !email;
+    $("#alertNotificationEmail").required = email;
+  }
+
+  async function openNotify() {
+    try {
+      await ensureOptions();
+
+      $("#alertNotificationUser").innerHTML = userOptions();
+      $("#alertNotificationChannel").value = "IN_APP";
+      $("#alertNotificationSubject").value = selected?.titre || "";
+      $("#alertNotificationContent").value = selected?.message || "";
+      $("#alertNotificationEmail").value = "";
+      recipientMode();
+      $("#notifyAlertDialog").showModal();
+      icons();
+    } catch (error) {
+      state(error?.message || "Options de notification indisponibles.", true);
+    }
+  }
+
+  async function notify(event) {
+    event.preventDefault();
+    if (!selected) return;
+
+    const channel = $("#alertNotificationChannel").value;
+    const recipient = channel === "EMAIL"
+      ? {
+          destinataire_utilisateur_id: null,
+          adresse_externe: $("#alertNotificationEmail").value.trim(),
+          canal: channel,
+        }
+      : {
+          destinataire_utilisateur_id: $("#alertNotificationUser").value,
+          adresse_externe: null,
+          canal: channel,
+        };
+
+    try {
+      const rows = await api.apiPost(`/api/v1/alertes/${selected.id}/notifications`, {
+        objet: $("#alertNotificationSubject").value.trim(),
+        contenu: $("#alertNotificationContent").value.trim(),
+        destinataires: [recipient],
+      });
+
+      $("#notifyAlertDialog").close();
+      await loadAlerts();
+      state(`${rows.length} notification(s) créée(s).`);
+    } catch (error) {
+      state(error?.message || "Notification impossible.", true);
+    }
+  }
+
+  async function openSpecial() {
+    try {
+      await ensureOptions();
+
+      $("#specialAlertCertification").innerHTML = options.certifications
+        .map((x) => `<option value="${e(x.id)}">${e(x.label)}</option>`).join("");
+
+      $("#specialAlertResponsible").innerHTML = `<option value="">Non affectée</option>`
+        + userOptions();
+
+      $("#specialAlertType").value = "";
+      $("#specialAlertLevel").value = "2";
+      $("#specialAlertResponsible").value = "";
+      $("#specialAlertTitle").value = "";
+      $("#specialAlertMessage").value = "";
+      $("#specialAlertRule").value = "";
+
+      $("#specialAlertDialog").showModal();
+      icons();
+    } catch (error) {
+      state(error?.message || "Options indisponibles.", true);
+    }
+  }
+
+  async function createSpecial(event) {
+    event.preventDefault();
+
+    try {
+      await api.apiPost("/api/v1/alertes", {
+        echeance_id: null,
+        type_alerte: $("#specialAlertType").value.trim(),
+        niveau: Number($("#specialAlertLevel").value),
+        titre: $("#specialAlertTitle").value.trim(),
+        message: $("#specialAlertMessage").value.trim(),
+        ressource_type: "CERTIFICATION",
+        ressource_id: $("#specialAlertCertification").value,
+        responsable_id: $("#specialAlertResponsible").value || null,
+        regle_notification: $("#specialAlertRule").value.trim() || null,
+      });
+
+      $("#specialAlertDialog").close();
+      await loadAlerts();
+      state("Alerte spéciale créée.");
+    } catch (error) {
+      state(error?.message || "Création impossible.", true);
+    }
+  }
+
+  function notificationTime(v) {
+    if (!v) return "—";
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return String(v);
+    return new Intl.DateTimeFormat("fr-FR", {
+      dateStyle: "short", timeStyle: "short",
+    }).format(d);
+  }
+
+  async function loadNotifications() {
+    const container = $("#notificationCenterList");
+
+    try {
+      const payload = await api.apiGet("/api/v1/notifications?limit=100&offset=0");
+      $("#notificationUnreadBadge").textContent = String(payload.unread_count || 0);
+
+      const items = payload.items || [];
+      container.innerHTML = items.length
+        ? items.map((item) => `
+            <article class="notification-center-row ${item.date_lecture ? "" : "unread"}">
+              <span><i data-lucide="${item.canal === "EMAIL" ? "mail" : "bell-ring"}"></i></span>
+              <div>
+                <strong>${e(item.objet || "Notification")}</strong>
+                <p>${e(item.contenu || "")}</p>
+                <small>${e(item.canal || "—")} · ${e(notificationTime(item.created_at))} · ${e(item.statut || "—")}</small>
+              </div>
+              ${!item.date_lecture ? `<button class="btn btn-outline-secondary app-btn" type="button" data-read="${e(item.id)}">Marquer lue</button>` : ""}
+            </article>
+          `).join("")
+        : `<div class="priority-empty">Aucune notification.</div>`;
+
+      container.querySelectorAll("[data-read]").forEach((button) => {
+        button.onclick = async () => {
+          try {
+            await api.apiPost(`/api/v1/notifications/${button.dataset.read}/read`, {});
+            await loadNotifications();
+          } catch (error) {
+            state(error?.message || "Lecture impossible.", true);
+          }
+        };
+      });
+
+      icons();
+    } catch (error) {
+      container.innerHTML = `<div class="priority-empty">${e(error?.message || "Notifications indisponibles.")}</div>`;
+    }
+  }
+
+  function switchTab(name) {
+    $$("[data-alert-tab]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.alertTab === name);
+    });
+    $("#alertsTab").hidden = name !== "alerts";
+    $("#notificationsTab").hidden = name !== "notifications";
+    if (name === "notifications") loadNotifications();
+  }
+
+  function bind() {
+    $("#newSpecialAlert").hidden = !perm("ALERTES.CREER");
+    $("#newSpecialAlert").onclick = openSpecial;
+
+    $("#alertSearch").oninput = (event) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        filters.search = event.target.value.trim();
+        renderList();
+      }, 250);
+    };
+
+    $("#alertLevel").onchange = async (event) => {
+      filters.niveau = event.target.value; await loadAlerts();
+    };
+    $("#alertType").onchange = async (event) => {
+      filters.type_alerte = event.target.value; await loadAlerts();
+    };
+    $("#alertStatus").onchange = async (event) => {
+      filters.statut = event.target.value; await loadAlerts();
+    };
+
+    $("#resetAlerts").onclick = async () => {
+      Object.assign(filters, { search:"", niveau:"", type_alerte:"", statut:"" });
+      $("#alertSearch").value = "";
+      $("#alertLevel").value = "";
+      $("#alertType").value = "";
+      $("#alertStatus").value = "";
+      await loadAlerts();
+    };
+
+    $("#assignAlertForm").onsubmit = assign;
+    $("#resolveAlertForm").onsubmit = resolve;
+    $("#notifyAlertForm").onsubmit = notify;
+    $("#specialAlertForm").onsubmit = createSpecial;
+
+    $("#alertNotificationChannel").onchange = recipientMode;
+
+    $("#markAllNotificationsRead").onclick = async () => {
+      try {
+        await api.apiPost("/api/v1/notifications/read-all", {});
+        await loadNotifications();
+      } catch (error) {
+        state(error?.message || "Action impossible.", true);
+      }
+    };
+
+    $$("[data-alert-tab]").forEach((button) => {
+      button.onclick = () => switchTab(button.dataset.alertTab);
+    });
+
+    $$("[data-close-alert-dialog]").forEach((button) => {
+      button.onclick = () => document.getElementById(
+        button.dataset.closeAlertDialog
+      )?.close();
+    });
+  }
+
+  try {
+    user = await api.apiGet("/api/v1/me");
+    bind();
+    await loadFilters();
+    await Promise.all([loadAlerts(), loadNotifications()]);
+  } catch (error) {
+    state(error?.message || "Erreur de chargement.", true);
+  }
+
+  icons();
 })();

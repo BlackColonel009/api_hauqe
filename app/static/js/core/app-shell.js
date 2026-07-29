@@ -588,14 +588,183 @@ presenceRefresh?.addEventListener("click", async (event) => {
   await refreshPresence({ force: true });
 });
 
-const notifications = [
-  { icon: "triangle-alert", tone: "critical", title: "Certification à renouveler", text: "AGROVITA — ISO 22000 expire dans 2 jours.", time: "Il y a 8 min", link: "#/echeances" },
-  { icon: "clipboard-check", tone: "info", title: "Nouvelle fiche affectée", text: "COL-2026-081 attend votre validation.", time: "Il y a 32 min", link: "#/validations" },
-  { icon: "undo-2", tone: "warning", title: "Correction reçue", text: "Kara Fruits SARL a soumis ses corrections.", time: "Il y a 1 h", link: "#/validations" },
-  { icon: "file-check-2", tone: "success", title: "Rapport disponible", text: "Le rapport mensuel a été généré.", time: "Hier à 17:42", link: "#/rapports" },
-];
+/* ============================================================
+   NOTIFICATIONS RÉELLES
+   ============================================================ */
 
-document.querySelector("#quickNotifications").innerHTML = notifications.map((item) => `<a class="quick-notification ${item.tone} unread" href="${item.link}"><span><i data-lucide="${item.icon}"></i></span><div><strong>${item.title}</strong><p>${item.text}</p><small>${item.time}</small></div><i data-lucide="chevron-right"></i></a>`).join("");
+let notificationForbidden = false;
+let notificationRefreshTimer = null;
+const NOTIFICATION_REFRESH_MS = 60_000;
+
+function notificationTime(value) {
+  if (!value) return "Notification récente";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Notification récente";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function renderNotificationState(message, icon = "bell-off") {
+  const container = document.querySelector("#quickNotifications");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="quick-notification-state">
+      <i data-lucide="${icon}"></i>
+      <span>${escapeHtml(message)}</span>
+    </div>
+  `;
+
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+}
+
+function notificationTone(item) {
+  const text = `${item?.objet || ""} ${item?.contenu || ""}`.toUpperCase();
+
+  if (text.includes("CRITIQUE") || text.includes("EXPIR")) return "critical";
+  if (text.includes("URGENT") || text.includes("RETARD")) return "warning";
+  if ((item?.statut || "").toUpperCase() === "ENVOYEE") return "success";
+  return "info";
+}
+
+function notificationIcon(item) {
+  const tone = notificationTone(item);
+  if (tone === "critical") return "triangle-alert";
+  if (tone === "warning") return "clock-alert";
+  if (tone === "success") return "circle-check-big";
+  return "bell-ring";
+}
+
+async function refreshNotifications({ silent = false } = {}) {
+  if (!hasAccessToken() || notificationForbidden) return;
+
+  if (!silent) {
+    renderNotificationState(
+      "Chargement des notifications…",
+      "loader-circle"
+    );
+  }
+
+  try {
+    const payload = await apiGet(
+      "/api/v1/notifications?limit=6&offset=0"
+    );
+
+    const container = document.querySelector("#quickNotifications");
+    const headerSmall = notificationDropdown?.querySelector("header small");
+    const dot = document.querySelector("#notificationDot");
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    const unread = Number(payload?.unread_count || 0);
+
+    if (headerSmall) {
+      headerSmall.textContent = unread
+        ? `${unread} non lue${unread > 1 ? "s" : ""}`
+        : "Aucune non lue";
+    }
+
+    if (dot) dot.hidden = unread === 0;
+
+    if (!items.length) {
+      renderNotificationState("Aucune notification.");
+      return;
+    }
+
+    container.innerHTML = items.map((item) => `
+      <button
+        class="quick-notification ${notificationTone(item)} ${item.date_lecture ? "" : "unread"}"
+        type="button"
+        data-notification-id="${escapeHtml(item.id)}"
+      >
+        <span>
+          <i data-lucide="${notificationIcon(item)}"></i>
+        </span>
+
+        <div>
+          <strong>${escapeHtml(item.objet || "Notification")}</strong>
+          <p>${escapeHtml(item.contenu || "")}</p>
+          <small>
+            ${escapeHtml(notificationTime(item.created_at || item.date_envoi))}
+          </small>
+        </div>
+
+        <i data-lucide="chevron-right"></i>
+      </button>
+    `).join("");
+
+    container
+      .querySelectorAll("[data-notification-id]")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const item = items.find(
+            (candidate) => String(candidate.id)
+              === String(button.dataset.notificationId)
+          );
+
+          try {
+            if (item && !item.date_lecture) {
+              await apiPost(
+                `/api/v1/notifications/${item.id}/read`,
+                {}
+              );
+            }
+          } catch (error) {
+            console.warn("Lecture notification :", error);
+          }
+
+          closeTopbarDropdowns();
+          location.hash = "#/alertes";
+          await refreshNotifications({ silent: true });
+        });
+      });
+
+    if (window.lucide) {
+      window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+    }
+  } catch (error) {
+    if (error?.status === 403) {
+      notificationForbidden = true;
+      const dot = document.querySelector("#notificationDot");
+      if (dot) dot.hidden = true;
+      renderNotificationState(
+        "Notifications non disponibles pour ce rôle."
+      );
+      return;
+    }
+
+    if (!silent) {
+      renderNotificationState(
+        error?.message || "Impossible de charger les notifications."
+      );
+    }
+  }
+}
+
+function startNotificationRuntime() {
+  if (!hasAccessToken() || notificationForbidden) return;
+
+  refreshNotifications({ silent: true });
+
+  if (notificationRefreshTimer) {
+    clearInterval(notificationRefreshTimer);
+  }
+
+  notificationRefreshTimer = setInterval(
+    () => refreshNotifications({ silent: true }),
+    NOTIFICATION_REFRESH_MS
+  );
+}
+
+function stopNotificationRuntime() {
+  if (notificationRefreshTimer) {
+    clearInterval(notificationRefreshTimer);
+    notificationRefreshTimer = null;
+  }
+}
 
 function closeTopbarDropdowns() {
   notificationDropdown.hidden = true;
@@ -624,19 +793,36 @@ presenceToggle?.addEventListener("click", async (event) => {
   }
 });
 
-notificationToggle.addEventListener("click", (event) => {
-  event.stopPropagation(); const open = notificationDropdown.hidden;
-  closeTopbarDropdowns(); notificationDropdown.hidden = !open; notificationToggle.setAttribute("aria-expanded", String(open));
+notificationToggle.addEventListener("click", async (event) => {
+  event.stopPropagation();
+
+  const open = notificationDropdown.hidden;
+
+  closeTopbarDropdowns();
+  notificationDropdown.hidden = !open;
+  notificationToggle.setAttribute("aria-expanded", String(open));
+
+  if (open) {
+    await refreshNotifications();
+  }
 });
 userMenuToggle.addEventListener("click", (event) => {
   event.stopPropagation(); const open = accountDropdown.hidden;
   closeTopbarDropdowns(); accountDropdown.hidden = !open; userMenuToggle.setAttribute("aria-expanded", String(open));
 });
-document.querySelector("#markNotificationsRead").addEventListener("click", () => {
-  document.querySelectorAll(".quick-notification").forEach((item) => item.classList.remove("unread"));
-  document.querySelector("#notificationDot").hidden = true;
-  notificationDropdown.querySelector("header small").textContent = "Aucune non lue";
-});
+document.querySelector("#markNotificationsRead").addEventListener(
+  "click",
+  async (event) => {
+    event.stopPropagation();
+
+    try {
+      await apiPost("/api/v1/notifications/read-all", {});
+      await refreshNotifications({ silent: true });
+    } catch (error) {
+      console.warn("Lecture globale notifications :", error);
+    }
+  }
+);
 document.addEventListener("click", (event) => { if (!event.target.closest(".topbar-dropdown-wrap")) closeTopbarDropdowns(); });
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeTopbarDropdowns(); });
 document.querySelectorAll(".topbar-dropdown a").forEach((link) => link.addEventListener("click", closeTopbarDropdowns));
@@ -661,8 +847,10 @@ window.addEventListener("hauqe:auth-state", (event) => {
     presenceForbidden = false;
     hydrateAuthenticatedShell();
     startPresenceRuntime();
+    startNotificationRuntime();
   } else {
     stopPresenceRuntime();
+    stopNotificationRuntime();
   }
 });
 
@@ -672,6 +860,8 @@ hydrateAuthenticatedShell();
 
 if (hasAccessToken()) {
   startPresenceRuntime();
+  startNotificationRuntime();
 } else {
   stopPresenceRuntime();
+  stopNotificationRuntime();
 }

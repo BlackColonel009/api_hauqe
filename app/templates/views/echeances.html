@@ -1,0 +1,316 @@
+<div class="page-content container-fluid deadlines-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Pilotage temporel</p>
+      <h1>Calendrier des échéances</h1>
+      <p>
+        Suivez les expirations, audits, renouvellements et échéances manuelles à partir des données réelles.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn" id="runWatchScanFromDeadlines" type="button" hidden>
+        <i data-lucide="radar"></i>Recalculer la veille
+      </button>
+
+      <button class="btn btn-primary app-btn" id="newDeadline" type="button" hidden>
+        <i data-lucide="calendar-plus"></i>Planifier
+      </button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="deadlineApiState" hidden></section>
+
+  <section class="deadline-doctrine panel">
+    <span><i data-lucide="clock-alert"></i></span>
+    <div>
+      <strong>Seuils de veille : 180 / 90 / 30 jours puis expiration.</strong>
+      <small>
+        Le moteur charge d’abord la règle publiée VEILLE_SEUILS_EXPIRATION.
+        En son absence, le backend applique le socle validé comme fallback technique.
+      </small>
+    </div>
+  </section>
+
+  <section class="deadline-kpis" id="deadlineKpis"></section>
+
+  <section class="deadline-filters">
+    <label>
+      <span>Type</span>
+      <select id="deadlineTypeFilter" disabled><option value="">Chargement…</option></select>
+    </label>
+
+    <label>
+      <span>Statut</span>
+      <select id="deadlineStatusFilter" disabled><option value="">Chargement…</option></select>
+    </label>
+
+    <label>
+      <span>Période</span>
+      <select id="deadlineRangeFilter">
+        <option value="month">Mois affiché</option>
+        <option value="30">30 prochains jours</option>
+        <option value="90">90 prochains jours</option>
+        <option value="180">180 prochains jours</option>
+        <option value="overdue">En retard</option>
+        <option value="all">Toutes</option>
+      </select>
+    </label>
+
+    <button class="reset-filter" id="resetDeadlines" type="button">
+      <i data-lucide="rotate-ccw"></i>Réinitialiser
+    </button>
+  </section>
+
+  <section class="calendar-panel panel">
+    <div class="calendar-toolbar">
+      <div class="calendar-navigation">
+        <button id="prevMonth" class="icon-button" type="button"><i data-lucide="chevron-left"></i></button>
+        <button id="todayButton" class="btn btn-outline-secondary app-btn" type="button">Aujourd’hui</button>
+        <button id="nextMonth" class="icon-button" type="button"><i data-lucide="chevron-right"></i></button>
+        <h2 id="monthTitle"></h2>
+      </div>
+
+      <div class="view-switch">
+        <button class="active" data-view="calendar" type="button"><i data-lucide="calendar-days"></i>Calendrier</button>
+        <button data-view="list" type="button"><i data-lucide="list"></i>Liste</button>
+      </div>
+    </div>
+
+    <div id="calendarView">
+      <div class="weekday-row">
+        <span>Lundi</span><span>Mardi</span><span>Mercredi</span>
+        <span>Jeudi</span><span>Vendredi</span><span>Samedi</span><span>Dimanche</span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div id="listView" hidden>
+      <div class="deadline-list" id="deadlineList"></div>
+    </div>
+  </section>
+
+  <section class="upcoming-grid">
+    <article class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Échéances prioritaires</h2>
+          <p>Éléments actifs les plus proches.</p>
+        </div>
+        <a href="#/alertes">Centre des alertes <i data-lucide="arrow-up-right"></i></a>
+      </div>
+      <div id="upcomingList"></div>
+    </article>
+
+    <article class="panel workload-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Charge par responsable</h2>
+          <p>Échéances visibles dans la période chargée.</p>
+        </div>
+      </div>
+      <div id="deadlineWorkload"></div>
+    </article>
+  </section>
+
+
+<dialog
+  id="deadlineDialog"
+  class="hauqe-dialog operational-form-dialog deadline-planner-dialog"
+>
+  <form method="dialog" id="deadlineForm">
+    <header class="operational-dialog-header">
+      <div class="operational-dialog-title">
+        <span class="operational-dialog-icon">
+          <i data-lucide="calendar-plus-2"></i>
+        </span>
+
+        <div>
+          <p class="eyebrow">Planification contrôlée</p>
+          <h2>Planifier une échéance</h2>
+          <small>
+            Liez une date de suivi à une certification réelle et
+            désignez clairement le responsable du traitement.
+          </small>
+        </div>
+      </div>
+
+      <button
+        class="dialog-close operational-dialog-close"
+        type="button"
+        aria-label="Fermer"
+        data-close-deadline-dialog
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="operational-dialog-body">
+      <div class="operational-form-notice">
+        <span><i data-lucide="shield-check"></i></span>
+        <div>
+          <strong>Planification traçable</strong>
+          <small>
+            La certification est la ressource source. Le type, la date
+            et le titre décrivent l’événement à suivre.
+          </small>
+        </div>
+      </div>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="badge-check"></i></span>
+          <div>
+            <strong>Ressource concernée</strong>
+            <small>
+              Sélectionnez la certification et qualifiez l’échéance.
+            </small>
+          </div>
+          <b>01</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Certification suivie <b>*</b></span>
+            <select id="deadlineCertification" required></select>
+            <small>
+              Entreprise, identifiant national, certificat et norme.
+            </small>
+          </label>
+
+          <label class="operational-field">
+            <span>Type d’échéance <b>*</b></span>
+            <input
+              id="deadlineType"
+              maxlength="255"
+              placeholder="Ex. SUIVI_DOCUMENTAIRE"
+              required
+            >
+            <small>
+              Utilisez une codification explicite et stable.
+            </small>
+          </label>
+
+          <label class="operational-field">
+            <span>Priorité</span>
+            <input
+              id="deadlinePriority"
+              maxlength="255"
+              placeholder="Ex. HAUTE"
+            >
+            <small>
+              Facultatif, selon la codification institutionnelle.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="clock-3"></i></span>
+          <div>
+            <strong>Organisation du suivi</strong>
+            <small>
+              Définissez l’intitulé, la date et le responsable.
+            </small>
+          </div>
+          <b>02</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Titre de l’échéance <b>*</b></span>
+            <input
+              id="deadlineTitle"
+              maxlength="255"
+              placeholder="Ex. Vérifier le renouvellement du certificat"
+              required
+            >
+          </label>
+
+          <label class="operational-field">
+            <span>Date d’échéance <b>*</b></span>
+            <input id="deadlineDate" type="date" required>
+          </label>
+
+          <label class="operational-field">
+            <span>Responsable</span>
+            <select id="deadlineResponsible"></select>
+            <small>
+              Peut rester non affectée à la création.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="notebook-pen"></i></span>
+          <div>
+            <strong>Informations complémentaires</strong>
+            <small>
+              Ajoutez le contexte utile au futur traitement.
+            </small>
+          </div>
+          <b>03</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Description</span>
+            <textarea
+              id="deadlineDescription"
+              rows="4"
+              placeholder="Objet du suivi, attente opérationnelle, pièces à contrôler…"
+            ></textarea>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <footer class="operational-dialog-footer">
+      <div class="operational-footer-note">
+        <i data-lucide="info"></i>
+        <span>Les champs marqués * sont obligatoires.</span>
+      </div>
+
+      <div class="operational-footer-actions">
+        <button
+          class="btn btn-outline-secondary app-btn"
+          type="button"
+          data-close-deadline-dialog
+        >
+          Annuler
+        </button>
+
+        <button
+          class="btn btn-primary app-btn"
+          id="saveDeadline"
+          type="submit"
+        >
+          <i data-lucide="calendar-check-2"></i>
+          Planifier l’échéance
+        </button>
+      </div>
+    </footer>
+  </form>
+</dialog>
+
+  <dialog id="deadlineActionDialog" class="hauqe-dialog">
+    <form method="dialog" id="deadlineActionForm">
+      <header>
+        <div><p class="eyebrow">Échéance</p><h2 id="deadlineActionTitle">Action</h2></div>
+        <button class="dialog-close" type="button" data-close-deadline-action><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="dialog-body">
+        <label><span>Motif <b>*</b></span><textarea id="deadlineActionReason" rows="4" required></textarea></label>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-action>Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit">Confirmer</button>
+      </footer>
+    </form>
+  </dialog>
+</div>

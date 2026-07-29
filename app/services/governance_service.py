@@ -37,6 +37,9 @@ from app.models.revue_qualite import RevueQualite
 from app.models.sauvegarde import Sauvegarde
 from app.repositories.governance_repository import GovernanceRepository
 from app.rules.business_rule_resolver import rule_logical_code
+from app.rules.collecte_completeness import (
+    validate_parameters as validate_collecte_completeness_parameters,
+)
 from app.schemas.governance import *
 from app.services.auth_service import AuthContext
 
@@ -328,6 +331,23 @@ class GovernanceService:
         GovernanceService.require_rule_draft(item)
 
         logical = rule_logical_code(item)
+
+        if logical == "COLLECTE_COMPLETUDE":
+            validation = validate_collecte_completeness_parameters(
+                item.parametres or {},
+            )
+            if validation.errors:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "COLLECTE_COMPLETUDE ne peut pas être publiée : "
+                        + " | ".join(validation.errors)
+                    ),
+                )
+
+            params = dict(validation.normalized)
+            params["_logical_code"] = logical
+            item.parametres = params
 
         # Clôture automatiquement une version publiée qui chevaucherait
         # la nouvelle date d'effet.

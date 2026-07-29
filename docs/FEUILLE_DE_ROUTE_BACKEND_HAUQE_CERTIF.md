@@ -5987,3 +5987,205 @@ Extensions de lecture :
 
 Aucune migration, nouvelle table ou nouvelle permission.
 `DOCUMENTS.VERIFIER` reste distinct de `VERIFICATION.VERIFIER`.
+
+## ÉTAPE 07 — CONTRÔLE FUCCS
+
+Statut : 🟡 **raccordement produit — recette runtime à confirmer**
+
+Le moteur FUCCS existant n'est pas remplacé.
+
+Conservés comme autorités métier :
+- versions de grille ;
+- rubriques et critères ;
+- grille active publiée ;
+- création du contrôle depuis un dossier de vérification clôturé ;
+- notation des critères ;
+- commentaires/preuves obligatoires ;
+- recalcul score brut / score maximal / taux ;
+- constats ;
+- finalisation ;
+- réouverture ;
+- audit.
+
+Ajout uniquement d'une projection de lecture :
+
+```text
+GET /api/v1/fuccs/workspace/filters
+GET /api/v1/fuccs/workspace/registry
+GET /api/v1/fuccs/workspace/eligible-verifications
+GET /api/v1/fuccs/controles/{control_id}/context
+```
+
+Point important :
+le frontend ne code plus en dur 28 critères, 24 critères, 7 domaines
+ou un score maximal de 56. Il affiche exactement la grille publiée en base.
+Ainsi une future mise à jour officielle de la grille ne nécessite pas
+de réécrire l'écran de contrôle.
+
+Aucune nouvelle table.
+Aucune migration.
+Aucune nouvelle permission.
+
+## ÉTAPE 08 — VALIDATION + CORRECTIONS
+
+Statut : 🟡 **raccordement produit — recette runtime à confirmer**
+
+Le domaine métier existant reste souverain :
+- `ValidationBnecService`;
+- revue NIVEAU_1;
+- validation NIVEAU_2;
+- décisions historisées;
+- corrections;
+- resoumissions.
+
+Aucune route d'écriture métier n'est remplacée.
+
+Projection de lecture ajoutée :
+
+```text
+GET /api/v1/validations/workspace/filters
+GET /api/v1/validations/workspace/registry
+GET /api/v1/validations/workspace/{fiche_id}
+```
+
+Règles backend conservées :
+- contrôle FUCCS finalisé obligatoire;
+- N1 favorable avant N2;
+- séparation de personne entre N1 et N2;
+- réserves obligatoires pour `VALIDE_SOUS_RESERVE`;
+- correction autorisée uniquement pour `AJOURNE` ou
+  `VALIDE_SOUS_RESERVE`;
+- une correction AJOURNE en attente doit être resoumise avant une
+  nouvelle décision du même niveau;
+- seule une N2 favorable ouvre l'étape d'intégration BNEC.
+
+Aucune table, migration ou permission nouvelle.
+
+## ÉTAPE 09 — INTÉGRATION BNEC
+
+Statut : 🟡 **raccordement produit — recette runtime à confirmer**
+
+Le moteur métier historique reste souverain pour ouverture, précontrôle, démarrage, éléments, résultats, postcontrôle et clôture.
+
+Projection de lecture ajoutée :
+
+```text
+GET /api/v1/integrations-bnec/workspace/filters
+GET /api/v1/integrations-bnec/workspace/registry
+GET /api/v1/integrations-bnec/workspace/queue
+GET /api/v1/integrations-bnec/workspace/{integration_id}
+```
+
+Règles conservées : N2 favorable terminée ; une intégration active par validation ; précontrôle OK avant démarrage ; au moins un élément ; tous les éléments intégrés avant postcontrôle OK ; sauvegarde + postcontrôle OK avant clôture. Un échec reste historisé et permet une nouvelle tentative.
+
+Aucune table, migration ou permission nouvelle.
+
+## ÉTAPE 10 — SCORING / CLASSIFICATION ENTREPRISE / INFC / SNCC
+
+Statut : 🟡 **raccordement produit — recette runtime à confirmer**
+
+Le moteur existant de scoring reste souverain : modèles versionnés, pondérations, prévisualisation, classification entreprise, calcul/validation INFC et classement/reclassement/clôture SNCC.
+
+Ajout d'un read model relationnel sous `/api/v1/scoring/workspace/*` pour enrichir les résultats avec entreprise, certification, organisme, norme, modèle et validateur.
+
+Aucune conversion automatique FUCCS → Classification, FUCCS → INFC, Classification → INFC ou INFC → SNCC.
+
+Aucune table, migration ou permission nouvelle.
+
+## ÉTAPE 11 — ÉCHÉANCES / ALERTES / NOTIFICATIONS / VEILLE
+
+Statut : 🟡 **raccordement produit — recette runtime à confirmer**
+
+Le domaine backend historique reste souverain. Aucune logique métier
+d'écriture existante n'est remplacée.
+
+### Échéances
+
+```text
+GET   /api/v1/echeances
+POST  /api/v1/echeances
+GET   /api/v1/echeances/{deadline_id}
+PATCH /api/v1/echeances/{deadline_id}
+POST  /api/v1/echeances/{deadline_id}/complete
+POST  /api/v1/echeances/{deadline_id}/cancel
+GET   /api/v1/echeances/{deadline_id}/alertes
+```
+
+### Alertes
+
+```text
+GET   /api/v1/alertes
+POST  /api/v1/alertes
+GET   /api/v1/alertes/{alert_id}
+PATCH /api/v1/alertes/{alert_id}
+POST  /api/v1/alertes/{alert_id}/assign
+POST  /api/v1/alertes/{alert_id}/resolve
+POST  /api/v1/alertes/{alert_id}/notifications
+```
+
+### Notifications
+
+```text
+GET  /api/v1/notifications
+GET  /api/v1/notifications/unread-count
+POST /api/v1/notifications/read-all
+POST /api/v1/notifications/{notification_id}/read
+POST /api/v1/notifications/{notification_id}/retry
+POST /api/v1/notifications/{notification_id}/delivery-result
+```
+
+### Veille CVC
+
+```text
+GET  /api/v1/veille/dashboard
+POST /api/v1/veille/scans/daily
+
+GET/POST       /api/v1/veille/dossiers
+GET/PATCH      /api/v1/veille/dossiers/{case_id}
+POST           /api/v1/veille/dossiers/{case_id}/close
+GET/POST       /api/v1/veille/dossiers/{case_id}/relances
+PATCH          /api/v1/veille/dossiers/{case_id}/relances/{followup_id}
+POST           /api/v1/veille/dossiers/{case_id}/relances/{followup_id}/response
+
+GET            /api/v1/veille/rapports
+POST           /api/v1/veille/rapports/generate
+GET            /api/v1/veille/rapports/{report_id}
+POST           /api/v1/veille/rapports/{report_id}/validate
+```
+
+### Read model ajouté
+
+```text
+GET /api/v1/veille/workspace/deadline-filters
+GET /api/v1/veille/workspace/alert-filters
+GET /api/v1/veille/workspace/filters
+GET /api/v1/veille/workspace/deadline-options
+GET /api/v1/veille/workspace/alert-options
+GET /api/v1/veille/workspace/watch-options
+GET /api/v1/veille/workspace/deadlines
+GET /api/v1/veille/workspace/alerts
+GET /api/v1/veille/workspace/cases
+GET /api/v1/veille/workspace/reports
+```
+
+Le read model enrichit les UUID avec les informations nécessaires aux vues :
+entreprise, certification, norme, organisme, responsable et route de navigation
+vers la ressource source.
+
+### Seuils de veille
+
+Le moteur existant conserve :
+
+```text
+180 jours → niveau 1 / Information
+90 jours  → niveau 2 / Surveillance
+30 jours  → niveau 3 / Urgence
+0 ou dépassé → niveau 4 / Critique
+```
+
+Le service tente d'abord de résoudre la règle publiée
+`VEILLE_SEUILS_EXPIRATION`. Le socle ci-dessus reste le fallback technique
+déjà présent dans le backend.
+
+Aucune migration.
+Aucune nouvelle permission.

@@ -1,0 +1,362 @@
+<div class="page-content container-fluid alerts-page">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Centre opérationnel</p>
+      <h1>Alertes & notifications</h1>
+      <p>
+        Traitez les alertes réelles, affectez un responsable et suivez les notifications du compte connecté.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <button class="btn btn-primary app-btn" id="newSpecialAlert" type="button" hidden>
+        <i data-lucide="triangle-alert"></i>Alerte spéciale
+      </button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="alertApiState" hidden></section>
+
+  <section class="alert-stats" id="alertKpis"></section>
+
+  <div class="detail-tabs alert-center-tabs">
+    <button class="active" data-alert-tab="alerts" type="button">Alertes</button>
+    <button data-alert-tab="notifications" type="button">
+      Mes notifications <b id="notificationUnreadBadge">0</b>
+    </button>
+  </div>
+
+  <section id="alertsTab">
+    <section class="alert-toolbar panel">
+      <label class="alert-search">
+        <i data-lucide="search"></i>
+        <input id="alertSearch" type="search" placeholder="Titre, ressource ou message…">
+      </label>
+
+      <label>
+        <span>Niveau</span>
+        <select id="alertLevel">
+          <option value="">Tous</option>
+          <option value="1">N1 · Information</option>
+          <option value="2">N2 · Surveillance</option>
+          <option value="3">N3 · Urgence</option>
+          <option value="4">N4 · Critique</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Type</span>
+        <select id="alertType" disabled><option value="">Chargement…</option></select>
+      </label>
+
+      <label>
+        <span>Statut</span>
+        <select id="alertStatus" disabled><option value="">Chargement…</option></select>
+      </label>
+
+      <button class="reset-filter" id="resetAlerts" type="button">
+        <i data-lucide="rotate-ccw"></i>Réinitialiser
+      </button>
+    </section>
+
+    <section class="alerts-layout">
+      <article class="alerts-list-panel panel">
+        <div class="alerts-list-head">
+          <div>
+            <strong id="alertCount">0 alerte</strong>
+            <small>File réelle de traitement</small>
+          </div>
+        </div>
+
+        <div id="alertsList"></div>
+        <div id="emptyAlerts" class="priority-empty" hidden>Aucune alerte trouvée.</div>
+      </article>
+
+      <aside class="alert-detail panel" id="alertDetail">
+        <div class="priority-empty">Sélectionnez une alerte.</div>
+      </aside>
+    </section>
+  </section>
+
+  <section id="notificationsTab" hidden>
+    <section class="panel notification-center-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Mes notifications</h2>
+          <p>Notifications destinées au compte connecté.</p>
+        </div>
+
+        <button class="btn btn-outline-secondary app-btn" id="markAllNotificationsRead" type="button">
+          <i data-lucide="check-check"></i>Tout marquer comme lu
+        </button>
+      </div>
+
+      <div class="notification-center-list" id="notificationCenterList"></div>
+    </section>
+  </section>
+
+  <dialog id="assignAlertDialog" class="hauqe-dialog">
+    <form method="dialog" id="assignAlertForm">
+      <header>
+        <div><p class="eyebrow">Affectation</p><h2>Affecter l’alerte</h2></div>
+        <button class="dialog-close" type="button" data-close-alert-dialog="assignAlertDialog"><i data-lucide="x"></i></button>
+      </header>
+      <div class="dialog-body">
+        <label><span>Responsable <b>*</b></span><select id="assignAlertResponsible" required></select></label>
+        <label><span>Commentaire</span><textarea id="assignAlertComment" rows="3"></textarea></label>
+      </div>
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="assignAlertDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="user-check"></i>Affecter</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="resolveAlertDialog" class="hauqe-dialog">
+    <form method="dialog" id="resolveAlertForm">
+      <header>
+        <div><p class="eyebrow">Traitement</p><h2>Résoudre l’alerte</h2></div>
+        <button class="dialog-close" type="button" data-close-alert-dialog="resolveAlertDialog"><i data-lucide="x"></i></button>
+      </header>
+      <div class="dialog-body">
+        <label><span>Résolution <b>*</b></span><textarea id="alertResolution" rows="4" required></textarea></label>
+        <label class="switch-line">
+          <input id="closeAlertAfterResolution" type="checkbox" checked>
+          <span>Clôturer l’alerte après enregistrement</span>
+        </label>
+      </div>
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="resolveAlertDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="circle-check"></i>Enregistrer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="notifyAlertDialog" class="hauqe-dialog">
+    <form method="dialog" id="notifyAlertForm">
+      <header>
+        <div><p class="eyebrow">Notification</p><h2>Notifier depuis l’alerte</h2></div>
+        <button class="dialog-close" type="button" data-close-alert-dialog="notifyAlertDialog"><i data-lucide="x"></i></button>
+      </header>
+      <div class="dialog-body">
+        <label>
+          <span>Canal <b>*</b></span>
+          <select id="alertNotificationChannel">
+            <option value="IN_APP">IN_APP</option>
+            <option value="EMAIL">EMAIL</option>
+          </select>
+        </label>
+
+        <label id="internalRecipientField">
+          <span>Utilisateur <b>*</b></span>
+          <select id="alertNotificationUser"></select>
+        </label>
+
+        <label id="externalRecipientField" hidden>
+          <span>Adresse externe <b>*</b></span>
+          <input id="alertNotificationEmail" type="email">
+        </label>
+
+        <label><span>Objet <b>*</b></span><input id="alertNotificationSubject" maxlength="255" required></label>
+        <label><span>Contenu <b>*</b></span><textarea id="alertNotificationContent" rows="4" required></textarea></label>
+      </div>
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="notifyAlertDialog">Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Créer la notification</button>
+      </footer>
+    </form>
+  </dialog>
+
+
+<dialog
+  id="specialAlertDialog"
+  class="hauqe-dialog operational-form-dialog special-alert-dialog"
+>
+  <form method="dialog" id="specialAlertForm">
+    <header class="operational-dialog-header">
+      <div class="operational-dialog-title">
+        <span class="operational-dialog-icon">
+          <i data-lucide="triangle-alert"></i>
+        </span>
+
+        <div>
+          <p class="eyebrow">Signalement exceptionnel</p>
+          <h2>Créer une alerte spéciale</h2>
+          <small>
+            Créez une alerte manuelle uniquement lorsqu’un événement
+            exige une prise en charge explicite et traçable.
+          </small>
+        </div>
+      </div>
+
+      <button
+        class="dialog-close operational-dialog-close"
+        type="button"
+        aria-label="Fermer"
+        data-close-alert-dialog="specialAlertDialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="operational-dialog-body">
+      <div class="operational-form-notice">
+        <span><i data-lucide="scan-search"></i></span>
+        <div>
+          <strong>Alerte liée à une certification réelle</strong>
+          <small>
+            Le niveau exprime l’urgence. La règle de notification reste
+            facultative tant qu’aucune codification spécifique n’est imposée.
+          </small>
+        </div>
+      </div>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="badge-check"></i></span>
+          <div>
+            <strong>Source du signalement</strong>
+            <small>
+              Identifiez la certification et la nature de l’événement.
+            </small>
+          </div>
+          <b>01</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Certification <b>*</b></span>
+            <select id="specialAlertCertification" required></select>
+            <small>
+              La certification restera liée à l’alerte dans l’historique.
+            </small>
+          </label>
+
+          <label class="operational-field">
+            <span>Type d’alerte <b>*</b></span>
+            <input
+              id="specialAlertType"
+              maxlength="255"
+              placeholder="Ex. SUSPICION_DOCUMENTAIRE"
+              required
+            >
+          </label>
+
+          <label class="operational-field">
+            <span>Responsable</span>
+            <select id="specialAlertResponsible"></select>
+            <small>
+              L’alerte peut être affectée immédiatement ou plus tard.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="operational-form-section severity-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="gauge"></i></span>
+          <div>
+            <strong>Niveau de criticité</strong>
+            <small>
+              Choisissez le niveau correspondant au traitement attendu.
+            </small>
+          </div>
+          <b>02</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Niveau <b>*</b></span>
+            <select id="specialAlertLevel" required>
+              <option value="1">N1 · Information</option>
+              <option value="2">N2 · Surveillance</option>
+              <option value="3">N3 · Urgence</option>
+              <option value="4">N4 · Critique</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="severity-scale" aria-hidden="true">
+          <span class="level-1"><b>N1</b><small>Information</small></span>
+          <span class="level-2"><b>N2</b><small>Surveillance</small></span>
+          <span class="level-3"><b>N3</b><small>Urgence</small></span>
+          <span class="level-4"><b>N4</b><small>Critique</small></span>
+        </div>
+      </section>
+
+      <section class="operational-form-section">
+        <div class="operational-section-heading">
+          <span><i data-lucide="message-square-warning"></i></span>
+          <div>
+            <strong>Contenu de l’alerte</strong>
+            <small>
+              Rédigez un titre précis et un message directement exploitable.
+            </small>
+          </div>
+          <b>03</b>
+        </div>
+
+        <div class="operational-form-grid">
+          <label class="operational-field full">
+            <span>Titre <b>*</b></span>
+            <input
+              id="specialAlertTitle"
+              maxlength="255"
+              placeholder="Ex. Incohérence détectée sur le certificat"
+              required
+            >
+          </label>
+
+          <label class="operational-field full">
+            <span>Message <b>*</b></span>
+            <textarea
+              id="specialAlertMessage"
+              rows="5"
+              placeholder="Décrivez le fait détecté, son impact et l’action attendue…"
+              required
+            ></textarea>
+          </label>
+
+          <label class="operational-field full">
+            <span>Règle de notification</span>
+            <input
+              id="specialAlertRule"
+              maxlength="255"
+              placeholder="Ex. NOTIFIER_DIRECTION_TECHNIQUE"
+            >
+            <small>
+              Facultatif. Utilisez uniquement une règle connue et publiée.
+            </small>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <footer class="operational-dialog-footer">
+      <div class="operational-footer-note">
+        <i data-lucide="shield-alert"></i>
+        <span>Une alerte spéciale est journalisée dès sa création.</span>
+      </div>
+
+      <div class="operational-footer-actions">
+        <button
+          class="btn btn-outline-secondary app-btn"
+          type="button"
+          data-close-alert-dialog="specialAlertDialog"
+        >
+          Annuler
+        </button>
+
+        <button
+          class="btn btn-primary app-btn"
+          type="submit"
+        >
+          <i data-lucide="triangle-alert"></i>
+          Créer l’alerte
+        </button>
+      </div>
+    </footer>
+  </form>
+</dialog>
+
+</div>

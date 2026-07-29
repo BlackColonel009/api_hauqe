@@ -19,6 +19,7 @@ from app.models.evenement_collecte import EvenementCollecte
 from app.models.fiche_collecte import FicheCollecte
 from app.models.offre_declaree import OffreDeclaree
 from app.models.regle_metier import RegleMetier
+from app.rules.business_rule_resolver import resolve_business_rule
 
 
 class FicheCollecteRepository:
@@ -84,24 +85,16 @@ class FicheCollecteRepository:
         db: AsyncSession,
     ) -> RegleMetier | None:
         """
-        Cherche la règle publiée/active sans inventer ses paramètres.
+        Résout la version publiée applicable du code logique
+        COLLECTE_COMPLETUDE.
 
-        Code conventionnel du backend :
-            COLLECTE_COMPLETUDE
+        `regles_metier.code` est un identifiant physique versionné,
+        par exemple COLLECTE_COMPLETUDE__V1_0.
         """
-        result = await db.execute(
-            select(RegleMetier)
-            .where(
-                RegleMetier.code == "COLLECTE_COMPLETUDE",
-                RegleMetier.statut.in_(["PUBLIE", "ACTIF"]),
-            )
-            .order_by(
-                RegleMetier.date_debut_effet.desc().nullslast(),
-                RegleMetier.created_at.desc(),
-            )
-            .limit(1)
+        return await resolve_business_rule(
+            db,
+            "COLLECTE_COMPLETUDE",
         )
-        return result.scalar_one_or_none()
 
     @staticmethod
     async def list_offres(

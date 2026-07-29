@@ -3334,3 +3334,180 @@ Le placeholder `governance-module` n'est plus utilisé.
 Fonctions : dossiers réels, fiches SOUMISES éligibles, affectations, documents,
 points, anomalies, confirmations externes, paramètres risque/priorité/synthèse,
 clôture et réouverture.
+
+## ÉTAPE 07 — CONTRÔLE FUCCS
+
+Statut : 🟡 **grille dynamique raccordée — recette navigateur à faire**
+
+Routes UI :
+
+```text
+#/controle
+#/controle/{control_uuid}
+```
+
+L'ancienne maquette codée en dur est supprimée :
+- 7 domaines JS ;
+- 28 critères JS ;
+- score maximal 56 JS ;
+- calcul local du score ;
+- `localStorage` du brouillon ;
+- décision simulée.
+
+Le nouvel écran charge :
+- grille publiée ;
+- rubriques ;
+- critères ;
+- note maximale de chaque critère ;
+- commentaire obligatoire ;
+- preuve obligatoire ;
+- documents de la fiche source ;
+- notes existantes ;
+- constats existants.
+
+Chaque note est sauvegardée par :
+
+```text
+PUT /api/v1/fuccs/controles/{control_id}/notes/{criterion_id}
+```
+
+Le score global reste calculé exclusivement côté backend.
+
+La finalisation appelle :
+
+```text
+POST /api/v1/fuccs/controles/{control_id}/finalize
+```
+
+et reste distincte :
+- de l'INFC ;
+- du classement SNCC ;
+- de la validation définitive BNEC.
+
+## ÉTAPE 08 — VALIDATION + CORRECTIONS
+
+Statut : 🟡 **raccordement réel — recette navigateur à faire**
+
+Routes UI :
+
+```text
+#/validations
+#/validations/{fiche_uuid}
+```
+
+Suppression de la maquette :
+- entreprises fictives;
+- validateurs fictifs;
+- affectations de validations simulées;
+- export fictif;
+- statuts locaux;
+- données statiques de file.
+
+La nouvelle page expose :
+- dossier issu d'un FUCCS finalisé;
+- score FUCCS en lecture seule;
+- décision N1;
+- décision N2;
+- corrections liées à chaque décision;
+- resoumission;
+- historique complet.
+
+Les actions utilisent les endpoints existants :
+
+```text
+POST /validations/from-fiche/{fiche_id}/level-1
+POST /validations/from-fiche/{fiche_id}/level-2
+POST /validations/{validation_id}/corrections
+POST /validations/{validation_id}/corrections/{correction_id}/resubmit
+```
+
+Aucun `window.prompt` n'est utilisé sur cette page : les décisions et
+corrections passent par des dialogues UI structurés.
+
+## ÉTAPE 09 — INTÉGRATION BNEC
+
+Statut : 🟡 **vraie page raccordée — recette navigateur à faire**
+
+Routes UI : `#/integrations` et `#/integrations/{integration_uuid}`.
+
+Le placeholder `governance-module` est supprimé. La page suit le workflow `EN_ATTENTE → PRECONTROLE → INTEGRATION_EN_COURS → POSTCONTROLE → INTEGREE`; `ECHEC` reste terminal pour une tentative.
+
+`elements_integration` reste un registre source→cible. Le frontend ne prétend pas créer automatiquement les ressources officielles et n'invente aucun code national.
+
+## ÉTAPE 10 — SCORING / CLASSIFICATION ENTREPRISE / INFC / SNCC
+
+Statut : 🟡 **vraies pages raccordées — recette navigateur à faire**
+
+Routes UI : `#/scoring`, `#/infc`, `#/classement-sncc`.
+
+L'ancienne maquette scoring fictive est supprimée : entreprises fictives, score `/56`, indice artificiel `/100`, seuils provisoires, graphiques simulés, décision locale, localStorage et exports simulés.
+
+Le formulaire de calcul se construit depuis le modèle publié et ses pondérations. INFC et SNCC disposent de leurs pages réelles. Le design suit le Modern UI V2.
+
+## ÉTAPE 11 — ÉCHÉANCES / ALERTES / NOTIFICATIONS / VEILLE
+
+Statut : 🟡 **pages réelles raccordées — recette navigateur à faire**
+
+### `#/echeances`
+
+L'ancienne vue statique est remplacée par :
+- calendrier réel ;
+- vue liste ;
+- filtres réels ;
+- compteurs réels ;
+- création manuelle d'une échéance liée à une certification réelle ;
+- clôture et annulation motivées ;
+- scan quotidien si l'utilisateur possède `VEILLE.SCANNER` ;
+- charge visible par responsable.
+
+### `#/alertes`
+
+L'ancienne file fictive est supprimée :
+- alertes PostgreSQL ;
+- niveaux N1 à N4 ;
+- filtres ;
+- détail ;
+- affectation ;
+- résolution ;
+- notifications IN_APP / EMAIL ;
+- création d'une alerte spéciale sur une certification réelle.
+
+La page contient également un onglet **Mes notifications**.
+
+### Cloche globale
+
+Le tableau JavaScript de notifications fictives de `app-shell.js` est
+supprimé.
+
+La cloche utilise :
+
+```text
+GET  /api/v1/notifications
+POST /api/v1/notifications/{notification_id}/read
+POST /api/v1/notifications/read-all
+```
+
+Un rafraîchissement léger est réalisé toutes les 60 secondes lorsque
+l'utilisateur est authentifié.
+
+### `#/veille`
+
+Le placeholder `governance-module` est supprimé.
+
+La page réelle expose :
+- dashboard CVC ;
+- scan quotidien ;
+- dossiers de veille ;
+- certification / entreprise / norme ;
+- responsable ;
+- relances ;
+- réponses aux relances ;
+- clôture ;
+- rapports de veille ;
+- génération des indicateurs ;
+- validation Direction Technique.
+
+Aucun PDF fictif n'est généré. La production documentaire reste réservée
+au domaine Rapports.
+
+Design aligné sur le langage visuel Modern UI V2.
