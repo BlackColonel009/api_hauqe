@@ -52,8 +52,18 @@
 
   function state(message, error = false) {
     const node = $("#institutionalApiState");
+
+    if (!node) {
+      console[error ? "error" : "info"](
+        "[HAUQE Règles & codification]",
+        message
+      );
+      return;
+    }
+
     node.hidden = false;
-    node.className = `dashboard-api-state ${error ? "error" : ""}`.trim();
+    node.className =
+      `dashboard-api-state ${error ? "error" : ""}`.trim();
     node.innerHTML = `
       <i data-lucide="${error ? "triangle-alert" : "info"}"></i>
       <div>
@@ -70,6 +80,36 @@
     }
     return task();
   }
+
+  function bindPersistentFuccsPrefillTrigger() {
+    window.__HAUQE_FUCCS_PREFILL_ABORT__?.abort?.();
+
+    const controller = new AbortController();
+    window.__HAUQE_FUCCS_PREFILL_ABORT__ = controller;
+
+    document.addEventListener(
+      "click",
+      async (event) => {
+        const button = event.target.closest(
+          "#openFuccsHistorical24, "
+          + "#prefillFuccsHistorical24"
+        );
+
+        if (!button) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        await requestFuccsHistorical24(event);
+      },
+      {
+        capture: true,
+        signal: controller.signal,
+      }
+    );
+  }
+
+  bindPersistentFuccsPrefillTrigger();
 
   function renderReadiness() {
     const fuccsReadiness = {
@@ -1156,6 +1196,37 @@ function renderFuccsGridDetail() {
         </ul>
       </section>
 
+
+${
+  draft
+  && canAdmin
+  && Number(selectedFuccsGrid.rubriques_count || 0) === 0
+  && Number(selectedFuccsGrid.criteres_count || 0) === 0
+    ? `
+      <section class="fuccs-historical-prefill">
+        <span><i data-lucide="wand-sparkles"></i></span>
+
+        <div>
+          <strong>Modèle historique de recette disponible</strong>
+          <small>
+            Préremplissez automatiquement 6 rubriques et 24 critères,
+            chacun noté sur 2, soit un total maximal de 48.
+          </small>
+        </div>
+
+        <button
+          class="btn btn-primary app-btn"
+          id="prefillFuccsHistorical24"
+          type="button"
+        >
+          <i data-lucide="list-plus"></i>
+          Préremplir 24 critères
+        </button>
+      </section>
+    `
+    : ""
+}
+
       <div class="fuccs-grid-actions">
         ${
           draft && canAdmin
@@ -1878,6 +1949,190 @@ async function retireFuccsGrid(event) {
   }
 }
 
+
+function selectedFuccsCounts() {
+  return {
+    rubrics: Number(
+      selectedFuccsGrid?.rubriques_count
+      ?? fuccsRubrics.length
+      ?? 0
+    ),
+    criteria: Number(
+      selectedFuccsGrid?.criteres_count
+      ?? fuccsCriteria.length
+      ?? 0
+    ),
+  };
+}
+
+async function requestFuccsHistorical24(event = null) {
+  const sourceButton = event?.target?.closest?.(
+    "#openFuccsHistorical24, #prefillFuccsHistorical24"
+  ) || null;
+
+  try {
+    if (!user) {
+      user = await run(
+        () => api.apiGet("/api/v1/me"),
+        {
+          button: sourceButton,
+          title: "Grille FUCCS",
+          message: "Vérification des habilitations",
+          detail: "Patientez…",
+        }
+      );
+    }
+
+    if (!has("FUCCS.ADMINISTRER_GRILLE")) {
+      state(
+        "La permission FUCCS.ADMINISTRER_GRILLE est requise "
+        + "pour préremplir la grille.",
+        true
+      );
+      return;
+    }
+
+    if (!fuccsGrids.length) {
+      await run(
+        loadFuccsGrids,
+        {
+          button: sourceButton,
+          title: "Grille FUCCS",
+          message: "Chargement des grilles",
+          detail: "Ce sera prêt…",
+        }
+      );
+    }
+
+    if (!selectedFuccsGrid) {
+      const eligible = fuccsGrids.find((item) => (
+        String(
+          item.statut_publication || ""
+        ).toUpperCase() === "BROUILLON"
+        && Number(item.rubriques_count || 0) === 0
+        && Number(item.criteres_count || 0) === 0
+      ));
+
+      if (!eligible) {
+        state(
+          "Aucune grille FUCCS brouillon vide n’est disponible. "
+          + "Créez une nouvelle grille, sélectionnez-la, puis "
+          + "relancez le préremplissage.",
+          true
+        );
+        return;
+      }
+
+      selectedFuccsGrid = eligible;
+      renderFuccsGridList();
+      await loadSelectedFuccsGrid();
+    }
+
+    if (!fuccsGridIsDraft(selectedFuccsGrid)) {
+      state(
+        "La grille sélectionnée n’est pas un brouillon. "
+        + "Créez une nouvelle version brouillon avant le "
+        + "préremplissage.",
+        true
+      );
+      return;
+    }
+
+    const counts = selectedFuccsCounts();
+
+    if (counts.rubrics > 0 || counts.criteria > 0) {
+      state(
+        "La grille sélectionnée contient déjà des rubriques "
+        + "ou des critères. Le modèle historique exige une "
+        + "grille totalement vide.",
+        true
+      );
+      return;
+    }
+
+    const confirmation = $("#fuccsHistorical24Confirm");
+    const dialog = $("#fuccsHistorical24Dialog");
+
+    if (!confirmation || !dialog) {
+      state(
+        "Le formulaire de confirmation FUCCS n’est pas présent "
+        + "dans la page. Remplacez aussi le fichier "
+        + "regles-codification.html du correctif précédent.",
+        true
+      );
+      return;
+    }
+
+    confirmation.checked = false;
+
+    if (dialog.open) {
+      dialog.close();
+    }
+
+    dialog.showModal();
+
+    requestAnimationFrame(() => {
+      confirmation.focus({ preventScroll: true });
+      icons();
+    });
+  } catch (error) {
+    console.error(
+      "[HAUQE FUCCS] Ouverture du préremplissage impossible",
+      error
+    );
+
+    state(
+      error?.message
+      || "Impossible d’ouvrir le préremplissage FUCCS.",
+      true
+    );
+  }
+}
+
+async function prefillFuccsHistorical24(event) {
+  event.preventDefault();
+
+  if (!selectedFuccsGrid) return;
+
+  if (!$("#fuccsHistorical24Confirm").checked) {
+    state(
+      "Confirmez l’utilisation du modèle historique de recette.",
+      true
+    );
+    return;
+  }
+
+  try {
+    await run(
+      () => api.apiPost(
+        `/api/v1/fuccs/grilles/${selectedFuccsGrid.id}`
+        + "/prefill-historical-24",
+        {}
+      ),
+      {
+        button: event.submitter,
+        title: "Grille FUCCS",
+        message: "Préremplissage des 24 critères",
+        detail: "Création transactionnelle des 6 rubriques.",
+      }
+    );
+
+    $("#fuccsHistorical24Dialog").close();
+    await loadSelectedFuccsGrid();
+    await loadFuccsGrids();
+
+    state(
+      "Les 24 critères historiques ont été ajoutés. "
+      + "Vérifiez-les avant publication."
+    );
+  } catch (error) {
+    state(
+      error?.message || "Préremplissage impossible.",
+      true
+    );
+  }
+}
+
   function switchTab(tab) {
     $$("[data-inst-tab]").forEach((button) => {
       button.classList.toggle("active", button.dataset.instTab === tab);
@@ -1933,6 +2188,7 @@ async function retireFuccsGrid(event) {
     $("#fuccsCriterionForm").onsubmit = saveFuccsCriterion;
     $("#fuccsRetireForm").onsubmit = retireFuccsGrid;
     $("#fuccsDeleteForm").onsubmit = deleteFuccsDraftItem;
+    $("#fuccsHistorical24Form").onsubmit = prefillFuccsHistorical24;
 
     $("#fuccsGridCode").oninput = (event) => {
       event.target.value = normalizeFuccsCode(event.target.value);
@@ -2019,6 +2275,23 @@ async function retireFuccsGrid(event) {
     $("#newScoringModel").hidden = !canAdminScoring;
     $("#prefillClassificationReference").hidden = !canAdminScoring;
     $("#newFuccsGrid").hidden = !canAdminFuccs;
+
+    const prefillToolbarButton =
+      $("#openFuccsHistorical24");
+
+    if (prefillToolbarButton) {
+      prefillToolbarButton.disabled = false;
+      prefillToolbarButton.setAttribute(
+        "aria-disabled",
+        String(!canAdminFuccs)
+      );
+      prefillToolbarButton.title = canAdminFuccs
+        ? (
+          "Sélectionnez une grille BROUILLON vide puis "
+          + "préremplissez les 24 critères"
+        )
+        : "Permission FUCCS.ADMINISTRER_GRILLE requise";
+    }
 
     await Promise.all([
       loadReadiness(),

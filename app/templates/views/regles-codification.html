@@ -178,14 +178,26 @@
           </p>
         </div>
 
-        <button
-          class="btn btn-primary app-btn"
-          id="newFuccsGrid"
-          type="button"
-        >
-          <i data-lucide="layout-grid"></i>
-          Nouvelle grille
-        </button>
+        <div class="fuccs-header-actions">
+          <button
+            class="btn btn-outline-secondary app-btn"
+            id="openFuccsHistorical24"
+            type="button"
+            title="Préremplir une grille FUCCS brouillon vide"
+          >
+            <i data-lucide="wand-sparkles"></i>
+            Préremplir 24 critères
+          </button>
+
+          <button
+            class="btn btn-primary app-btn"
+            id="newFuccsGrid"
+            type="button"
+          >
+            <i data-lucide="layout-grid"></i>
+            Nouvelle grille
+          </button>
+        </div>
       </header>
 
       <div class="institutional-toolbar fuccs-toolbar">
@@ -773,6 +785,128 @@
   </form>
 </dialog>
 
+
+
+<dialog
+  class="hauqe-dialog institutional-dialog fuccs-template-dialog"
+  id="fuccsHistorical24Dialog"
+>
+  <form method="dialog" id="fuccsHistorical24Form">
+    <header>
+      <div>
+        <p class="eyebrow">Modèle historique de recette</p>
+        <h2>Préremplir les 24 critères</h2>
+      </div>
+
+      <button
+        class="dialog-close"
+        type="button"
+        data-close-inst-dialog="fuccsHistorical24Dialog"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="historical-template-hero">
+        <span><i data-lucide="list-checks"></i></span>
+        <div>
+          <strong>6 rubriques · 24 critères · 48 points</strong>
+          <small>
+            Le domaine historique « Hygiène, sécurité et environnement »
+            est exclu conformément au cadrage actuel.
+          </small>
+        </div>
+      </div>
+
+      <div class="historical-template-grid">
+        <article>
+          <span>01</span>
+          <div>
+            <strong>Identité et existence légale</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+
+        <article>
+          <span>02</span>
+          <div>
+            <strong>Organisation et gouvernance</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+
+        <article>
+          <span>03</span>
+          <div>
+            <strong>Production et maîtrise qualité</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+
+        <article>
+          <span>04</span>
+          <div>
+            <strong>Certifications et authenticité</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+
+        <article>
+          <span>05</span>
+          <div>
+            <strong>Traçabilité et documents</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+
+        <article>
+          <span>06</span>
+          <div>
+            <strong>Risques et amélioration</strong>
+            <small>4 critères</small>
+          </div>
+        </article>
+      </div>
+
+      <div class="publication-warning">
+        <i data-lucide="shield-alert"></i>
+        <span>
+          Ce modèle sert à la recette du MVP. Il crée les rubriques et
+          critères dans la grille brouillon sélectionnée, sans la publier.
+          La grille doit être totalement vide.
+        </span>
+      </div>
+
+      <label class="template-confirmation">
+        <input
+          id="fuccsHistorical24Confirm"
+          type="checkbox"
+          required
+        >
+        <span>
+          Je confirme utiliser ce modèle comme base de recette et je
+          vérifierai son contenu avant publication.
+        </span>
+      </label>
+    </div>
+
+    <footer>
+      <button
+        class="btn btn-outline-secondary app-btn"
+        type="button"
+        data-close-inst-dialog="fuccsHistorical24Dialog"
+      >
+        Annuler
+      </button>
+
+      <button class="btn btn-primary app-btn" type="submit">
+        <i data-lucide="wand-sparkles"></i>
+        Préremplir la grille
+      </button>
+    </footer>
+  </form>
+</dialog>
 
 <a
   class="institutional-guide-fab"

@@ -13,6 +13,174 @@ from app.models.rubrique_fuccs import RubriqueFuccs
 from app.repositories.fuccs_repository import FuccsRepository
 from app.schemas.fuccs import *
 
+# ============================================================
+# MODELE HISTORIQUE DE RECETTE — 24 CRITERES
+# ============================================================
+#
+# Origine :
+# ancienne grille frontend de 28 critères, dont le domaine
+# "Hygiène, sécurité et environnement" a été retiré lors du
+# cadrage récent. Le résultat comprend donc :
+#
+# - 6 rubriques ;
+# - 24 critères ;
+# - score maximal 2 par critère ;
+# - score maximal global 48.
+#
+# Ce modèle sert uniquement à la recette d'intégration.
+# Il n'est jamais publié automatiquement.
+# ============================================================
+
+FUCCS_HISTORICAL_24_TEMPLATE = [
+    {
+        "libelle": "Identité et existence légale",
+        "description": (
+            "Vérification de l’existence juridique et des "
+            "identifiants officiels."
+        ),
+        "criteres": [
+            (
+                "Raison sociale et forme juridique",
+                "Concordance avec les documents officiels.",
+            ),
+            (
+                "RCCM valide et vérifiable",
+                "Numéro, date et situation du registre.",
+            ),
+            (
+                "NIF valide et cohérent",
+                "Correspondance avec la raison sociale.",
+            ),
+            (
+                "Adresse et site d’activité",
+                "Existence et localisation effective du site.",
+            ),
+        ],
+    },
+    {
+        "libelle": "Organisation et gouvernance",
+        "description": (
+            "Capacité organisationnelle et responsabilités internes."
+        ),
+        "criteres": [
+            (
+                "Organigramme et responsabilités",
+                "Fonctions clairement définies.",
+            ),
+            (
+                "Responsable qualité désigné",
+                "Mandat et disponibilité vérifiables.",
+            ),
+            (
+                "Procédures documentées",
+                "Existence, diffusion et mise à jour.",
+            ),
+            (
+                "Compétences du personnel",
+                "Formation adaptée aux fonctions.",
+            ),
+        ],
+    },
+    {
+        "libelle": "Production et maîtrise qualité",
+        "description": (
+            "Maîtrise des activités, procédés et contrôles internes."
+        ),
+        "criteres": [
+            (
+                "Processus de production maîtrisé",
+                "Étapes et paramètres critiques identifiés.",
+            ),
+            (
+                "Contrôle des matières premières",
+                "Critères de réception et fournisseurs.",
+            ),
+            (
+                "Contrôles en cours de production",
+                "Enregistrements et mesures disponibles.",
+            ),
+            (
+                "Libération des produits finis",
+                "Autorité et preuves de conformité.",
+            ),
+        ],
+    },
+    {
+        "libelle": "Certifications et authenticité",
+        "description": (
+            "Validité, portée et authenticité des "
+            "certifications déclarées."
+        ),
+        "criteres": [
+            (
+                "Certificat disponible et lisible",
+                "Document complet et non altéré.",
+            ),
+            (
+                "Organisme certificateur reconnu",
+                "Reconnaissance ou accréditation vérifiée.",
+            ),
+            (
+                "Portée adaptée aux activités",
+                "Produits et sites effectivement couverts.",
+            ),
+            (
+                "Dates et numéro vérifiables",
+                "Validité et référence confirmées.",
+            ),
+        ],
+    },
+    {
+        "libelle": "Traçabilité et documents",
+        "description": (
+            "Capacité à retracer les produits et conserver les preuves."
+        ),
+        "criteres": [
+            (
+                "Identification des lots",
+                "Codification unique et appliquée.",
+            ),
+            (
+                "Traçabilité amont",
+                "Origine des matières et fournisseurs.",
+            ),
+            (
+                "Traçabilité aval",
+                "Clients et destinations identifiables.",
+            ),
+            (
+                "Archivage des enregistrements",
+                "Durée, intégrité et accessibilité.",
+            ),
+        ],
+    },
+    {
+        "libelle": "Risques et amélioration",
+        "description": (
+            "Traitement des écarts, réclamations et "
+            "amélioration continue."
+        ),
+        "criteres": [
+            (
+                "Analyse des risques",
+                "Méthode et actualisation documentées.",
+            ),
+            (
+                "Gestion des non-conformités",
+                "Identification, isolement et décision.",
+            ),
+            (
+                "Réclamations et rappels",
+                "Procédures et tests disponibles.",
+            ),
+            (
+                "Actions correctives et suivi",
+                "Causes, responsables et efficacité.",
+            ),
+        ],
+    },
+]
+
 ADMISSIBLE={"verified_compliant","verified_with_reservation"}
 def ip(r): return r.client.host if r.client else None
 def txt(v): return (v.strip() or None) if isinstance(v,str) else v
@@ -102,6 +270,130 @@ class FuccsService:
             utilisateur_id=actor.user.id,ressource_type="grille_fuccs",ressource_id=target.id,
             adresse_ip=ip(request),contexte={"source_grid_id":str(source.id)})
         await db.commit(); await db.refresh(target); return await FuccsService.grid_response(db,target)
+
+
+    @staticmethod
+    async def prefill_historical_24(
+        db,
+        *,
+        grid_id,
+        actor,
+        request,
+    ):
+        """
+        Préremplit une grille BROUILLON vide avec le modèle historique
+        de recette composé de 6 rubriques et 24 critères.
+
+        Sécurités :
+        - grille obligatoirement BROUILLON ;
+        - grille obligatoirement vide ;
+        - une seule transaction ;
+        - aucune publication automatique ;
+        - un événement d'audit global.
+        """
+        grid = await FuccsService.require_grid(
+            db,
+            grid_id,
+        )
+        FuccsService.require_draft(grid)
+
+        rubrics_count, criteria_count, _ = (
+            await FuccsRepository.grid_counts(
+                db,
+                grid_id,
+            )
+        )
+
+        if rubrics_count or criteria_count:
+            raise HTTPException(
+                409,
+                (
+                    "Le préremplissage historique exige une grille "
+                    "brouillon entièrement vide."
+                ),
+            )
+
+        base_code = (
+            (grid.code or "FUCCS")
+            .strip()
+            .upper()
+        )
+
+        created_rubrics = 0
+        created_criteria = 0
+
+        for rubric_index, rubric_data in enumerate(
+            FUCCS_HISTORICAL_24_TEMPLATE,
+            start=1,
+        ):
+            rubric_code = (
+                f"{base_code}_R{rubric_index:02d}"
+            )
+
+            rubric = RubriqueFuccs(
+                grille_fuccs_id=grid.id,
+                code=rubric_code,
+                libelle=rubric_data["libelle"],
+                description=rubric_data["description"],
+                ordre_affichage=rubric_index,
+            )
+
+            db.add(rubric)
+            await db.flush()
+            created_rubrics += 1
+
+            for criterion_index, (
+                criterion_label,
+                criterion_description,
+            ) in enumerate(
+                rubric_data["criteres"],
+                start=1,
+            ):
+                criterion = CritereFuccs(
+                    rubrique_fuccs_id=rubric.id,
+                    code=(
+                        f"{rubric_code}_C"
+                        f"{criterion_index:02d}"
+                    ),
+                    libelle=criterion_label,
+                    description=criterion_description,
+                    score_maximal=Decimal("2"),
+                    poids=None,
+                    ordre_affichage=criterion_index,
+                    commentaire_obligatoire=False,
+                    preuve_obligatoire=False,
+                )
+
+                db.add(criterion)
+                created_criteria += 1
+
+        await db.flush()
+
+        await write_audit_event(
+            db,
+            action="FUCCS_GRID_PREFILL_HISTORICAL_24",
+            categorie="REFERENTIEL",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="grille_fuccs",
+            ressource_id=grid.id,
+            adresse_ip=ip(request),
+            valeurs_apres={
+                "template_code": "HISTORIQUE_RECETTE_24",
+                "rubriques_count": created_rubrics,
+                "criteres_count": created_criteria,
+                "score_maximal_calcule": "48",
+                "publication_automatique": False,
+            },
+        )
+
+        await db.commit()
+        await db.refresh(grid)
+
+        return await FuccsService.grid_response(
+            db,
+            grid,
+        )
 
     @staticmethod
     async def publish_grid(db,*,grid_id,payload,actor,request):

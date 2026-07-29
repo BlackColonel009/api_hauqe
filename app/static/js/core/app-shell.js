@@ -1,4 +1,4 @@
-import { installActionLoader } from "./action-loader.js";
+import { installActionLoader } from "./action-loader.js?v=20260729-1";
 import { initRouter } from "./router.js";
 import { initSessionLock } from "./session-lock.js";
 import {
@@ -15,7 +15,124 @@ import {
 
 installActionLoader();
 
-document.querySelector("#menuToggle").addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
+/* ============================================================
+   SIDEBAR MOBILE ROBUSTE
+   ------------------------------------------------------------
+   - délégation stable, même si le shell évolue ;
+   - réaction dès le pointerup sur écran tactile ;
+   - backdrop, fermeture par Échap et fermeture après navigation ;
+   - synchronisation aria-expanded / aria-hidden ;
+   - blocage du scroll arrière-plan pendant l'ouverture.
+   ============================================================ */
+function initMobileSidebar() {
+  const sidebar = document.querySelector("#sidebar");
+  const menuToggle = document.querySelector("#menuToggle");
+
+  if (!sidebar || !menuToggle) return;
+  if (sidebar.dataset.mobileSidebarReady === "true") return;
+
+  sidebar.dataset.mobileSidebarReady = "true";
+  menuToggle.type = "button";
+  menuToggle.setAttribute("aria-controls", "sidebar");
+  menuToggle.setAttribute("aria-expanded", "false");
+
+  const media = window.matchMedia("(max-width: 900px)");
+
+  let backdrop = document.querySelector("#sidebarBackdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("button");
+    backdrop.id = "sidebarBackdrop";
+    backdrop.className = "sidebar-backdrop";
+    backdrop.type = "button";
+    backdrop.hidden = true;
+    backdrop.setAttribute("aria-label", "Fermer le menu");
+    sidebar.insertAdjacentElement("afterend", backdrop);
+  }
+
+  let closeButton = sidebar.querySelector(".sidebar-mobile-close");
+  if (!closeButton) {
+    closeButton = document.createElement("button");
+    closeButton.className = "sidebar-mobile-close";
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "Fermer le menu");
+    closeButton.innerHTML = '<i data-lucide="x"></i>';
+    sidebar.prepend(closeButton);
+  }
+
+  function setOpen(requestedOpen) {
+    const open = Boolean(requestedOpen && media.matches);
+
+    sidebar.classList.toggle("open", open);
+    document.body.classList.toggle("sidebar-mobile-open", open);
+    backdrop.hidden = !open;
+
+    menuToggle.setAttribute("aria-expanded", String(open));
+    menuToggle.setAttribute(
+      "aria-label",
+      open ? "Fermer le menu" : "Ouvrir le menu"
+    );
+
+    sidebar.setAttribute(
+      "aria-hidden",
+      media.matches ? String(!open) : "false"
+    );
+  }
+
+  function toggleSidebar(event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setOpen(!sidebar.classList.contains("open"));
+  }
+
+  let lastPointerToggleAt = 0;
+
+  menuToggle.addEventListener("pointerup", (event) => {
+    lastPointerToggleAt = performance.now();
+    toggleSidebar(event);
+  });
+
+  menuToggle.addEventListener("click", (event) => {
+    if (performance.now() - lastPointerToggleAt < 650) {
+      event.preventDefault();
+      return;
+    }
+    toggleSidebar(event);
+  });
+
+  closeButton.addEventListener("click", () => setOpen(false));
+  backdrop.addEventListener("click", () => setOpen(false));
+
+  sidebar.addEventListener("click", (event) => {
+    if (event.target.closest("a.nav-link, a.brand")) {
+      setOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setOpen(false);
+    }
+  });
+
+  window.addEventListener("hauqe:page-ready", () => setOpen(false));
+
+  const onMediaChange = () => setOpen(false);
+  if (typeof media.addEventListener === "function") {
+    media.addEventListener("change", onMediaChange);
+  } else {
+    media.addListener(onMediaChange);
+  }
+
+  window.addEventListener("pageshow", () => setOpen(false));
+  setOpen(false);
+
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+}
+
+initMobileSidebar();
+
 document.addEventListener("click", (event) => {
   const disabledLink = event.target.closest(".nav-link.disabled");
   if (disabledLink) event.preventDefault();

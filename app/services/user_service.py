@@ -605,6 +605,21 @@ class UserService:
             role_id,
         )
 
+        # Le compte de récupération administrative ne doit pas
+        # pouvoir retirer son propre rôle ADMIN_HAUQE.
+        if (
+            user.id == actor.user.id
+            and role is not None
+            and role.code == "ADMIN_HAUQE"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Vous ne pouvez pas retirer ADMIN_HAUQE "
+                    "de votre propre compte."
+                ),
+            )
+
         assignment.statut = "INACTIF"
         assignment.date_fin = utc_now().date()
 

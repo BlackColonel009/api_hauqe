@@ -1,0 +1,26 @@
+Audit du système:
+
+
+
+1- le bouton "X" pour fermer les formulaires dans tout le système ou presque ne marche pas.
+
+2- tous les formulaires ou presque toutes ne scroll pas ce qui fais qu'il y a des infos cachés car le formulaire ne scroll pas.
+
+3- Les Zones administrative: comment les renseigner? j'ai remarquer qu'il n'y a nul part où renseigner proprement une zone administrative. en réalité à la collecte l'input de zone administrative doit permettre la création et la sélection d'une zone existante pour aller rapidement.
+
+4- Collecte: La fiche de collecte à elle seule pouvait:
+
+   a- en remplissant le nom d'entreprise, pré-créer une entreprise avec un statut imcomplet pour permettre de la remplir plutard sur la page Entreprise. car le processus serta trop long pour un agent de collecte sur terrain.
+
+    b- rubrique certification: champ manquant = "Statut de la certification", ption du status = "1- présente, 2- absente, 3-audit de surveillance 1, 4-audit de surveillance 2, 5-audit de surveillance 3, 6- Renouvellement." 
+
+but = pour savoir le statut actuel du certificat
+
+5- La page SNCC : son rôle est de classer les certifications, mais comment? si les certifications sont enregistrer par la collecte comment le classe t-il? (à comprendre)
+
+6- dans le formulaire de nouvelles utilisateur, le bouton "créér le compte" ne fonctionne pas, il ne déclenche aucun évènement et aucune action.
+
+7- de nombreux modals de formulaire ne sont pas designer et sont toujours mal aligner et ne scroll pas.
+
+
+

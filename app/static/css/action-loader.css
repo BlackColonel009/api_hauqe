@@ -301,3 +301,22 @@
     opacity:1;
   }
 }
+
+/* V2 : amélioration de la perception de latence */
+.hauqe-action-loader-backdrop{
+  background:rgba(7,30,23,.40);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+.hauqe-action-loader-card{
+  width:min(410px,calc(100vw - 26px));
+  border-radius:22px;
+  box-shadow:0 32px 90px rgba(4,35,27,.29),0 9px 28px rgba(4,35,27,.11);
+}
+.hauqe-action-loader-message [data-action-message]{display:inline-block;min-width:74px}
+.hauqe-action-loader-message [data-action-message].is-switching{animation:hauqe-message-switch .30s ease both}
+.hauqe-button-busy{position:relative;pointer-events:none!important;user-select:none}
+.hauqe-button-busy::after{content:"";flex:0 0 auto;width:12px;height:12px;margin-left:2px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;opacity:.72;animation:hauqe-button-spin .72s linear infinite}
+@keyframes hauqe-message-switch{0%{opacity:.15;transform:translateY(4px)}100%{opacity:1;transform:none}}
+@keyframes hauqe-button-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.hauqe-action-loader-message [data-action-message].is-switching,.hauqe-button-busy::after{animation:none!important}}

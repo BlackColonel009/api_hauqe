@@ -1,36 +1,33 @@
 /**
- * HAUQE Action Loader
+ * HAUQE Action Loader — V2
  * ============================================================
- * Loader modal commun pour toute opération asynchrone déclenchée
- * par une action utilisateur.
+ * Retour visuel commun pour les opérations asynchrones.
  *
- * Objectifs :
- * - retour visuel immédiat après clic ;
- * - éviter le double clic ;
- * - laisser au navigateur une frame pour afficher le modal avant
- *   l'appel réseau / le traitement ;
- * - API simple réutilisable par toutes les pages.
+ * Deux modes coexistent :
+ * 1. mode explicite : HAUQE_ACTION_LOADER.run(...)
+ * 2. mode automatique : tout fetch /api/* déclenché immédiatement
+ *    après une action utilisateur est enveloppé par le loader.
  *
- * Exposition globale :
- *   window.HAUQE_ACTION_LOADER
- *
- * Exemple :
- *   await HAUQE_ACTION_LOADER.run(
- *     () => apiPost("/api/v1/..."),
- *     {
- *       button,
- *       title: "Enregistrement",
- *       message: "Enregistrement"
- *     }
- *   );
+ * Les appels périodiques ou de fond ne déclenchent pas le modal,
+ * car ils ne sont pas précédés d'une interaction utilisateur.
  */
 
 const DEFAULTS = Object.freeze({
   title: "Traitement en cours",
   message: "Chargement",
   detail: "Veuillez patienter quelques instants.",
-  minVisibleMs: 360,
+  minVisibleMs: 380,
+  messageRotateMs: 1850,
 });
+
+const DEFAULT_MESSAGE_VARIANTS = Object.freeze([
+  "Chargement",
+  "Patientez",
+  "Ce sera prêt",
+]);
+
+const AUTO_ACTION_WINDOW_MS = 2200;
+const AUTO_SETTLE_MS = 180;
 
 let overlay = null;
 let card = null;
@@ -39,6 +36,15 @@ let messageNode = null;
 let detailNode = null;
 let activeSince = 0;
 let sequence = 0;
+let messageTimer = null;
+let messageIndex = 0;
+let manualDepth = 0;
+let recentAction = null;
+let autoPending = 0;
+let autoToken = null;
+let autoButton = null;
+let autoHideTimer = null;
+
 const buttonStates = new WeakMap();
 
 function nextPaint() {
@@ -157,14 +163,305 @@ function emit(name, detail = {}) {
   window.dispatchEvent(new CustomEvent(name, { detail }));
 }
 
+function stopMessageRotation() {
+  if (messageTimer) {
+    clearInterval(messageTimer);
+    messageTimer = null;
+  }
+}
+
+function startMessageRotation(config) {
+  stopMessageRotation();
+
+  const variants = [
+    config.message,
+    ...(Array.isArray(config.messageVariants)
+      ? config.messageVariants
+      : DEFAULT_MESSAGE_VARIANTS),
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
+
+  if (!variants.length) return;
+
+  messageIndex = 0;
+  messageNode.textContent = variants[0];
+
+  if (variants.length === 1 || config.rotateMessages === false) {
+    return;
+  }
+
+  messageTimer = setInterval(() => {
+    if (!overlay || overlay.hidden) return;
+
+    messageIndex = (messageIndex + 1) % variants.length;
+    messageNode.classList.remove("is-switching");
+
+    requestAnimationFrame(() => {
+      messageNode.textContent = variants[messageIndex];
+      messageNode.classList.add("is-switching");
+    });
+  }, Number(config.messageRotateMs || DEFAULTS.messageRotateMs));
+}
+
+function normalizeActionText(element) {
+  if (!(element instanceof Element)) return "";
+
+  return String(
+    element.getAttribute("aria-label")
+    || element.getAttribute("title")
+    || element.textContent
+    || ""
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function copyForAction(element) {
+  const text = normalizeActionText(element);
+
+  const mappings = [
+    [/publier/, "Publication en cours"],
+    [/préremplir|pre-remplir/, "Préparation de la grille"],
+    [/enregistrer|sauvegarder/, "Enregistrement en cours"],
+    [/créer|ajouter|nouveau|ouvrir/, "Création en cours"],
+    [/modifier|mettre à jour|actualiser/, "Mise à jour en cours"],
+    [/supprimer|retirer|annuler/, "Traitement en cours"],
+    [/valider|confirmer|finaliser/, "Validation en cours"],
+    [/affecter|attribuer|rôle/, "Mise à jour des accès"],
+    [/rechercher|filtrer|charger|voir|détail/, "Chargement des données"],
+    [/exporter|télécharger/, "Préparation du fichier"],
+  ];
+
+  const match = mappings.find(([pattern]) => pattern.test(text));
+
+  return {
+    title: match?.[1] || DEFAULTS.title,
+    message: DEFAULTS.message,
+    detail: text
+      ? `Action demandée : ${text.slice(0, 90)}.`
+      : DEFAULTS.detail,
+  };
+}
+
+function findInteractiveElement(target) {
+  if (!(target instanceof Element)) return null;
+
+  const direct = target.closest([
+    "button",
+    "[role='button']",
+    "input[type='submit']",
+    "input[type='button']",
+    ".app-btn",
+    ".dashboard-clickable",
+    ".user-action",
+    "summary",
+  ].join(","));
+
+  if (direct) return direct;
+
+  let current = target;
+  for (let depth = 0; current && depth < 5; depth += 1) {
+    try {
+      if (getComputedStyle(current).cursor === "pointer") {
+        return current;
+      }
+    } catch {}
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
+function shouldIgnoreAction(element) {
+  if (!(element instanceof Element)) return true;
+
+  if (element.closest([
+    "#menuToggle",
+    "#sidebarBackdrop",
+    ".sidebar-mobile-close",
+    "#themeSwitch",
+    "[data-no-action-loader]",
+    "[data-close-inst-dialog]",
+    "[data-close-user-dialog]",
+    "[data-close-alert-dialog]",
+    "[data-close-watch-dialog]",
+    "[data-close-deadline-dialog]",
+    ".dialog-close",
+  ].join(","))) {
+    return true;
+  }
+
+  const anchor = element.closest("a[href]");
+  if (anchor) {
+    const href = String(anchor.getAttribute("href") || "");
+    if (href.startsWith("#") || anchor.hasAttribute("download")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function rememberAction(element) {
+  if (!(element instanceof Element) || shouldIgnoreAction(element)) {
+    return;
+  }
+
+  recentAction = {
+    element,
+    button: element.closest("button, input[type='submit'], input[type='button']"),
+    at: performance.now(),
+    copy: copyForAction(element),
+  };
+}
+
+function installActionTracking() {
+  if (document.documentElement.dataset.hauqeActionTracking === "true") {
+    return;
+  }
+
+  document.documentElement.dataset.hauqeActionTracking = "true";
+
+  document.addEventListener("click", (event) => {
+    if (!event.isTrusted) return;
+    const element = findInteractiveElement(event.target);
+    if (element) rememberAction(element);
+  }, true);
+
+  document.addEventListener("submit", (event) => {
+    if (!event.isTrusted) return;
+    rememberAction(event.submitter || event.target);
+  }, true);
+
+  document.addEventListener("change", (event) => {
+    if (!event.isTrusted) return;
+    const target = event.target;
+    if (
+      target instanceof HTMLSelectElement
+      || (target instanceof HTMLInputElement
+        && ["checkbox", "radio"].includes(target.type))
+    ) {
+      rememberAction(target);
+    }
+  }, true);
+}
+
+function requestUrl(input) {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  if (input instanceof Request) return input.url;
+  return "";
+}
+
+function requestMethod(input, init = {}) {
+  if (init?.method) return String(init.method).toUpperCase();
+  if (input instanceof Request) return String(input.method || "GET").toUpperCase();
+  return "GET";
+}
+
+function isBackgroundApi(url, method) {
+  const value = String(url || "");
+
+  if (/\/api\/v1\/presence\/heartbeat(?:\?|$)/.test(value)) {
+    return true;
+  }
+
+  if (
+    method === "GET"
+    && /\/api\/v1\/(?:presence\/users|notifications)(?:\?|$)/.test(value)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function beginAutomaticRequest(input, init = {}) {
+  const url = requestUrl(input);
+  const method = requestMethod(input, init);
+
+  if (
+    manualDepth > 0
+    || !url.includes("/api/")
+    || isBackgroundApi(url, method)
+    || !recentAction
+    || performance.now() - recentAction.at > AUTO_ACTION_WINDOW_MS
+  ) {
+    return null;
+  }
+
+  if (autoHideTimer) {
+    clearTimeout(autoHideTimer);
+    autoHideTimer = null;
+  }
+
+  autoPending += 1;
+
+  if (autoPending === 1) {
+    autoButton = recentAction.button instanceof HTMLElement
+      ? recentAction.button
+      : null;
+
+    autoToken = showActionLoader({
+      ...recentAction.copy,
+      button: autoButton,
+      messageVariants: DEFAULT_MESSAGE_VARIANTS,
+    });
+  }
+
+  return { token: autoToken };
+}
+
+function endAutomaticRequest(handle) {
+  if (!handle) return;
+
+  autoPending = Math.max(0, autoPending - 1);
+  if (autoPending > 0) return;
+
+  if (autoHideTimer) clearTimeout(autoHideTimer);
+
+  autoHideTimer = setTimeout(async () => {
+    const token = autoToken;
+    const button = autoButton;
+
+    autoToken = null;
+    autoButton = null;
+    autoHideTimer = null;
+    recentAction = null;
+
+    await hideActionLoader({ token, button });
+  }, AUTO_SETTLE_MS);
+}
+
+function installFetchBridge() {
+  if (window.__HAUQE_FETCH_LOADER_PATCHED__) return;
+
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = async function hauqeFetch(input, init = {}) {
+    const handle = beginAutomaticRequest(input, init);
+
+    try {
+      return await originalFetch(input, init);
+    } finally {
+      endAutomaticRequest(handle);
+    }
+  };
+
+  window.__HAUQE_FETCH_LOADER_PATCHED__ = true;
+}
+
 export function showActionLoader(options = {}) {
   const root = ensureDom();
   const config = { ...DEFAULTS, ...options };
   const token = ++sequence;
 
   titleNode.textContent = config.title;
-  messageNode.textContent = config.message;
   detailNode.textContent = config.detail;
+  startMessageRotation(config);
 
   root.hidden = false;
   root.dataset.token = String(token);
@@ -233,6 +530,7 @@ export async function hideActionLoader({
     await sleep(remaining);
   }
 
+  stopMessageRotation();
   overlay.classList.remove("is-visible");
   card?.classList.remove("is-visible");
 
@@ -254,15 +552,16 @@ export async function runWithActionLoader(task, options = {}) {
     throw new TypeError("runWithActionLoader attend une fonction.");
   }
 
+  manualDepth += 1;
   const token = showActionLoader(options);
 
-  // Deux frames : garantit que le navigateur peint réellement le modal
-  // avant de commencer le traitement ou l'appel réseau.
   await nextPaint();
 
   try {
     return await task();
   } finally {
+    manualDepth = Math.max(0, manualDepth - 1);
+
     await hideActionLoader({
       token,
       button: options.button || null,
@@ -304,6 +603,8 @@ export function bindActionLoader(button, handler, options = {}) {
 
 export function installActionLoader() {
   ensureDom();
+  installActionTracking();
+  installFetchBridge();
 
   window.HAUQE_ACTION_LOADER = Object.freeze({
     show: showActionLoader,
@@ -313,11 +614,22 @@ export function installActionLoader() {
     bind: bindActionLoader,
   });
 
-  // Si la session se verrouille, son écran reste souverain.
   window.addEventListener("hauqe:session-locked", () => {
+    stopMessageRotation();
+    recentAction = null;
+    autoPending = 0;
+    autoToken = null;
+    autoButton = null;
+
+    if (autoHideTimer) {
+      clearTimeout(autoHideTimer);
+      autoHideTimer = null;
+    }
+
     if (overlay && !overlay.hidden) {
       overlay.hidden = true;
       overlay.classList.remove("is-visible");
+      card?.classList.remove("is-visible");
       document.body.classList.remove("hauqe-action-loading");
       document.body.removeAttribute("aria-busy");
     }

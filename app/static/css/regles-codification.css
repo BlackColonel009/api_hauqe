@@ -1144,3 +1144,234 @@
   }
 }
 
+/* ============================================================
+   PREREMPLISSAGE HISTORIQUE FUCCS — 24 CRITERES
+   ============================================================ */
+
+.fuccs-historical-prefill{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) auto;
+  gap:11px;
+  align-items:center;
+  margin-top:11px;
+  padding:12px;
+  border:1px solid #d7e6df;
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 95% 10%,rgba(48,132,96,.09),transparent 30%),
+    linear-gradient(135deg,#fbfefd,#eef8f3);
+}
+
+.fuccs-historical-prefill>span{
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border-radius:11px;
+  background:#fff;
+  color:#28795c;
+  box-shadow:0 7px 18px rgba(35,91,67,.08);
+}
+
+.fuccs-historical-prefill>span svg{
+  width:18px;
+  height:18px;
+}
+
+.fuccs-historical-prefill strong,
+.fuccs-historical-prefill small{
+  display:block;
+}
+
+.fuccs-historical-prefill strong{
+  color:#2f4a3c;
+  font-size:8.8px;
+}
+
+.fuccs-historical-prefill small{
+  margin-top:3px;
+  color:#7a8a82;
+  font-size:7.2px;
+  line-height:1.45;
+}
+
+.historical-template-hero{
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  padding:13px;
+  border:1px solid #d6e6de;
+  border-radius:13px;
+  background:#f1f8f4;
+}
+
+.historical-template-hero>span{
+  display:grid;
+  place-items:center;
+  width:46px;
+  height:46px;
+  border-radius:13px;
+  background:#fff;
+  color:#28795c;
+}
+
+.historical-template-hero strong,
+.historical-template-hero small{
+  display:block;
+}
+
+.historical-template-hero strong{
+  color:#2f4a3c;
+  font-size:10px;
+}
+
+.historical-template-hero small{
+  margin-top:3px;
+  color:#75867d;
+  font-size:7.5px;
+  line-height:1.45;
+}
+
+.historical-template-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:11px;
+}
+
+.historical-template-grid article{
+  display:grid;
+  grid-template-columns:31px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  padding:9px;
+  border:1px solid #e1e9e5;
+  border-radius:10px;
+  background:#fff;
+}
+
+.historical-template-grid article>span{
+  display:grid;
+  place-items:center;
+  width:29px;
+  height:29px;
+  border-radius:8px;
+  background:#edf7f2;
+  color:#28795c;
+  font-size:7px;
+  font-weight:900;
+}
+
+.historical-template-grid strong,
+.historical-template-grid small{
+  display:block;
+}
+
+.historical-template-grid strong{
+  color:#3b5146;
+  font-size:7.8px;
+}
+
+.historical-template-grid small{
+  margin-top:2px;
+  color:#8a9690;
+  font-size:6.8px;
+}
+
+.template-confirmation{
+  display:grid !important;
+  grid-template-columns:22px minmax(0,1fr);
+  gap:8px;
+  align-items:start;
+  margin-top:11px;
+  padding:11px;
+  border:1px solid #e8d8ba;
+  border-radius:11px;
+  background:#fff8ec;
+}
+
+.template-confirmation input{
+  width:16px !important;
+  min-height:auto !important;
+  margin-top:1px;
+}
+
+.template-confirmation span{
+  margin:0 !important;
+  color:#7d6238 !important;
+  font-size:7.5px !important;
+  font-weight:650 !important;
+  letter-spacing:0 !important;
+  line-height:1.5 !important;
+  text-transform:none !important;
+}
+
+[data-theme=dark] .fuccs-historical-prefill,
+[data-theme=dark] .historical-template-hero,
+[data-theme=dark] .historical-template-grid article{
+  border-color:#315248;
+  background:#14372f;
+}
+
+[data-theme=dark] .historical-template-hero strong,
+[data-theme=dark] .historical-template-grid strong,
+[data-theme=dark] .fuccs-historical-prefill strong{
+  color:#e7f1ed;
+}
+
+@media(max-width:720px){
+  .fuccs-historical-prefill{
+    grid-template-columns:42px minmax(0,1fr);
+  }
+
+  .fuccs-historical-prefill .app-btn{
+    grid-column:1/-1;
+    justify-self:start;
+  }
+
+  .historical-template-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* ============================================================
+   CORRECTIF VISIBILITÉ — PRÉREMPLISSAGE FUCCS 24 CRITÈRES
+   ============================================================ */
+
+.fuccs-header-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:7px;
+  align-items:center;
+}
+
+#openFuccsHistorical24{
+  border-color:#bdd7cb;
+  background:#f2f9f5;
+  color:#28795c;
+}
+
+#openFuccsHistorical24:hover:not(:disabled){
+  border-color:#8fbda8;
+  background:#e9f5ef;
+  transform:translateY(-1px);
+}
+
+#openFuccsHistorical24:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+}
+
+@media(max-width:720px){
+  .fuccs-header-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  .fuccs-header-actions .app-btn{
+    flex:1 1 180px;
+    justify-content:center;
+  }
+}
