@@ -148,10 +148,11 @@
       required = false,
       placeholder = "",
       disabled = false,
+      className = "",
     } = {}
   ) {
     return `
-      <div class="form-field">
+      <div class="form-field${className ? ` ${escapeHtml(className)}` : ""}">
         <label>
           ${escapeHtml(label)}
           ${required ? " <b>*</b>" : ""}
@@ -178,10 +179,11 @@
       required = false,
       disabled = false,
       placeholder = "Sélectionner",
+      className = "",
     } = {}
   ) {
     return `
-      <div class="form-field">
+      <div class="form-field${className ? ` ${escapeHtml(className)}` : ""}">
         <label>
           ${escapeHtml(label)}
           ${required ? " <b>*</b>" : ""}
@@ -623,7 +625,7 @@
   function offerRow(item = {}) {
     return `
       <div
-        class="repeat-entry"
+        class="repeat-entry collect-offer-entry"
         data-offer-row
         ${item.id ? `data-id="${escapeHtml(item.id)}"` : ""}
         data-status="${escapeHtml(item.statut || "ACTIF")}"
@@ -639,6 +641,7 @@
           {
             current: item.type_offre || "",
             placeholder: "Non renseigné",
+            className: "collect-field-type",
           }
         )}
 
@@ -647,6 +650,7 @@
           "Nom",
           {
             value: item.nom || "",
+            className: "collect-field-name",
           }
         )}
 
@@ -655,6 +659,7 @@
           "Catégorie",
           {
             value: item.categorie || "",
+            className: "collect-field-category",
           }
         )}
 
@@ -664,6 +669,7 @@
           {
             type: "number",
             value: item.volume ?? "",
+            className: "collect-field-volume",
           }
         )}
 
@@ -672,6 +678,7 @@
           "Unité",
           {
             value: item.unite || "",
+            className: "collect-field-unit",
           }
         )}
 
@@ -681,6 +688,7 @@
           {
             type: "number",
             value: item.capacite ?? "",
+            className: "collect-field-capacity",
           }
         )}
 
@@ -765,7 +773,7 @@
 
     return `
       <div
-        class="repeat-entry"
+        class="repeat-entry collect-declared-cert-entry"
         data-declared-cert-row
         ${item.id ? `data-id="${escapeHtml(item.id)}"` : ""}
         ${item.certification_officielle_id
@@ -780,6 +788,7 @@
           "Nom de la certification",
           {
             value: item.nom_certification || "",
+            className: "collect-field-cert-name",
           }
         )}
 
@@ -788,6 +797,7 @@
           "Numéro déclaré",
           {
             value: item.numero || "",
+            className: "collect-field-cert-number",
           }
         )}
 
@@ -796,6 +806,7 @@
           "Organisme déclaré",
           {
             value: item.organisme_declare || "",
+            className: "collect-field-cert-body",
           }
         )}
 
@@ -804,6 +815,7 @@
           "Norme / référentiel déclaré",
           {
             value: item.norme_declaree || "",
+            className: "collect-field-cert-standard",
           }
         )}
 
@@ -821,6 +833,7 @@
           {
             type: "date",
             value: item.date_obtention || "",
+            className: "collect-field-cert-date",
           }
         )}
 
@@ -830,6 +843,7 @@
           {
             type: "date",
             value: item.date_expiration || "",
+            className: "collect-field-cert-date",
           }
         )}
 
@@ -847,6 +861,7 @@
           {
             current: item.situation_declaree || "",
             placeholder: "Sélectionner la situation",
+            className: "collect-field-cert-situation",
           }
         )}
 
@@ -860,6 +875,7 @@
           {
             current: copyValue,
             placeholder: "Non renseigné",
+            className: "collect-field-cert-copy",
           }
         )}
 
