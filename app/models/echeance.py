@@ -65,6 +65,11 @@ class Echeance(
         nullable=True,
     )
 
+    motif_cloture: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     responsable = relationship(
         "Utilisateur",
         foreign_keys=[responsable_id],

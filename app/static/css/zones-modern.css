@@ -1,0 +1,137 @@
+.zone-dialog.hauqe-dialog-managed{width:min(720px,calc(100vw - 24px))!important;border:1px solid rgba(48,116,87,.13)!important;border-radius:22px!important}
+.zone-dialog.hauqe-dialog-managed header{padding:20px 24px!important;border-bottom:1px solid #e4ece8;background:radial-gradient(circle at 92% 5%,rgba(58,151,111,.12),transparent 35%),linear-gradient(135deg,#fdfefe,#f2f9f6)}
+.zone-dialog header h2{margin:3px 0 0;color:#203d31;font:800 16px/1.35 Manrope,sans-serif}
+.zone-dialog .dialog-body{padding:22px 24px 26px!important;background:linear-gradient(180deg,#fff,#fbfcfb)}
+.zone-dialog footer{padding:16px 24px 18px!important;border-top:1px solid #e4ece8;background:#fff}
+.zone-dialog .zone-form-grid{gap:15px 17px;padding:17px;border:1px solid #e3ebe7;border-radius:16px;background:#fafcfb}
+.zone-dialog .zone-form-grid label{margin:0}
+.zone-dialog .zone-form-grid label>span,.zone-status-dialog .dialog-body label>span{margin:0 0 7px 2px;font-size:8.5px;letter-spacing:.045em}
+.zone-dialog .zone-form-grid input,.zone-dialog .zone-form-grid select,.zone-status-dialog select,.zone-status-dialog textarea{min-height:44px;border-color:#d6e1dc;border-radius:12px;box-shadow:0 2px 8px rgba(25,61,46,.025);outline:none}
+.zone-dialog .zone-form-grid input:focus,.zone-dialog .zone-form-grid select:focus,.zone-status-dialog select:focus,.zone-status-dialog textarea:focus{border-color:#65aa8d;box-shadow:0 0 0 3px rgba(37,129,95,.1)}
+.zone-actions button:hover{border-color:#a9cdbd;background:#edf7f2;color:#28795b}
+@media(max-width:640px){.zone-dialog.hauqe-dialog-managed header,.zone-dialog .dialog-body,.zone-dialog footer{padding-left:16px!important;padding-right:16px!important}.zone-dialog .zone-form-grid{padding:13px}}
+
+.zone-status-dialog.hauqe-dialog-managed{
+  width:min(590px,calc(100vw - 24px))!important;
+}
+.zone-status-dialog header{
+  align-items:center;
+}
+.zone-status-heading{
+  display:flex;
+  align-items:center;
+  gap:13px;
+}
+.zone-status-icon{
+  display:grid;
+  place-items:center;
+  width:43px;
+  height:43px;
+  flex:0 0 43px;
+  border-radius:13px;
+  background:#edf7f2;
+  color:#28795b;
+}
+.zone-status-icon svg{
+  width:19px;
+  height:19px;
+}
+.zone-status-dialog .dialog-body{
+  display:grid;
+  gap:16px;
+}
+.zone-status-summary{
+  display:grid;
+  grid-template-columns:45px minmax(0,1fr);
+  align-items:start;
+  gap:13px;
+  padding:15px;
+  border:1px solid #dfe9e4;
+  border-radius:15px;
+  background:#f8fbf9;
+}
+.zone-status-summary>span{
+  display:grid;
+  place-items:center;
+  width:43px;
+  height:43px;
+  border-radius:12px;
+  background:#fff;
+  color:#397f64;
+  box-shadow:0 3px 11px rgba(29,74,56,.08);
+}
+.zone-status-summary svg{
+  width:18px;
+}
+.zone-status-summary small,
+.zone-status-summary strong{
+  display:block;
+}
+.zone-status-summary small{
+  color:#74857d;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+.zone-status-summary strong{
+  margin-top:3px;
+  color:#263e34;
+  font:800 12px/1.4 Manrope,sans-serif;
+}
+.zone-status-summary p{
+  margin:5px 0 0;
+  color:#62746b;
+  font-size:9.5px;
+  line-height:1.55;
+}
+.zone-status-fields{
+  display:grid;
+  gap:14px;
+  padding:16px;
+  border:1px solid #e3ebe7;
+  border-radius:15px;
+  background:#fff;
+}
+.zone-status-fields label{
+  display:block;
+}
+.zone-status-fields label small{
+  display:block;
+  margin:6px 2px 0;
+  color:#819088;
+  font-size:8px;
+  line-height:1.45;
+}
+.zone-status-dialog textarea{
+  resize:vertical;
+  line-height:1.5;
+}
+.zone-status-dialog.is-deactivating .zone-status-icon,
+.zone-status-dialog.is-deactivating .zone-status-summary>span{
+  background:#fff2eb;
+  color:#b45d32;
+}
+.zone-status-dialog.is-deactivating #applyZoneStatus{
+  border-color:#b85c32;
+  background:#b85c32;
+}
+.zone-status-dialog.is-activating .zone-status-icon,
+.zone-status-dialog.is-activating .zone-status-summary>span{
+  background:#eaf7f0;
+  color:#247957;
+}
+
+@media(max-width:520px){
+  .zone-status-summary{
+    grid-template-columns:38px minmax(0,1fr);
+    padding:13px;
+  }
+  .zone-status-summary>span{
+    width:38px;
+    height:38px;
+  }
+  .zone-status-fields{
+    padding:13px;
+  }
+}

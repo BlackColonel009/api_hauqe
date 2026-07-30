@@ -48,6 +48,13 @@ class NormeResponse(BaseModel):
     updated_at: datetime
 
 
+class NormeCreateRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=255)
+    nom: str | None = Field(default=None, max_length=255)
+    version: str | None = Field(default=None, max_length=255)
+    domaine: str | None = Field(default=None, max_length=255)
+
+
 # ============================================================
 # ORGANISMES
 # ============================================================
@@ -385,6 +392,17 @@ class RenouvellementDecisionRequest(BaseModel):
     statut: str | None = Field(default=None, max_length=255)
 
 
+class RenouvellementCompletionRequest(BaseModel):
+    decision: str = Field(min_length=1, max_length=32)
+    nouvelle_date_effet: date | None = None
+    nouvelle_date_expiration: date | None = None
+    nouveau_numero_certificat: str | None = Field(default=None, max_length=255)
+    reference_decision: str = Field(min_length=1, max_length=255)
+    justification: str = Field(min_length=3)
+    justificatif_document_ids: list[UUID] = Field(default_factory=list)
+    preuves: dict[str, Any] | list[Any] | None = None
+
+
 class RenouvellementResponse(BaseModel):
     id: UUID
     certification_id: UUID
@@ -398,3 +416,11 @@ class RenouvellementResponse(BaseModel):
     statut: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class RenouvellementCompletionResponse(BaseModel):
+    renouvellement: RenouvellementResponse
+    certification: CertificationResponse
+    echeances_terminees: int = 0
+    alertes_resolues: int = 0
+    nouveau_cycle: dict[str, int] = Field(default_factory=dict)

@@ -21,6 +21,13 @@
     "VALIDE",
     "VALIDE_SOUS_RESERVE",
   ]);
+  const verificationOpinionLabel = (value) => ({
+    verified_compliant: "Vérifié conforme",
+    verified_with_reservation: "Vérifié avec réserve",
+    not_verified: "Non vérifié",
+    suspect: "Suspect",
+    rejected: "Rejeté",
+  }[String(value || "").toLowerCase()] || value || "—");
 
   const stageLabels = {
     READY_N1: "Revue N1 à prononcer",
@@ -256,7 +263,7 @@
 
       <span>
         <b>Vérification</b>
-        ${escapeHtml(context.verification_opinion || "—")}
+        ${escapeHtml(verificationOpinionLabel(context.verification_opinion))}
       </span>
 
       <span>
@@ -329,7 +336,7 @@
               <div>
                 <strong>Vérification documentaire</strong>
                 <small>
-                  Avis ${escapeHtml(context.verification_opinion || "—")}
+                  Avis ${escapeHtml(verificationOpinionLabel(context.verification_opinion))}
                   · risque ${escapeHtml(context.verification_risk || "—")}
                 </small>
               </div>

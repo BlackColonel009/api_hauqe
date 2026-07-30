@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.audit.service import write_audit_event
 from app.models.archive import Archive
 from app.models.decision_institutionnelle import DecisionInstitutionnelle
+from app.models.notification import Notification
 from app.models.incident import Incident
 from app.models.plan_action import PlanAction
 from app.models.publication import Publication
@@ -39,6 +40,10 @@ from app.repositories.governance_repository import GovernanceRepository
 from app.rules.business_rule_resolver import rule_logical_code
 from app.rules.collecte_completeness import (
     validate_parameters as validate_collecte_completeness_parameters,
+)
+from app.rules.codification import (
+    CODIFICATION_PREFIX,
+    validate_codification_parameters,
 )
 from app.schemas.governance import *
 from app.services.auth_service import AuthContext
@@ -98,9 +103,17 @@ def build_physical_rule_code(logical_code: str, version: str) -> str:
 
 
 def audit_response(item):
+    user = item.utilisateur
+    user_name = None
+    if user is not None:
+        user_name = " ".join(
+            value for value in (user.prenoms, user.nom) if value
+        ).strip() or user.email
     return AuditEventResponse(
         id=item.id,
         utilisateur_id=item.utilisateur_id,
+        utilisateur_nom=user_name,
+        utilisateur_email=user.email if user is not None else None,
         action=item.action,
         categorie=item.categorie,
         ressource_type=item.ressource_type,
@@ -347,6 +360,26 @@ class GovernanceService:
 
             params = dict(validation.normalized)
             params["_logical_code"] = logical
+            item.parametres = params
+
+        if logical.startswith(CODIFICATION_PREFIX):
+            validation = validate_codification_parameters(
+                logical,
+                item.parametres or {},
+            )
+            if validation.errors:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "Le modèle de codification ne peut pas être publié : "
+                        + " | ".join(validation.errors)
+                    ),
+                )
+
+            params = dict(validation.normalized)
+            params["_logical_code"] = logical
+            if validation.warnings:
+                params["_publication_warnings"] = validation.warnings
             item.parametres = params
 
         # Clôture automatiquement une version publiée qui chevaucherait
@@ -836,6 +869,17 @@ class GovernanceService:
             ressource_id=item.id,
             adresse_ip=ip(request),
         )
+        for recipient in await GovernanceRepository.list_active_users(db):
+            db.add(Notification(
+                destinataire_utilisateur_id=recipient.id,
+                canal="IN_APP",
+                objet="Nouvelle décision institutionnelle",
+                contenu=f"{item.titre} - priorité {item.priorite or 'NORMALE'}.",
+                date_envoi=date.today(),
+                nombre_tentatives=0,
+                resultat="Disponible dans l'application",
+                statut="ENVOYEE",
+            ))
         await db.commit()
         await db.refresh(item)
         return GovernanceService.decision_response(item)

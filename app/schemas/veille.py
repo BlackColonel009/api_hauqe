@@ -61,6 +61,7 @@ class DeadlineResponse(BaseModel):
     responsable_id: UUID | None = None
     priorite: str | None = None
     statut: str | None = None
+    motif_cloture: str | None = None
     jours_restants: int | None = None
     alertes_actives_count: int = 0
     created_at: datetime
@@ -234,16 +235,20 @@ class WatchCaseListResponse(BaseModel):
 
 class FollowUpCreateRequest(BaseModel):
     destinataire: str = Field(min_length=1, max_length=255)
+    adresse_email: str = Field(min_length=3, max_length=320)
     canal: str = Field(min_length=1, max_length=255)
     objet: str = Field(min_length=1, max_length=255)
+    contenu: str = Field(min_length=1)
     date_envoi: date | None = None
     date_echeance: date | None = None
 
 
 class FollowUpUpdateRequest(BaseModel):
     destinataire: str | None = Field(default=None, max_length=255)
+    adresse_email: str | None = Field(default=None, max_length=320)
     canal: str | None = Field(default=None, max_length=255)
     objet: str | None = Field(default=None, max_length=255)
+    contenu: str | None = None
     date_envoi: date | None = None
     date_echeance: date | None = None
     statut: str | None = Field(default=None, max_length=255)
@@ -259,8 +264,10 @@ class FollowUpResponse(BaseModel):
     id: UUID
     dossier_veille_id: UUID
     destinataire: str | None = None
+    adresse_email: str | None = None
     canal: str | None = None
     objet: str | None = None
+    contenu: str | None = None
     date_envoi: date | None = None
     date_echeance: date | None = None
     date_reponse: date | None = None

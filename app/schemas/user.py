@@ -68,6 +68,8 @@ class UserCreateRequest(BaseModel):
 
     role_ids: list[UUID] = Field(default_factory=list)
 
+    envoyer_identifiants_email: bool = False
+
 
 # ============================================================
 # MODIFICATION D'UN UTILISATEUR

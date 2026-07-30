@@ -20,7 +20,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -28,6 +28,7 @@ from app.permissions.auth import require_permission
 from app.schemas.governance import *
 from app.services.auth_service import AuthContext
 from app.services.governance_service import GovernanceService
+from app.tasks.process_backup import execute_backup_run
 
 
 governance_router = APIRouter(
@@ -1023,16 +1024,19 @@ async def create_backup_run(
     policy_id: UUID,
     payload: BackupRunCreateRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: AuthContext = Depends(require_permission("SAUVEGARDES.GERER")),
 ):
-    return await GovernanceService.create_backup_run(
+    item = await GovernanceService.create_backup_run(
         db,
         policy_id=policy_id,
         payload=payload,
         actor=actor,
         request=request,
     )
+    background_tasks.add_task(execute_backup_run, item.id)
+    return item
 
 
 @backup_router.get(

@@ -30,3 +30,4 @@ uploads/temporaires/*
 !uploads/temporaires/.gitkeep
 
 Cares-TOGO-API-du-site-WEB/
+logs/

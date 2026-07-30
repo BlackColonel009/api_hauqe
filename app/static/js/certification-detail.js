@@ -8,6 +8,7 @@
   let apiGet;
   let apiPost;
   let apiBlob;
+  let apiRequest;
 
   let cert = null;
   let context = null;
@@ -16,6 +17,7 @@
   let renewals = [];
   let documents = [];
   let history = [];
+  let selectedRenewal = null;
 
   function icon(name) {
     return `<i data-lucide="${name}"></i>`;
@@ -352,6 +354,7 @@
               <th>Décision</th>
               <th>Résultat</th>
               <th>Statut</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -362,12 +365,29 @@
                 <td>${escapeHtml(item.decision || "En attente")}</td>
                 <td>${escapeHtml(item.resultat || "—")}</td>
                 <td><span class="audit-result">${escapeHtml(item.statut || "—")}</span></td>
+                <td>
+                  ${item.date_decision
+                    ? `<span class="renewal-decided"><i data-lucide="circle-check"></i>Traité</span>`
+                    : `<button class="btn btn-primary app-btn renewal-process-button" type="button" data-process-renewal="${escapeHtml(item.id)}"><i data-lucide="refresh-cw"></i>Traiter le renouvellement</button>`
+                  }
+                </td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       `
-      : `<div class="priority-empty">Aucune procédure de renouvellement enregistrée.</div>`;
+      : `
+        <div class="renewal-empty-state">
+          <span>${icon("calendar-plus-2")}</span>
+          <div>
+            <strong>Aucune procédure de renouvellement</strong>
+            <small>Créez le cycle de renouvellement avant d’enregistrer sa décision.</small>
+          </div>
+          <button class="btn btn-primary app-btn" id="startRenewal" type="button">
+            ${icon("plus")}Démarrer un renouvellement
+          </button>
+        </div>
+      `;
 
     $("#certTabContent").innerHTML = `
       <article class="panel mt-3">
@@ -376,10 +396,233 @@
             <h2>Renouvellements</h2>
             <p>Procédures officielles liées au certificat</p>
           </div>
+          ${renewals.length && !renewals.some((item) => !item.date_decision)
+            ? `<button class="btn btn-primary app-btn" id="startRenewal" type="button">${icon("plus")}Nouveau renouvellement</button>`
+            : ""
+          }
         </div>
         ${content}
       </article>
     `;
+
+    $("#startRenewal")?.addEventListener("click", startRenewal);
+    document.querySelectorAll("[data-process-renewal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedRenewal = renewals.find(
+          (item) => String(item.id) === String(button.dataset.processRenewal)
+        );
+        openRenewalCompletion();
+      });
+    });
+    refreshIcons();
+  }
+
+  async function startRenewal(event) {
+    const today = dateIso(new Date());
+    const deadline = context.date_expiration || addYears(today, 1);
+    const task = async () => {
+      const created = await apiPost(
+        `/api/v1/certifications/${certificationId}/renewals`,
+        {
+          date_ouverture: today,
+          date_limite: deadline,
+          preuves: null,
+          statut: "OUVERT",
+        }
+      );
+      renewals = await apiGet(
+        `/api/v1/certifications/${certificationId}/renewals`
+      );
+      selectedRenewal = renewals.find(
+        (item) => String(item.id) === String(created.id)
+      ) || created;
+      renderHeader();
+      renderRenewals();
+      openRenewalCompletion();
+    };
+
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: event.currentTarget,
+          title: "Ouverture du renouvellement",
+          message: "Création de la procédure",
+          detail: "La procédure sera rattachée à cette certification.",
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(
+        error?.message || "Impossible de créer la procédure de renouvellement.",
+        { error: true }
+      );
+    }
+  }
+
+  function dateIso(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function addYears(value, years) {
+    const source = value ? new Date(`${value}T00:00:00`) : new Date();
+    const target = new Date(
+      source.getFullYear() + years,
+      source.getMonth(),
+      source.getDate()
+    );
+    if (target.getMonth() !== source.getMonth()) {
+      target.setDate(0);
+    }
+    return dateIso(target);
+  }
+
+  function updateRenewalDecisionFields() {
+    const renewed = $("#renewalDecision").value === "RENOUVELE";
+    document.querySelectorAll("[data-renewed-field]").forEach((field) => {
+      field.hidden = !renewed;
+    });
+    $("#renewalNewEffectiveDate").required = renewed;
+    $("#renewalNewExpiryDate").required = renewed;
+    $("#renewalEvidenceFiles").required = renewed;
+    $("#renewalCompletionSubmit").innerHTML = renewed
+      ? `${icon("badge-check")}Confirmer le renouvellement`
+      : `${icon("shield-x")}Confirmer le refus`;
+    $("#renewalImpactText").textContent = renewed
+      ? "La certification, l’échéance, les alertes et le nouveau calendrier seront mis à jour ensemble."
+      : "La certification passera à « Non renouvelée » et l’échéance ainsi que ses alertes seront clôturées.";
+    refreshIcons();
+  }
+
+  function renderRenewalFiles() {
+    const files = [...($("#renewalEvidenceFiles").files || [])];
+    $("#renewalFileSelection").innerHTML = files.length
+      ? files.map((file) => `
+          <span>
+            ${icon("file-check-2")}
+            <strong>${escapeHtml(file.name)}</strong>
+            <small>${Math.max(1, Math.round(file.size / 1024))} Ko</small>
+          </span>
+        `).join("")
+      : "Aucun fichier sélectionné.";
+    refreshIcons();
+  }
+
+  function openRenewalCompletion() {
+    if (!selectedRenewal) return;
+    const currentExpiry = context.date_expiration;
+    const effective = currentExpiry
+      ? dateIso(new Date(new Date(`${currentExpiry}T00:00:00`).getTime() + 86400000))
+      : dateIso(new Date());
+
+    $("#renewalCompletionForm").reset();
+    renderRenewalFiles();
+    $("#renewalDecision").value = "RENOUVELE";
+    $("#renewalCompletionSubtitle").textContent =
+      `Procédure ouverte le ${formatDate(selectedRenewal.date_ouverture)}`;
+    $("#renewalCurrentCycle").textContent =
+      `${formatDate(context.date_effet || context.date_obtention)} → ${formatDate(currentExpiry)}`;
+    $("#renewalNewEffectiveDate").value = effective;
+    $("#renewalNewExpiryDate").value = addYears(effective, 3);
+    $("#renewalNewNumber").value = context.numero_certificat || "";
+    updateRenewalDecisionFields();
+    $("#renewalCompletionDialog").showModal();
+    refreshIcons();
+  }
+
+  async function completeRenewal(event) {
+    event.preventDefault();
+    if (!selectedRenewal) return;
+    const decision = $("#renewalDecision").value;
+    const renewed = decision === "RENOUVELE";
+    const payload = {
+      decision,
+      nouvelle_date_effet: renewed
+        ? $("#renewalNewEffectiveDate").value || null
+        : null,
+      nouvelle_date_expiration: renewed
+        ? $("#renewalNewExpiryDate").value || null
+        : null,
+      nouveau_numero_certificat: renewed
+        ? $("#renewalNewNumber").value.trim() || null
+        : null,
+      reference_decision: $("#renewalDecisionReference").value.trim(),
+      justification: $("#renewalJustification").value.trim(),
+      justificatif_document_ids: [],
+      preuves: $("#renewalEvidence").value.trim()
+        ? { references: $("#renewalEvidence").value.trim() }
+        : null,
+    };
+
+    if (
+      !payload.reference_decision
+      || !payload.justification
+      || (renewed && (!payload.nouvelle_date_effet || !payload.nouvelle_date_expiration))
+      || (renewed && !$("#renewalEvidenceFiles").files.length)
+    ) {
+      showState("Complétez tous les champs obligatoires du renouvellement.", {
+        error: true,
+      });
+      return;
+    }
+
+    const task = async () => {
+      for (const file of $("#renewalEvidenceFiles").files) {
+        const documentForm = new FormData();
+        documentForm.set("file", file);
+        documentForm.set("type_document", "JUSTIFICATIF_RENOUVELLEMENT");
+        documentForm.set("ressource_type", "RENOUVELLEMENT_CERTIFICATION");
+        documentForm.set("ressource_id", selectedRenewal.id);
+        documentForm.set("confidentialite", "INTERNE");
+        documentForm.set("source", "INTERFACE_CERTIFICATION");
+        const uploaded = await apiRequest("/api/v1/documents/upload", {
+          method: "POST",
+          body: documentForm,
+        });
+        payload.justificatif_document_ids.push(uploaded.id);
+      }
+      const result = await apiPost(
+        `/api/v1/certifications/${certificationId}/renewals/${selectedRenewal.id}/complete`,
+        payload
+      );
+      [cert, context, renewals, history] = await Promise.all([
+        apiGet(`/api/v1/certifications/${certificationId}`),
+        apiGet(`/api/v1/certifications/${certificationId}/context`),
+        apiGet(`/api/v1/certifications/${certificationId}/renewals`),
+        apiGet(`/api/v1/certifications/${certificationId}/history`),
+      ]);
+      $("#renewalCompletionDialog").close();
+      selectedRenewal = null;
+      renderHeader();
+      showTab("renewals");
+      showState(
+        decision === "RENOUVELE"
+          ? `Renouvellement enregistré : ${result.echeances_terminees || 0} échéance(s) clôturée(s) et nouveau cycle planifié.`
+          : "Refus de renouvellement enregistré et ancien cycle clôturé."
+      );
+      window.dispatchEvent(new CustomEvent("hauqe:page-ready"));
+    };
+
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: $("#renewalCompletionSubmit"),
+          title: renewed ? "Renouvellement du certificat" : "Refus du renouvellement",
+          message: "Mise à jour coordonnée du dossier",
+          detail: "Certification, échéances, alertes, historique et nouveau calendrier.",
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(
+        error?.message || "Le traitement du renouvellement a échoué.",
+        { error: true }
+      );
+    }
   }
 
   function renderDocuments() {
@@ -595,6 +838,7 @@
     apiGet = api.apiGet;
     apiPost = api.apiPost;
     apiBlob = api.apiBlob;
+    apiRequest = api.apiRequest;
 
     const task = async () => {
       [cert, context, audits, renewals, documents, history] =
@@ -652,6 +896,24 @@
 
     $("#certVerify").addEventListener("click", verify);
     $("#certDetailExport").addEventListener("click", exportCurrent);
+    $("#renewalDecision").addEventListener(
+      "change",
+      updateRenewalDecisionFields
+    );
+    $("#renewalCompletionForm").addEventListener(
+      "submit",
+      completeRenewal
+    );
+    $("#renewalEvidenceFiles").addEventListener(
+      "change",
+      renderRenewalFiles
+    );
+    document.querySelectorAll("[data-close-renewal-dialog]").forEach((button) => {
+      button.addEventListener("click", () => {
+        $("#renewalCompletionDialog").close();
+        selectedRenewal = null;
+      });
+    });
 
     refreshIcons();
   }

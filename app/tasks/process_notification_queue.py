@@ -22,22 +22,20 @@ Les notifications IN_APP ne passent pas par ce worker.
 from __future__ import annotations
 
 import asyncio
-import os
+import logging
 import smtplib
 import sys
 from email.message import EmailMessage
 
+from app.config.logging import configure_logging
+from app.config.settings import settings
 from app.database.session import AsyncSessionLocal
 from app.repositories.veille_repository import WatchRepository
 from app.schemas.veille import NotificationResultRequest
 from app.services.veille_service import WatchService
 
-
-def env_bool(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 def send_smtp(
@@ -46,8 +44,8 @@ def send_smtp(
     subject: str,
     body: str,
 ) -> str:
-    host = os.getenv("HAUQE_SMTP_HOST")
-    sender = os.getenv("HAUQE_SMTP_FROM")
+    host = settings.hauqe_smtp_host
+    sender = settings.hauqe_smtp_from
 
     if not host or not sender:
         raise RuntimeError(
@@ -55,10 +53,10 @@ def send_smtp(
             "HAUQE_SMTP_HOST / HAUQE_SMTP_FROM requis."
         )
 
-    port = int(os.getenv("HAUQE_SMTP_PORT", "587"))
-    user = os.getenv("HAUQE_SMTP_USER")
-    password = os.getenv("HAUQE_SMTP_PASSWORD")
-    use_tls = env_bool("HAUQE_SMTP_USE_TLS", True)
+    port = settings.hauqe_smtp_port
+    user = settings.hauqe_smtp_user
+    password = settings.hauqe_smtp_password
+    use_tls = settings.hauqe_smtp_use_tls
 
     message = EmailMessage()
     message["From"] = sender
@@ -77,10 +75,8 @@ def send_smtp(
 
 
 async def run(limit: int = 100) -> None:
-    if not os.getenv("HAUQE_SMTP_HOST") or not os.getenv("HAUQE_SMTP_FROM"):
-        print(
-            "SMTP non configuré. La file EMAIL reste intacte."
-        )
+    if not settings.hauqe_smtp_host or not settings.hauqe_smtp_from:
+        logger.warning("SMTP non configuré. La file EMAIL reste intacte.")
         return
 
     async with AsyncSessionLocal() as db:
@@ -135,6 +131,11 @@ async def run(limit: int = 100) -> None:
                     subject=item.objet or "Notification HAUQE",
                     body=item.contenu or "",
                 )
+                if (item.objet or "") == "Création de votre compte HAUQE":
+                    item.contenu = (
+                        "Contenu sensible effacé automatiquement après "
+                        "l’envoi des identifiants temporaires."
+                    )
                 await WatchService.record_notification_delivery(
                     db,
                     notification_id=item.id,
@@ -146,6 +147,10 @@ async def run(limit: int = 100) -> None:
                     request=None,
                 )
             except Exception as exc:
+                logger.exception(
+                    "Échec SMTP pour la notification %s.",
+                    item.id,
+                )
                 await WatchService.record_notification_delivery(
                     db,
                     notification_id=item.id,
@@ -158,7 +163,7 @@ async def run(limit: int = 100) -> None:
                     request=None,
                 )
 
-        print(f"File EMAIL traitée : {len(rows)} notification(s).")
+        logger.info("File EMAIL traitée : %s notification(s).", len(rows))
 
 
 if __name__ == "__main__":

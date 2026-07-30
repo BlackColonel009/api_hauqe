@@ -200,8 +200,9 @@
     `;
 
     $("#newFollowup")?.addEventListener("click", () => {
-      ["followupRecipient","followupChannel","followupSubject","followupSendDate","followupDueDate"]
+      ["followupRecipient","followupEmail","followupChannel","followupSubject","followupMessage","followupSendDate","followupDueDate"]
         .forEach((id) => $(`#${id}`).value = "");
+      $("#followupChannel").value = "EMAIL";
       $("#followupDialog").showModal();
       icons();
     });
@@ -255,6 +256,10 @@
     const data = await api.apiGet("/api/v1/veille/workspace/filters");
     fill($("#watchStatus"), "Tous les statuts", data.watch_case_statuses);
     fill($("#watchPriority"), "Toutes les priorités", data.watch_case_priorities);
+    $("#watchEventTypeOptions").innerHTML = (data.watch_case_event_types || [])
+      .map((value) => `<option value="${e(value)}"></option>`).join("");
+    $("#watchCasePriorityOptions").innerHTML = (data.watch_case_priorities || [])
+      .map((value) => `<option value="${e(value)}"></option>`).join("");
   }
 
   async function ensureOptions() {
@@ -311,8 +316,10 @@
     try {
       await api.apiPost(`/api/v1/veille/dossiers/${selected.id}/relances`, {
         destinataire: $("#followupRecipient").value.trim(),
+        adresse_email: $("#followupEmail").value.trim(),
         canal: $("#followupChannel").value.trim(),
         objet: $("#followupSubject").value.trim(),
+        contenu: $("#followupMessage").value.trim(),
         date_envoi: $("#followupSendDate").value || null,
         date_echeance: $("#followupDueDate").value || null,
       });

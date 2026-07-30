@@ -15,19 +15,40 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.certification import Certification
+from app.models.certification_declaree import CertificationDeclaree
 from app.models.controle_fuccs import ControleFuccs
 from app.models.correction import Correction
 from app.models.dossier_verification import DossierVerification
 from app.models.element_integration import ElementIntegration
+from app.models.entreprise import Entreprise
 from app.models.fiche_collecte import FicheCollecte
 from app.models.integration_bnec import IntegrationBnec
+from app.models.norme import Norme
+from app.models.offre_declaree import OffreDeclaree
+from app.models.offre_entreprise import OffreEntreprise
+from app.models.organisme import Organisme
+from app.models.regle_metier import RegleMetier
+from app.models.zone_administrative import ZoneAdministrative
 from app.models.validation import Validation
 
 
 class ValidationBnecRepository:
+
+    @staticmethod
+    async def get_fiche_for_update(
+        db: AsyncSession,
+        fiche_id: UUID,
+    ) -> FicheCollecte | None:
+        result = await db.execute(
+            select(FicheCollecte)
+            .where(FicheCollecte.id == fiche_id)
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
 
     # ========================================================
     # VALIDATION
@@ -200,6 +221,111 @@ class ValidationBnecRepository:
         )
         return result.scalar_one_or_none() is not None
 
+
+    # ========================================================
+    # CODIFICATION INSTITUTIONNELLE
+    # ========================================================
+
+    @staticmethod
+    async def active_codification_rule(
+        db: AsyncSession,
+        logical_code: str,
+    ) -> RegleMetier | None:
+        today = __import__("datetime").date.today()
+        result = await db.execute(
+            select(RegleMetier)
+            .where(
+                RegleMetier.statut == "PUBLIE",
+                RegleMetier.parametres["_logical_code"].astext
+                == logical_code.strip().upper(),
+                or_(
+                    RegleMetier.date_debut_effet.is_(None),
+                    RegleMetier.date_debut_effet <= today,
+                ),
+                or_(
+                    RegleMetier.date_fin_effet.is_(None),
+                    RegleMetier.date_fin_effet >= today,
+                ),
+            )
+            .order_by(
+                RegleMetier.date_debut_effet.desc().nullslast(),
+                RegleMetier.created_at.desc(),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_zone(
+        db: AsyncSession,
+        zone_id: UUID | None,
+    ) -> ZoneAdministrative | None:
+        if zone_id is None:
+            return None
+        result = await db.execute(
+            select(ZoneAdministrative).where(ZoneAdministrative.id == zone_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def lock_codification_scope(
+        db: AsyncSession,
+        lock_key: str,
+    ) -> None:
+        # Verrou transactionnel PostgreSQL : deux intégrations concurrentes ne
+        # peuvent pas réserver la même séquence pour un même modèle/périmètre.
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": lock_key},
+        )
+
+    @staticmethod
+    async def max_codification_sequence(
+        db: AsyncSession,
+        *,
+        rule_id: UUID,
+        scope_key: str,
+    ) -> int:
+        result = await db.execute(
+            select(func.max(ElementIntegration.codification_sequence)).where(
+                ElementIntegration.codification_regle_id == rule_id,
+                ElementIntegration.codification_scope_key == scope_key,
+            )
+        )
+        return int(result.scalar_one_or_none() or 0)
+
+    @staticmethod
+    async def generated_code_exists(
+        db: AsyncSession,
+        *,
+        object_type: str,
+        code: str,
+        exclude_element_id: UUID | None = None,
+    ) -> bool:
+        object_type = object_type.strip().upper()
+        if object_type == "ENTREPRISE":
+            query = select(Entreprise.id).where(Entreprise.identifiant_national == code)
+        elif object_type == "CERTIFICATION":
+            query = select(Certification.id).where(
+                Certification.identifiant_national == code
+            )
+        else:
+            query = select(ElementIntegration.id).where(
+                ElementIntegration.type_objet == object_type,
+                ElementIntegration.code_genere == code,
+            )
+        result = await db.execute(query.limit(1))
+        if result.scalar_one_or_none() is not None:
+            return True
+
+        filters = [ElementIntegration.code_genere == code]
+        if exclude_element_id is not None:
+            filters.append(ElementIntegration.id != exclude_element_id)
+        result = await db.execute(
+            select(ElementIntegration.id).where(*filters).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
     # ========================================================
     # INTEGRATION
     # ========================================================
@@ -316,6 +442,270 @@ class ValidationBnecRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def integration_source_context(
+        db: AsyncSession,
+        integration_id: UUID,
+    ):
+        """Retourne la tentative, sa validation, la fiche et l'entreprise."""
+        result = await db.execute(
+            select(IntegrationBnec, Validation, FicheCollecte, Entreprise)
+            .join(Validation, Validation.id == IntegrationBnec.validation_id)
+            .join(FicheCollecte, FicheCollecte.id == Validation.fiche_collecte_id)
+            .outerjoin(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+            .where(IntegrationBnec.id == integration_id)
+        )
+        return result.one_or_none()
+
+    @staticmethod
+    async def list_declared_offers(
+        db: AsyncSession,
+        fiche_id: UUID,
+    ) -> list[OffreDeclaree]:
+        result = await db.execute(
+            select(OffreDeclaree)
+            .where(OffreDeclaree.fiche_collecte_id == fiche_id)
+            .order_by(OffreDeclaree.created_at, OffreDeclaree.id)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_declared_certifications(
+        db: AsyncSession,
+        fiche_id: UUID,
+    ) -> list[CertificationDeclaree]:
+        result = await db.execute(
+            select(CertificationDeclaree)
+            .where(CertificationDeclaree.fiche_collecte_id == fiche_id)
+            .order_by(CertificationDeclaree.created_at, CertificationDeclaree.id)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_enterprise(
+        db: AsyncSession,
+        enterprise_id: UUID,
+    ) -> Entreprise | None:
+        result = await db.execute(
+            select(Entreprise).where(Entreprise.id == enterprise_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_declared_offer(
+        db: AsyncSession,
+        source_id: UUID,
+    ) -> OffreDeclaree | None:
+        result = await db.execute(
+            select(OffreDeclaree).where(OffreDeclaree.id == source_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_official_offer(
+        db: AsyncSession,
+        target_id: UUID,
+    ) -> OffreEntreprise | None:
+        result = await db.execute(
+            select(OffreEntreprise).where(OffreEntreprise.id == target_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_official_offer(
+        db: AsyncSession,
+        *,
+        enterprise_id: UUID,
+        name: str,
+        offer_type: str | None = None,
+        category: str | None = None,
+    ) -> OffreEntreprise | None:
+        filters = [
+            OffreEntreprise.entreprise_id == enterprise_id,
+            func.lower(func.trim(OffreEntreprise.nom)) == name.strip().lower(),
+        ]
+        if offer_type:
+            filters.append(
+                func.lower(func.trim(OffreEntreprise.type_offre))
+                == offer_type.strip().lower()
+            )
+        if category:
+            filters.append(
+                func.lower(func.trim(OffreEntreprise.categorie))
+                == category.strip().lower()
+            )
+        result = await db.execute(
+            select(OffreEntreprise)
+            .where(*filters)
+            .order_by(OffreEntreprise.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_declared_certification(
+        db: AsyncSession,
+        source_id: UUID,
+    ) -> CertificationDeclaree | None:
+        result = await db.execute(
+            select(CertificationDeclaree).where(
+                CertificationDeclaree.id == source_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_official_certification(
+        db: AsyncSession,
+        target_id: UUID,
+    ) -> Certification | None:
+        result = await db.execute(
+            select(Certification).where(Certification.id == target_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_certification_by_number(
+        db: AsyncSession,
+        *,
+        enterprise_id: UUID,
+        number: str,
+    ) -> Certification | None:
+        result = await db.execute(
+            select(Certification)
+            .where(
+                Certification.entreprise_id == enterprise_id,
+                func.lower(func.trim(Certification.numero_certificat))
+                == number.strip().lower(),
+            )
+            .order_by(Certification.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_certification_candidate(
+        db: AsyncSession,
+        *,
+        enterprise_id: UUID,
+        organisme_id: UUID,
+        norme_id: UUID,
+        scope: str | None,
+    ) -> Certification | None:
+        filters = [
+            Certification.entreprise_id == enterprise_id,
+            Certification.organisme_id == organisme_id,
+            Certification.norme_id == norme_id,
+        ]
+        if scope:
+            filters.append(
+                func.lower(func.trim(Certification.portee))
+                == scope.strip().lower()
+            )
+        result = await db.execute(
+            select(Certification)
+            .where(*filters)
+            .order_by(Certification.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_organism_by_label(
+        db: AsyncSession,
+        label: str,
+    ) -> Organisme | None:
+        normalized = label.strip().lower()
+        result = await db.execute(
+            select(Organisme)
+            .where(
+                or_(
+                    func.lower(func.trim(Organisme.nom_officiel)) == normalized,
+                    func.lower(func.trim(Organisme.sigle)) == normalized,
+                )
+            )
+            .order_by(Organisme.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_norm_by_label(
+        db: AsyncSession,
+        label: str,
+    ) -> Norme | None:
+        normalized = label.strip().lower()
+        result = await db.execute(
+            select(Norme)
+            .where(
+                or_(
+                    func.lower(func.trim(Norme.code)) == normalized,
+                    func.lower(func.trim(Norme.nom)) == normalized,
+                )
+            )
+            .order_by(Norme.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_norms_for_matching(
+        db: AsyncSession,
+    ) -> list[Norme]:
+        """Retourne le référentiel nécessaire au rapprochement normalisé.
+
+        Le volume du référentiel des normes reste borné et nettement inférieur
+        à celui des entreprises/certifications. Le classement place les normes
+        actives et les plus récemment mises à jour en tête, mais l'arbitrage
+        final est réalisé de façon déterministe dans le service métier.
+        """
+
+        result = await db.execute(
+            select(Norme).order_by(
+                Norme.statut.desc().nullslast(),
+                Norme.updated_at.desc(),
+                Norme.code,
+                Norme.version,
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_organism(
+        db: AsyncSession,
+        organisme_id: UUID,
+    ) -> Organisme | None:
+        result = await db.execute(
+            select(Organisme).where(Organisme.id == organisme_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_norm(
+        db: AsyncSession,
+        norme_id: UUID,
+    ) -> Norme | None:
+        result = await db.execute(select(Norme).where(Norme.id == norme_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def count_active_certifications(
+        db: AsyncSession,
+        enterprise_id: UUID,
+    ) -> int:
+        result = await db.execute(
+            select(func.count(Certification.id)).where(
+                Certification.entreprise_id == enterprise_id,
+                Certification.statut.in_([
+                    "ACTIF",
+                    "ACTIVE",
+                    "VALIDE",
+                    "VALIDE_ACTIVE",
+                ]),
+            )
+        )
+        return int(result.scalar_one())
 
     @staticmethod
     async def integration_counts(

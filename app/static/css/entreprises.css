@@ -221,3 +221,5 @@
   padding:15px 16px;
   border-bottom:1px solid #e8eeeb;
 }
+.companies-page #tableView[hidden],
+.companies-page #cardView[hidden]{display:none!important}

@@ -24,17 +24,44 @@ LEVEL_LABELS = {
     4: "Critique",
 }
 
+DEFAULT_WATCH_EVENT_TYPES = (
+    "EXPIRATION_PROCHE",
+    "RENOUVELLEMENT_PROCHE",
+    "AUDIT_SURVEILLANCE",
+    "SUSPENSION",
+    "RETRAIT",
+    "NON_CONFORMITE",
+    "DOCUMENT_MANQUANT",
+    "VERIFICATION_REQUISE",
+)
+DEFAULT_WATCH_PRIORITIES = ("BASSE", "NORMALE", "HAUTE", "CRITIQUE")
+
+
+def merged_options(defaults, stored):
+    return list(dict.fromkeys([*defaults, *(stored or [])]))
+
 
 class WatchWorkspaceService:
     @staticmethod
     async def filters(db: AsyncSession):
+        event_types = await WatchWorkspaceRepository.distinct_values(
+            db, DossierVeille.type_evenement
+        )
+        priorities = await WatchWorkspaceRepository.distinct_values(
+            db, DossierVeille.priorite
+        )
         return WatchFilters(
             deadline_types=await WatchWorkspaceRepository.distinct_values(db, Echeance.type_echeance),
             deadline_statuses=await WatchWorkspaceRepository.distinct_values(db, Echeance.statut),
             alert_types=await WatchWorkspaceRepository.distinct_values(db, Alerte.type_alerte),
             alert_statuses=await WatchWorkspaceRepository.distinct_values(db, Alerte.statut),
             watch_case_statuses=await WatchWorkspaceRepository.distinct_values(db, DossierVeille.statut),
-            watch_case_priorities=await WatchWorkspaceRepository.distinct_values(db, DossierVeille.priorite),
+            watch_case_event_types=merged_options(
+                DEFAULT_WATCH_EVENT_TYPES, event_types
+            ),
+            watch_case_priorities=merged_options(
+                DEFAULT_WATCH_PRIORITIES, priorities
+            ),
             report_types=await WatchWorkspaceRepository.distinct_values(db, RapportVeille.type_rapport),
             report_statuses=await WatchWorkspaceRepository.distinct_values(db, RapportVeille.statut),
         )

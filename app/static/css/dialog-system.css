@@ -8,6 +8,13 @@ body.hauqe-dialog-open{
   overscroll-behavior:none;
 }
 
+dialog.hauqe-dialog-managed,
+dialog.hauqe-dialog-managed *,
+.hauqe-custom-dialog-managed,
+.hauqe-custom-dialog-managed *{
+  box-sizing:border-box;
+}
+
 dialog.hauqe-dialog-managed{
   width:min(820px,calc(100vw - 24px));
   max-width:calc(100vw - 24px);
@@ -68,6 +75,27 @@ dialog.hauqe-dialog-managed [data-dialog-scroll]{
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
   scrollbar-gutter:stable;
+  padding-bottom:max(4px,env(safe-area-inset-bottom));
+}
+
+dialog.hauqe-dialog-managed input,
+dialog.hauqe-dialog-managed select,
+dialog.hauqe-dialog-managed textarea{
+  max-width:100%;
+  min-width:0;
+}
+
+dialog.hauqe-dialog-managed textarea{
+  resize:vertical;
+}
+
+dialog.hauqe-dialog-managed footer{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+  padding-bottom:max(14px,env(safe-area-inset-bottom))!important;
 }
 
 dialog.hauqe-dialog-managed .dialog-close,
@@ -134,6 +162,36 @@ dialog.hauqe-dialog-managed .assign-close svg{
   -webkit-overflow-scrolling:touch;
 }
 
+/* Overlays historiques : même contrat de hauteur et de défilement. */
+.hauqe-custom-dialog-managed:not([hidden]){
+  max-height:100dvh;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+.hauqe-custom-dialog-managed > form,
+.hauqe-custom-dialog-managed > div{
+  width:min(820px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:calc(100dvh - 24px);
+  margin:12px auto;
+  overflow:hidden;
+}
+
+.hauqe-custom-dialog-managed .dialog-body,
+.hauqe-custom-dialog-managed .modal-body,
+.hauqe-custom-dialog-managed .form-body,
+.hauqe-custom-dialog-managed .dialog-content,
+.hauqe-custom-dialog-managed [data-dialog-scroll]{
+  min-height:0;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
 @media(max-width:640px){
   dialog.hauqe-dialog-managed{
     width:calc(100vw - 12px);
@@ -152,6 +210,37 @@ dialog.hauqe-dialog-managed .assign-close svg{
   dialog.hauqe-dialog-managed footer{
     padding-left:14px!important;
     padding-right:14px!important;
+  }
+
+  dialog.hauqe-dialog-managed footer{
+    align-items:stretch;
+    flex-direction:column-reverse;
+  }
+
+  dialog.hauqe-dialog-managed footer .btn,
+  dialog.hauqe-dialog-managed footer button{
+    width:100%;
+  }
+
+  .hauqe-custom-dialog-managed > form,
+  .hauqe-custom-dialog-managed > div{
+    width:calc(100vw - 12px);
+    max-width:calc(100vw - 12px);
+    max-height:calc(100dvh - 12px);
+    margin:6px auto;
+  }
+}
+
+@media(max-height:560px){
+  dialog.hauqe-dialog-managed{
+    max-height:calc(100dvh - 8px);
+    margin:4px auto;
+    border-radius:14px;
+  }
+
+  dialog.hauqe-dialog-managed > form,
+  dialog.hauqe-dialog-managed > div{
+    max-height:calc(100dvh - 8px);
   }
 }
 

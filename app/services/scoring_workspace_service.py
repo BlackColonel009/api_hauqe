@@ -6,6 +6,11 @@ from app.models.classification_entreprise import ClassificationEntreprise
 from app.models.resultat_infc import ResultatInfc
 from app.models.classement_sncc import ClassementSncc
 from app.repositories.scoring_workspace_repository import ScoringWorkspaceRepository
+from app.rules.sncc_reference import (
+    SNCC_ADMIN_STATUSES,
+    SNCC_CLASSES,
+    SNCC_RISK_LEVELS,
+)
 from app.schemas.scoring_workspace import (
     CertificationInfcWorkspaceItem,
     CertificationInfcWorkspaceResponse,
@@ -119,15 +124,9 @@ class ScoringWorkspaceService:
     @staticmethod
     async def sncc_filters(db: AsyncSession) -> SnccWorkspaceFilters:
         return SnccWorkspaceFilters(
-            classes=await ScoringWorkspaceRepository.distinct_values(
-                db, ClassementSncc.classe
-            ),
-            admin_statuses=await ScoringWorkspaceRepository.distinct_values(
-                db, ClassementSncc.statut_administratif
-            ),
-            risk_levels=await ScoringWorkspaceRepository.distinct_values(
-                db, ClassementSncc.niveau_risque
-            ),
+            classes=list(SNCC_CLASSES),
+            admin_statuses=list(SNCC_ADMIN_STATUSES),
+            risk_levels=list(SNCC_RISK_LEVELS),
         )
 
     @staticmethod

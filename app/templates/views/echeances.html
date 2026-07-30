@@ -65,19 +65,24 @@
   <section class="calendar-panel panel">
     <div class="calendar-toolbar">
       <div class="calendar-navigation">
-        <button id="prevMonth" class="icon-button" type="button"><i data-lucide="chevron-left"></i></button>
-        <button id="todayButton" class="btn btn-outline-secondary app-btn" type="button">Aujourd’hui</button>
-        <button id="nextMonth" class="icon-button" type="button"><i data-lucide="chevron-right"></i></button>
+        <button id="prevMonth" class="icon-button" type="button" data-no-action-loader aria-label="Mois précédent"><i data-lucide="chevron-left"></i></button>
+        <button id="todayButton" class="btn btn-outline-secondary app-btn" type="button" data-no-action-loader>Aujourd’hui</button>
+        <button id="nextMonth" class="icon-button" type="button" data-no-action-loader aria-label="Mois suivant"><i data-lucide="chevron-right"></i></button>
         <h2 id="monthTitle"></h2>
+        <div class="calendar-zoom-controls" id="calendarZoomControls" hidden>
+          <button id="calendarZoomIn" class="icon-button" type="button" data-no-action-loader title="Zoomer dans la période" aria-label="Zoomer dans la période"><i data-lucide="zoom-in"></i></button>
+          <button id="calendarZoomOut" class="icon-button" type="button" data-no-action-loader title="Dézoomer la période" aria-label="Dézoomer la période"><i data-lucide="zoom-out"></i></button>
+        </div>
       </div>
 
       <div class="view-switch">
         <button class="active" data-view="calendar" type="button"><i data-lucide="calendar-days"></i>Calendrier</button>
+        <button data-view="macro" type="button"><i data-lucide="minimize-2"></i>Vue macro</button>
         <button data-view="list" type="button"><i data-lucide="list"></i>Liste</button>
       </div>
     </div>
 
-    <div id="calendarView">
+    <div id="calendarView" class="calendar-viewport">
       <div class="weekday-row">
         <span>Lundi</span><span>Mardi</span><span>Mercredi</span>
         <span>Jeudi</span><span>Vendredi</span><span>Samedi</span><span>Dimanche</span>
@@ -182,10 +187,17 @@
             <span>Type d’échéance <b>*</b></span>
             <input
               id="deadlineType"
+              list="deadlineTypeSuggestions"
               maxlength="255"
               placeholder="Ex. SUIVI_DOCUMENTAIRE"
               required
             >
+            <datalist id="deadlineTypeSuggestions">
+              <option value="AUDIT_CERTIFICATION">
+              <option value="RENOUVELLEMENT_CERTIFICATION">
+              <option value="EXPIRATION_CERTIFICATION">
+              <option value="SUIVI_DOCUMENTAIRE">
+            </datalist>
             <small>
               Utilisez une codification explicite et stable.
             </small>
@@ -195,9 +207,14 @@
             <span>Priorité</span>
             <input
               id="deadlinePriority"
+              list="deadlinePrioritySuggestions"
               maxlength="255"
               placeholder="Ex. HAUTE"
             >
+            <datalist id="deadlinePrioritySuggestions">
+              <option value="CRITIQUE"><option value="HAUTE">
+              <option value="NORMALE"><option value="FAIBLE">
+            </datalist>
             <small>
               Facultatif, selon la codification institutionnelle.
             </small>
@@ -222,10 +239,16 @@
             <span>Titre de l’échéance <b>*</b></span>
             <input
               id="deadlineTitle"
+              list="deadlineTitleSuggestions"
               maxlength="255"
               placeholder="Ex. Vérifier le renouvellement du certificat"
               required
             >
+            <datalist id="deadlineTitleSuggestions">
+              <option value="Préparer l’audit de surveillance">
+              <option value="Vérifier le renouvellement du certificat">
+              <option value="Contrôler les pièces justificatives">
+            </datalist>
           </label>
 
           <label class="operational-field">
@@ -260,9 +283,11 @@
             <span>Description</span>
             <textarea
               id="deadlineDescription"
+              list="deadlineDescriptionSuggestions"
               rows="4"
               placeholder="Objet du suivi, attente opérationnelle, pièces à contrôler…"
             ></textarea>
+            <small>Exemple : vérifier les pièces, contacter l’organisme et consigner le résultat.</small>
           </label>
         </div>
       </section>
@@ -296,18 +321,38 @@
   </form>
 </dialog>
 
-  <dialog id="deadlineActionDialog" class="hauqe-dialog">
+  <dialog id="deadlineDetailDialog" class="hauqe-dialog deadline-detail-dialog">
+    <form method="dialog">
+      <header class="deadline-detail-header">
+        <div class="deadline-detail-brand">
+          <span class="deadline-detail-icon"><i data-lucide="calendar-check-2"></i></span>
+          <div>
+            <p class="eyebrow">HAUQE · Suivi opérationnel</p>
+            <h2 id="deadlineDetailTitle">Échéance</h2>
+            <small>Fiche de suivi et de décision</small>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Fermer" data-close-deadline-detail><i data-lucide="x"></i></button>
+      </header>
+      <div class="dialog-body deadline-detail-body" id="deadlineDetailBody"></div>
+      <footer class="deadline-detail-footer" id="deadlineDetailActions"></footer>
+    </form>
+  </dialog>
+
+  <dialog id="deadlineActionDialog" class="hauqe-dialog operational-form-dialog deadline-action-dialog">
     <form method="dialog" id="deadlineActionForm">
-      <header>
-        <div><p class="eyebrow">Échéance</p><h2 id="deadlineActionTitle">Action</h2></div>
-        <button class="dialog-close" type="button" data-close-deadline-action><i data-lucide="x"></i></button>
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="clipboard-check"></i></span>
+          <div><p class="eyebrow">Décision traçable</p><h2 id="deadlineActionTitle">Action</h2><small>Le motif sera conservé dans le journal d’audit.</small></div>
+        </div>
+        <button class="dialog-close operational-dialog-close" type="button" data-close-deadline-action><i data-lucide="x"></i></button>
       </header>
 
-      <div class="dialog-body">
-        <label><span>Motif <b>*</b></span><textarea id="deadlineActionReason" rows="4" required></textarea></label>
+      <div class="operational-dialog-body">
+        <section class="operational-form-section"><label class="operational-field full"><span>Motif de la décision <b>*</b></span><textarea id="deadlineActionReason" rows="5" minlength="3" placeholder="Expliquez brièvement l’action réalisée ou la raison de l’annulation…" required></textarea></label></section>
       </div>
 
-      <footer>
+      <footer class="operational-dialog-footer">
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-action>Annuler</button>
         <button class="btn btn-primary app-btn" type="submit">Confirmer</button>
       </footer>

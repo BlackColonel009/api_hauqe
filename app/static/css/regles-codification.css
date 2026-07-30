@@ -1375,3 +1375,214 @@
     justify-content:center;
   }
 }
+.publication-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.publication-field-grid label{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #dce9e3;border-radius:12px;background:#fff;font-weight:700}.publication-field-grid label.sensitive{border-color:#efcf9d;background:#fff9ef}.publication-field-grid input{width:17px;height:17px}@media(max-width:700px){.publication-field-grid{grid-template-columns:1fr}}
+
+/* ============================================================
+   MODALS — STANDARD INSTITUTIONNEL HAUQE
+   Publication, règles, modèles et référentiel FUCCS.
+   ============================================================ */
+.institutional-dialog{
+  --inst-dialog-accent:#176b4d;
+  --inst-dialog-accent-dark:#0b3f2d;
+  --inst-dialog-mark:"HQ";
+  width:min(720px,calc(100vw - 26px))!important;
+  max-width:720px;
+  padding:0!important;
+  border:0!important;
+  border-radius:25px!important;
+  background:transparent!important;
+  box-shadow:0 38px 105px rgba(5,34,25,.36)!important;
+}
+.institutional-dialog.model-dialog,
+.institutional-dialog.fuccs-criterion-dialog,
+.institutional-dialog.fuccs-template-dialog{width:min(820px,calc(100vw - 26px))!important;max-width:820px}
+.institutional-dialog::backdrop{background:rgba(7,31,24,.68);backdrop-filter:blur(7px)}
+.institutional-dialog>form{
+  display:flex;
+  width:100%;
+  max-height:calc(100dvh - 28px);
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:25px;
+  background:#f5f9f7;
+}
+.institutional-dialog>form>header{
+  position:relative;
+  display:grid!important;
+  grid-template-columns:55px minmax(0,1fr) 41px;
+  align-items:center;
+  gap:15px;
+  min-height:126px;
+  padding:23px 25px!important;
+  overflow:hidden;
+  border:0!important;
+  background:
+    radial-gradient(circle at 92% -4%,rgba(255,255,255,.14),transparent 33%),
+    linear-gradient(120deg,var(--inst-dialog-accent-dark),var(--inst-dialog-accent));
+  color:#fff;
+}
+.institutional-dialog>form>header::before{
+  content:var(--inst-dialog-mark);
+  position:relative;
+  z-index:1;
+  display:grid;
+  width:54px;
+  height:54px;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:17px;
+  background:rgba(255,255,255,.13);
+  color:#fff;
+  font:800 11px/1 Manrope,sans-serif;
+  letter-spacing:.05em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 25px rgba(0,0,0,.12);
+}
+.institutional-dialog>form>header::after{
+  content:"";
+  position:absolute;
+  right:-58px;
+  top:-118px;
+  width:210px;
+  height:210px;
+  border:35px solid rgba(255,255,255,.055);
+  border-radius:50%;
+}
+.institutional-dialog>form>header>div{position:relative;z-index:1;min-width:0}
+.institutional-dialog>form>header .eyebrow{margin:0;color:#efd474;font-size:9px;font-weight:800;letter-spacing:.14em}
+.institutional-dialog>form>header h2{margin:4px 0 0;color:#fff;font:800 20px/1.25 Manrope,sans-serif;letter-spacing:-.015em}
+.institutional-dialog>form>header small{display:block;margin-top:4px;color:rgba(255,255,255,.72);font-size:8.5px;line-height:1.45}
+.institutional-dialog>form>header .dialog-close{
+  position:relative;
+  z-index:2;
+  display:grid;
+  width:40px;
+  height:40px;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:12px;
+  background:rgba(255,255,255,.9);
+  color:#315b4b;
+  transition:transform .18s ease,background .18s ease;
+}
+.institutional-dialog>form>header .dialog-close:hover{transform:rotate(4deg);background:#fff}
+.institutional-dialog>form>.dialog-body{
+  display:grid;
+  gap:15px;
+  min-height:0;
+  max-height:calc(100dvh - 250px);
+  padding:20px 23px 23px!important;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  background:#f5f9f7;
+}
+.institutional-dialog>form>.dialog-body::-webkit-scrollbar{width:9px}
+.institutional-dialog>form>.dialog-body::-webkit-scrollbar-track{margin:5px 0;border-radius:999px;background:#e8f0ec}
+.institutional-dialog>form>.dialog-body::-webkit-scrollbar-thumb{border:2px solid #e8f0ec;border-radius:999px;background:#72a990}
+.institutional-dialog>form>.dialog-body::-webkit-scrollbar-thumb:hover{background:#408267}
+.institutional-dialog .institutional-form-grid,
+.institutional-dialog .dialog-body>.sncc-close-fields{
+  padding:17px!important;
+  border:1px solid #d9e6df;
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(24,66,50,.045);
+}
+.institutional-dialog .dialog-body>label{
+  display:grid;
+  gap:7px;
+  margin:0;
+  padding:15px 16px;
+  border:1px solid #d9e6df;
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 5px 16px rgba(24,66,50,.035);
+}
+.institutional-dialog .dialog-body label>span,
+.institutional-dialog .institutional-form-grid label>span{
+  color:#536a60;
+  font-size:8.5px;
+  font-weight:800;
+  letter-spacing:.045em;
+  text-transform:uppercase;
+}
+.institutional-dialog .dialog-body label>small,
+.institutional-dialog .institutional-form-grid label>small{color:#829188;font-size:7.5px;line-height:1.45}
+.institutional-dialog input:not([type=checkbox]),
+.institutional-dialog select,
+.institutional-dialog textarea{
+  width:100%;
+  border:1px solid #d3dfd9!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  color:#294239!important;
+  outline:none;
+  box-shadow:0 2px 8px rgba(24,64,48,.025);
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.institutional-dialog input:not([type=checkbox]),.institutional-dialog select{min-height:43px;padding:0 12px}
+.institutional-dialog textarea{padding:12px 13px;line-height:1.55;resize:vertical}
+.institutional-dialog input:focus,.institutional-dialog select:focus,.institutional-dialog textarea:focus{border-color:#5ca989!important;box-shadow:0 0 0 3px rgba(35,130,94,.1)!important}
+.institutional-dialog .publication-warning,
+.institutional-dialog .fuccs-code-preview,
+.institutional-dialog .historical-template-hero,
+.institutional-dialog .delete-draft-warning{
+  border-radius:14px!important;
+  box-shadow:0 5px 15px rgba(30,102,75,.045);
+}
+.institutional-dialog>form>footer{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  padding:15px 23px 18px!important;
+  border-top:1px solid #dce7e1!important;
+  background:#fff!important;
+  box-shadow:0 -6px 22px rgba(15,55,41,.035);
+}
+.institutional-dialog>form>footer::before{
+  content:"Action journalisée par HAUQE";
+  display:flex;
+  align-items:center;
+  margin-right:auto;
+  color:#7c8c84;
+  font-size:7.5px;
+}
+.institutional-dialog>form>footer .app-btn{min-height:42px;border-radius:11px}
+#publishDialog{--inst-dialog-mark:"PUB"}
+#ruleDialog{--inst-dialog-mark:"RÈG"}
+#modelDialog{--inst-dialog-mark:"MOD"}
+#weightDialog{--inst-dialog-mark:"PDS"}
+#fuccsGridDialog{--inst-dialog-mark:"GRI"}
+#fuccsCloneDialog{--inst-dialog-mark:"CLN"}
+#fuccsRubricDialog{--inst-dialog-mark:"RUB"}
+#fuccsCriterionDialog{--inst-dialog-mark:"CRT"}
+#fuccsRetireDialog{--inst-dialog-mark:"RET";--inst-dialog-accent:#765c27;--inst-dialog-accent-dark:#493715}
+#fuccsDeleteDialog{--inst-dialog-mark:"SUP";--inst-dialog-accent:#8c3f38;--inst-dialog-accent-dark:#54231f}
+#fuccsHistorical24Dialog{--inst-dialog-mark:"24"}
+.rule-entry-helper{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:12px;padding:14px 15px;border:1px solid #cce2d7;border-radius:15px;background:linear-gradient(135deg,#e9f6f0,#f8fcfa)}
+.rule-entry-helper>span{display:grid;width:40px;height:40px;place-items:center;border-radius:12px;background:#fff;color:#1f7555;box-shadow:0 5px 14px rgba(30,102,75,.08)}.rule-entry-helper>span svg{width:18px}
+.rule-entry-helper label{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:0}.rule-entry-helper strong{color:#28513f;font-size:10px}.rule-entry-helper small{color:#6d8077;font-size:8px;line-height:1.45}.rule-entry-helper select{margin-top:5px}
+[data-theme=dark] .institutional-dialog>form,
+[data-theme=dark] .institutional-dialog>form>.dialog-body{background:#10271f}
+[data-theme=dark] .institutional-dialog .institutional-form-grid,
+[data-theme=dark] .institutional-dialog .dialog-body>label{border-color:#2d4a3f;background:#173329}
+[data-theme=dark] .institutional-dialog input:not([type=checkbox]),
+[data-theme=dark] .institutional-dialog select,
+[data-theme=dark] .institutional-dialog textarea{border-color:#315248!important;background:#14372f!important;color:#e6f1ed!important}
+[data-theme=dark] .institutional-dialog>form>footer{border-color:#2d4a3f!important;background:#153027!important}
+[data-theme=dark] .rule-entry-helper{border-color:#315248;background:#14372f}[data-theme=dark] .rule-entry-helper strong{color:#e4f0eb}[data-theme=dark] .rule-entry-helper small{color:#a7bbb2}
+@media(max-width:650px){
+  .institutional-dialog>form>header{grid-template-columns:46px minmax(0,1fr) 37px;min-height:108px;padding:18px 16px!important}
+  .institutional-dialog>form>header::before{width:45px;height:45px;border-radius:14px;font-size:9px}
+  .institutional-dialog>form>header h2{font-size:17px}
+  .institutional-dialog>form>header small{display:none}
+  .institutional-dialog>form>.dialog-body{padding:14px!important}
+  .institutional-dialog .institutional-form-grid{grid-template-columns:1fr;padding:13px!important}
+  .institutional-dialog .institutional-form-grid .full{grid-column:auto}
+  .institutional-dialog>form>footer{align-items:stretch;flex-direction:column;padding:13px 14px 15px!important}
+  .institutional-dialog>form>footer::before{justify-content:center;margin:0}
+  .institutional-dialog>form>footer .app-btn{width:100%;justify-content:center}
+}

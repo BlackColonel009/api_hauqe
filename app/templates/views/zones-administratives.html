@@ -51,9 +51,24 @@
 
   <dialog class="hauqe-dialog zone-dialog zone-status-dialog" id="zoneStatusDialog">
     <form id="zoneStatusForm" method="post">
-      <header><div><p class="eyebrow">Cycle de vie</p><h2 id="zoneStatusTitle">Changer le statut</h2></div><button class="dialog-close" type="button" data-dialog-close><i data-lucide="x"></i></button></header>
-      <div class="dialog-body" data-dialog-scroll><label><span>Nouveau statut</span><select id="zoneNewStatus"><option>ACTIF</option><option>INACTIF</option></select></label><label><span>Motif</span><textarea id="zoneStatusReason" rows="4" maxlength="1000"></textarea></label></div>
-      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-dialog-close>Annuler</button><button class="btn btn-primary app-btn" type="submit">Appliquer</button></footer>
+      <header>
+        <div class="zone-status-heading">
+          <span class="zone-status-icon"><i data-lucide="power"></i></span>
+          <div><p class="eyebrow">Cycle de vie</p><h2 id="zoneStatusTitle">Changer le statut</h2></div>
+        </div>
+        <button class="dialog-close" type="button" data-dialog-close aria-label="Fermer"><i data-lucide="x"></i></button>
+      </header>
+      <div class="dialog-body" data-dialog-scroll>
+        <section class="zone-status-summary">
+          <span id="zoneStatusSummaryIcon"><i data-lucide="map-pin"></i></span>
+          <div><small>Zone sélectionnée</small><strong id="zoneStatusZoneName">—</strong><p id="zoneStatusExplanation"></p></div>
+        </section>
+        <div class="zone-status-fields">
+          <label><span>Nouveau statut</span><select id="zoneNewStatus"><option>ACTIF</option><option>INACTIF</option></select></label>
+          <label><span>Motif du changement</span><textarea id="zoneStatusReason" rows="4" maxlength="1000" placeholder="Précisez la raison de ce changement…"></textarea><small>Le motif sera conservé dans la traçabilité administrative.</small></label>
+        </div>
+      </div>
+      <footer><button class="btn btn-outline-secondary app-btn" type="button" data-dialog-close>Annuler</button><button class="btn btn-primary app-btn" id="applyZoneStatus" type="submit"><i data-lucide="power"></i><span>Appliquer le statut</span></button></footer>
     </form>
   </dialog>
 </div>

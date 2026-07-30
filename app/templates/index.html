@@ -11,28 +11,35 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css">
-  <link rel="stylesheet" href="/static/css/dialog-system.css?v=20260729-2">
-  <link rel="stylesheet" href="/static/css/alertes.css">
-  <link rel="stylesheet" href="/static/css/echeances.css">
+  <link rel="stylesheet" href="/static/css/action-loader.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/dialog-system.css?v=20260729-3">
+  <link rel="stylesheet" href="/static/css/alertes.css?v=20260730-4">
+  <link rel="stylesheet" href="/static/css/echeances.css?v=20260730-7">
   <link rel="stylesheet" href="/static/css/entreprises.css">
   <link rel="stylesheet" href="/static/css/entreprise-detail.css">
   <link rel="stylesheet" href="/static/css/entreprise-form.css">
   <link rel="stylesheet" href="/static/css/certifications.css">
-  <link rel="stylesheet" href="/static/css/certification-detail.css">
+  <link rel="stylesheet" href="/static/css/certification-detail.css?v=20260730-4">
   <link rel="stylesheet" href="/static/css/collectes.css">
   <link rel="stylesheet" href="/static/css/collecte-form.css">
-  <link rel="stylesheet" href="/static/css/validations.css">
-  <link rel="stylesheet" href="/static/css/integrations.css">
+  <link rel="stylesheet" href="/static/css/validations.css?v=20260729-3">
+  <link rel="stylesheet" href="/static/css/integrations.css?v=20260729-3">
   <link rel="stylesheet" href="/static/css/validation-assignment.css">
-  <link rel="stylesheet" href="/static/css/governance-modules.css?v=20260723-1">
+  <link rel="stylesheet" href="/static/css/governance-modules.css?v=20260730-5">
+  <link rel="stylesheet" href="/static/css/dashboard-advanced.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/operations-stage13.css?v=20260730-1">
   <link rel="stylesheet" href="/static/css/business-rules-ui.css?v=20260723-1">
   <link rel="stylesheet" href="/static/css/controle.css">
-  <link rel="stylesheet" href="/static/css/scoring.css">
-  <link rel="stylesheet" href="/static/css/rapports.css">
-  <link rel="stylesheet" href="/static/css/utilisateurs.css">
-  <link rel="stylesheet" href="/static/css/referentiels.css">
-  <link rel="stylesheet" href="/static/css/zones-administratives.css?v=20260729-2">
-  <link rel="stylesheet" href="/static/css/regles-codification.css">
+  <link rel="stylesheet" href="/static/css/scoring.css?v=20260730-6">
+  <link rel="stylesheet" href="/static/css/rapports.css?v=20260730-3">
+  <link rel="stylesheet" href="/static/css/utilisateurs.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/referentiels.css?v=20260730-2">
+  <link rel="stylesheet" href="/static/css/qualite-donnees.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/sauvegardes.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/publications.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/zones-administratives.css?v=20260730-1">
+  <link rel="stylesheet" href="/static/css/zones-modern.css?v=20260730-2">
+  <link rel="stylesheet" href="/static/css/regles-codification.css?v=20260730-3">
   <link rel="stylesheet" href="/static/css/code-model.css">
   <link rel="stylesheet" href="/static/css/final-pages.css">
   <link rel="stylesheet" href="/static/css/auth-profile-api.css?v=20260727-3">
@@ -41,7 +48,7 @@
   <link rel="stylesheet" href="/static/css/assign-alert-fix.css?v=20260717-1">
   <link rel="stylesheet" href="/static/css/session-lock.css?v=20260717-1">
   <link rel="stylesheet" href="/static/css/alert-email-rules.css?v=20260717-1">
-  <link rel="stylesheet" href="/static/css/theme.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/theme.css?v=20260730-6">
 </head>
 <body>
   <div class="app-shell">
@@ -50,16 +57,17 @@
       <nav class="sidebar-nav" id="sidebarNav">
         <p class="nav-caption">Pilotage</p>
         <a class="nav-link" data-route="dashboard" href="#/dashboard"><i data-lucide="layout-dashboard"></i><span>Tableau de bord</span></a>
-        <a class="nav-link" data-route="alertes" href="#/alertes"><i data-lucide="bell-ring"></i><span>Alertes</span><b class="nav-badge">12</b></a>
-        <a class="nav-link" data-route="echeances" href="#/echeances"><i data-lucide="calendar-clock"></i><span>Échéances</span></a>
+        <a class="nav-link" data-route="alertes" href="#/alertes"><i data-lucide="bell-ring"></i><span>Alertes</span><b class="nav-badge" id="navAlertsBadge" hidden aria-label="Alertes actives"></b></a>
+        <a class="nav-link" data-route="echeances" href="#/echeances"><i data-lucide="calendar-clock"></i><span>Échéances</span><b class="nav-badge" id="navDeadlinesBadge" hidden aria-label="Échéances actives"></b></a>
         <p class="nav-caption">Registre national</p>
         <a class="nav-link" data-route="entreprises" href="#/entreprises"><i data-lucide="building-2"></i><span>Entreprises</span></a>
         <a class="nav-link" data-route="certifications" href="#/certifications"><i data-lucide="badge-check"></i><span>Certifications</span></a>
         <a class="nav-link" data-route="organismes" href="#/organismes"><i data-lucide="landmark"></i><span>Organismes</span></a>
+        <a class="nav-link" data-route="zones-administratives" href="#/zones-administratives"><i data-lucide="map-pinned"></i><span>Zones administratives</span></a>
         <a class="nav-link" data-route="collectes" href="#/collectes"><i data-lucide="clipboard-check"></i><span>Collectes & contrôles</span></a>
-        <a class="nav-link nav-sub-link" data-route="verifications" href="#/verifications"><i data-lucide="file-search"></i><span>Vérifications</span><b class="nav-badge">7</b></a>
+        <a class="nav-link nav-sub-link" data-route="verifications" href="#/verifications"><i data-lucide="file-search"></i><span>Vérifications</span><b class="nav-badge" id="navVerificationsBadge" hidden aria-label="Vérifications ouvertes"></b></a>
         <a class="nav-link nav-sub-link" data-route="controle" href="#/controle"><i data-lucide="shield-check"></i><span>Grille de contrôle</span></a>
-        <a class="nav-link nav-sub-link" data-route="validations" href="#/validations"><i data-lucide="list-checks"></i><span>Validations</span><b class="nav-badge">4</b></a>
+        <a class="nav-link nav-sub-link" data-route="validations" href="#/validations"><i data-lucide="list-checks"></i><span>Validations</span><b class="nav-badge" id="navValidationsBadge" hidden aria-label="Validations à traiter"></b></a>
         <a class="nav-link nav-sub-link" data-route="integrations" href="#/integrations"><i data-lucide="database"></i><span>Intégrations BNEC</span></a>
         <p class="nav-caption">Analyse</p>
         <a class="nav-link" data-route="scoring" href="#/scoring"><i data-lucide="gauge"></i><span>Scoring</span></a>
@@ -67,16 +75,25 @@
         <a class="nav-link nav-sub-link" data-route="classement-sncc" href="#/classement-sncc"><i data-lucide="medal"></i><span>Classement SNCC</span></a>
         <a class="nav-link nav-sub-link" data-route="veille" href="#/veille"><i data-lucide="radar"></i><span>Cellule de veille</span></a>
         <a class="nav-link nav-sub-link" data-route="decisions" href="#/decisions"><i data-lucide="scale"></i><span>Décisions & actions</span></a>
+        <p class="nav-caption">Pilotage avancé</p>
+        <a class="nav-link nav-sub-link" data-route="tableau-tactique" href="#/tableaux-de-bord/tactique"><i data-lucide="chart-column"></i><span>Tableau tactique</span></a>
+        <a class="nav-link nav-sub-link" data-route="tableau-strategique" href="#/tableaux-de-bord/strategique"><i data-lucide="chart-spline"></i><span>Tableau stratégique</span></a>
+        <a class="nav-link nav-sub-link" data-route="tableau-annuel" href="#/tableaux-de-bord/annuel"><i data-lucide="calendar-range"></i><span>Tableau annuel</span></a>
+        <a class="nav-link nav-sub-link" data-route="barometre" href="#/barometre"><i data-lucide="telescope"></i><span>Baromètre national</span></a>
+        <a class="nav-link nav-sub-link" data-route="public" href="#/public"><i data-lucide="globe-2"></i><span>Tableau public</span></a>
         <a class="nav-link" data-route="rapports" href="#/rapports"><i data-lucide="file-chart-column"></i><span>Rapports</span></a>
+        <p class="nav-caption">Administration</p>
         <a class="nav-link" data-route="utilisateurs" href="#/utilisateurs"><i data-lucide="settings-2"></i><span>Administration</span></a>
         <a class="nav-link nav-sub-link" data-route="referentiels" href="#/referentiels"><i data-lucide="library-big"></i><span>Référentiels</span></a>
-        <a class="nav-link nav-sub-link" data-route="zones-administratives" href="#/zones-administratives"><i data-lucide="map-pinned"></i><span>Zones administratives</span></a>
         <a class="nav-link nav-sub-link" data-route="regles-codification" href="#/regles-codification"><i data-lucide="binary"></i><span>Règles & codification</span></a>
-        <a class="nav-link nav-sub-link" data-route="journal-audit" href="#/journal-audit"><i data-lucide="scroll-text"></i><span>Journal d’audit</span></a>
+        <a class="nav-link nav-sub-link" data-route="publications" href="#/publications"><i data-lucide="send"></i><span>Demandes de publication</span></a>
         <a class="nav-link nav-sub-link" data-route="documents" href="#/documents"><i data-lucide="files"></i><span>Documents</span></a>
+        <a class="nav-link nav-sub-link" data-route="echanges-organismes" href="#/echanges-organismes"><i data-lucide="messages-square"></i><span>Échanges organismes</span></a>
+        <p class="nav-caption">Audit et traçabilité</p>
+        <a class="nav-link nav-sub-link" data-route="journal-audit" href="#/journal-audit"><i data-lucide="scroll-text"></i><span>Journal d’audit</span></a>
+        <a class="nav-link nav-sub-link" data-route="mises-a-jour" href="#/mises-a-jour"><i data-lucide="history"></i><span>Mises à jour BNEC</span></a>
         <a class="nav-link nav-sub-link" data-route="qualite-donnees" href="#/qualite-donnees"><i data-lucide="badge-check"></i><span>Qualité des données</span></a>
         <a class="nav-link nav-sub-link" data-route="sauvegardes" href="#/sauvegardes"><i data-lucide="database-backup"></i><span>Sauvegardes</span></a>
-        <a class="nav-link nav-sub-link" data-route="publications" href="#/publications"><i data-lucide="globe-2"></i><span>Publications</span></a>
       </nav>
       <div class="sidebar-support"><i data-lucide="circle-help"></i><div><strong>Besoin d’aide ?</strong><small>Consulter le guide utilisateur</small></div></div>
     </aside>
@@ -184,6 +201,6 @@
   <script src="/static/js/mock-data.js"></script>
   <script src="/static/js/code-model.js"></script>
   <script src="/static/js/core/business-rules-ui.js?v=20260723-1"></script>
-  <script type="module" src="/static/js/core/app-shell.js?v=20260729-2"></script>
+  <script type="module" src="/static/js/core/app-shell.js?v=20260730-3"></script>
 </body>
 </html>

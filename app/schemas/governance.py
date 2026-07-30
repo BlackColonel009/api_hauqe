@@ -375,6 +375,8 @@ class GeneratedReportListResponse(BaseModel):
 class AuditEventResponse(BaseModel):
     id: UUID
     utilisateur_id: UUID | None = None
+    utilisateur_nom: str | None = None
+    utilisateur_email: str | None = None
     action: str | None = None
     categorie: str | None = None
     ressource_type: str | None = None

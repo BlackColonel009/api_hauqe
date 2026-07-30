@@ -1,7 +1,147 @@
-(function(){"use strict";const $=s=>document.querySelector(s),icons=()=>window.lucide&&lucide.createIcons({attrs:{"stroke-width":1.8}});const categories=[{id:"standards",group:"Conformité",title:"Normes et certifications",desc:"Référentiels reconnus et types de certification.",icon:"badge-check"},{id:"sectors",group:"Économie",title:"Secteurs et activités",desc:"Classification des secteurs et activités économiques.",icon:"factory"},{id:"products",group:"Économie",title:"Produits et services",desc:"Nomenclature des produits et services déclarés.",icon:"package-open"},{id:"regions",group:"Territoire",title:"Régions et préfectures",desc:"Découpage administratif utilisé pour la localisation.",icon:"map"},{id:"markets",group:"Économie",title:"Marchés et destinations",desc:"Destinations commerciales et zones d’exportation.",icon:"globe-2"},{id:"statuses",group:"Système",title:"Statuts configurables",desc:"Statuts utilisés dans les différents circuits.",icon:"tags"},{id:"documents",group:"Système",title:"Types de documents",desc:"Pièces justificatives et documents administratifs.",icon:"files"},{id:"decisions",group:"Contrôle",title:"Décisions et motifs",desc:"Décisions HAUQE et motifs de retour normalisés.",icon:"gavel"}];
-const data={standards:[{"code":"ISO-22000","label":"ISO 22000 — Sécurité des denrées alimentaires","desc":"Système de management de la sécurité alimentaire",usage:86,active:true},{code:"HACCP",label:"HACCP",desc:"Analyse des dangers et maîtrise des points critiques",usage:64,active:true},{code:"BIO",label:"Agriculture biologique",desc:"Production et transformation biologique",usage:31,active:true},{code:"COTAG",label:"Certification togolaise des produits agricoles",desc:"Référentiel national",usage:46,active:true},{code:"ISO-9001",label:"ISO 9001 — Management de la qualité",desc:"Système de management de la qualité",usage:28,active:true},{code:"GLOBALGAP",label:"GLOBALG.A.P.",desc:"Bonnes pratiques agricoles",usage:12,active:false}],products:[{code:"PRD-JUS",label:"Jus et boissons non alcoolisées",desc:"Produits transformés à base de fruits",usage:44,active:true},{code:"PRD-CER",label:"Céréales et produits céréaliers",desc:"Maïs, riz, fonio et dérivés",usage:72,active:true},{code:"PRD-EPI",label:"Épices et condiments",desc:"Épices brutes ou transformées",usage:25,active:true},{code:"PRD-ELE",label:"Produits d’élevage",desc:"Viandes, œufs, lait et dérivés",usage:38,active:true}],markets:[{code:"MKT-LOCAL",label:"Marché local",desc:"Commune ou préfecture de production",usage:143,active:true},{code:"MKT-NAT",label:"Marché national",desc:"Ensemble du territoire togolais",usage:198,active:true},{code:"MKT-CEDEAO",label:"Marché CEDEAO",desc:"Pays membres de la CEDEAO",usage:67,active:true},{code:"MKT-UE",label:"Union européenne",desc:"Exportations vers l’Union européenne",usage:24,active:true}],statuses:[{code:"ACTIF",label:"Actif",desc:"Élément ou dossier actif",usage:326,active:true},{code:"BROUILLON",label:"Brouillon",desc:"Saisie non soumise",usage:18,active:true},{code:"A-CORRIGER",label:"À corriger",desc:"Retour nécessitant une action",usage:9,active:true},{code:"VALIDE",label:"Validé",desc:"Décision définitive enregistrée",usage:174,active:true}],documents:[{code:"RCCM",label:"Registre du commerce et du crédit mobilier",desc:"Document d’existence légale",usage:247,active:true},{code:"NIF",label:"Attestation d’immatriculation fiscale",desc:"Identifiant fiscal",usage:247,active:true},{code:"CERT",label:"Certificat de conformité",desc:"Preuve de certification",usage:189,active:true}],decisions:[{code:"CONFORME",label:"Conforme — validation recommandée",desc:"Aucune action bloquante",usage:83,active:true},{code:"RESERVE",label:"Conforme sous réserve",desc:"Actions mineures à suivre",usage:41,active:true},{code:"CORRECTIF",label:"Plan d’actions correctives requis",desc:"Écarts nécessitant un suivi",usage:27,active:true},{code:"REJET",label:"Non conforme — rejet recommandé",desc:"Écarts majeurs ou preuves invalides",usage:6,active:true}]};
-const hierarchies={sectors:[{code:"AGR",label:"Agriculture, élevage et pêche",children:["Production végétale","Élevage","Pêche et aquaculture"]},{code:"IAA",label:"Industries agroalimentaires",children:["Transformation de fruits","Produits céréaliers","Boissons","Produits laitiers"]},{code:"COM",label:"Commerce et exportation",children:["Commerce de gros","Commerce de détail","Exportation"]}],regions:[{code:"MAR",label:"Région Maritime",children:["Golfe","Agoè-Nyivé","Lacs","Vo","Yoto","Zio","Bas-Mono"]},{code:"PLT",label:"Région des Plateaux",children:["Agou","Amou","Danyi","Est-Mono","Haho","Kloto","Moyen-Mono","Ogou","Wawa","Akébou"]},{code:"CEN",label:"Région Centrale",children:["Blitta","Mô","Sotouboua","Tchaoudjo","Tchamba"]},{code:"KAR",label:"Région de la Kara",children:["Assoli","Bassar","Binah","Dankpen","Doufelgou","Kéran","Kozah"]},{code:"SAV",label:"Région des Savanes",children:["Cinkassé","Kpendjal","Kpendjal-Ouest","Oti","Oti-Sud","Tandjouaré","Tône"]}]};let current=categories[0],search="",status="all";
-function toast(m){$("#referenceToast span").textContent=m;$("#referenceToast").hidden=false;setTimeout(()=>$("#referenceToast").hidden=true,1800)}function count(c){return hierarchies[c.id]?.reduce((s,x)=>s+1+x.children.length,0)||data[c.id]?.length||0}function renderCategories(){$("#referenceCategories").innerHTML=categories.map(c=>`<button class="reference-category ${c.id===current.id?"active":""}" data-category="${c.id}"><span><i data-lucide="${c.icon}"></i></span><div><strong>${c.title}</strong><small>${c.group}</small></div><b>${count(c)}</b></button>`).join("");document.querySelectorAll("[data-category]").forEach(b=>b.onclick=()=>{current=categories.find(c=>c.id===b.dataset.category);search="";$("#referenceSearch").value="";renderAll()});icons()}
-function renderRows(){const hierarchical=!!hierarchies[current.id];$("#expandHierarchy").hidden=!hierarchical;if(hierarchical){const rows=hierarchies[current.id].filter(x=>`${x.code} ${x.label} ${x.children.join(" ")}`.toLowerCase().includes(search));$("#referenceResults").innerHTML=`<div class="hierarchy-list">${rows.map(x=>`<section class="hierarchy-node"><button class="hierarchy-head"><i data-lucide="chevron-down"></i><div><strong>${x.label}</strong><small>${x.code}</small></div><b>${x.children.length} sous-éléments</b><span class="reference-status active"><i></i>Actif</span></button><div class="hierarchy-children">${x.children.map(y=>`<div class="hierarchy-child"><span>${y}</span><span class="reference-status active"><i></i>Actif</span></div>`).join("")}</div></section>`).join("")}</div>`;$("#referenceCount").textContent=`${rows.length} groupe(s)`;$("#referenceUsage").textContent="Hiérarchie administrative ou économique";document.querySelectorAll(".hierarchy-head").forEach(b=>b.onclick=()=>{const c=b.nextElementSibling;c.hidden=!c.hidden;b.querySelector("svg").style.transform=c.hidden?"rotate(-90deg)":""})}else{const rows=(data[current.id]||[]).filter(x=>(status==="all"||status==="active"&&x.active||status==="inactive"&&!x.active)&&(`${x.code} ${x.label} ${x.desc}`.toLowerCase().includes(search)));$("#referenceResults").innerHTML=`<div class="table-responsive"><table class="table reference-table"><thead><tr><th>Code</th><th>Libellé</th><th>Description</th><th>Utilisations</th><th>Ordre</th><th>Statut</th><th></th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td><span class="reference-code">${x.code}</span></td><td><div class="reference-label"><strong>${x.label}</strong><small>${current.group}</small></div></td><td>${x.desc}</td><td><span class="usage-count">${x.usage} usage(s)</span></td><td>${i+1}</td><td><span class="reference-status ${x.active?"active":"inactive"}"><i></i>${x.active?"Actif":"Inactif"}</span></td><td><div class="reference-row-actions"><button data-edit="${x.code}" title="Modifier"><i data-lucide="square-pen"></i></button><button data-toggle="${x.code}" title="Activer ou désactiver"><i data-lucide="power"></i></button></div></td></tr>`).join("")}</tbody></table></div>`;$("#referenceCount").textContent=`${rows.length} élément(s)`;$("#referenceUsage").textContent=`${rows.reduce((s,x)=>s+x.usage,0)} utilisations recensées`;document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openModal((data[current.id]||[]).find(x=>x.code===b.dataset.edit)));document.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>toast("Changement de statut à confirmer après contrôle des dépendances"))}icons()}
-function renderAll(){$("#referenceGroup").textContent=current.group;$("#referenceTitle").textContent=current.title;$("#referenceDescription").textContent=current.desc;$("#referenceIcon").innerHTML=`<i data-lucide="${current.icon}"></i>`;renderCategories();renderRows()}function openModal(item=null){$("#referenceModalGroup").textContent=current.title;$("#referenceModalTitle").textContent=item?"Modifier l’élément":"Nouvel élément";$("[name=code]").value=item?.code||"";$("[name=label]").value=item?.label||"";$("[name=description]").value=item?.desc||"";$("[name=active]").checked=item?.active!==false;$("#parentField").hidden=!hierarchies[current.id];$("#referenceModal").hidden=false;icons()}
-function init(){$("#referenceKpis").innerHTML=[["database","Catégories",categories.length,"Nomenclatures"],["list-tree","Éléments",categories.reduce((s,c)=>s+count(c),0),"Codes actifs et inactifs"],["link-2","Utilisations","1 482","Dans les dossiers"],["history","Modifications","12","Ce mois"]].map(x=>`<article class="reference-kpi"><span><i data-lucide="${x[0]}"></i></span><div><small>${x[1]}</small><strong>${x[2]}</strong><em>${x[3]}</em></div></article>`).join("");$("#referenceSearch").oninput=e=>{search=e.target.value.toLowerCase();renderRows()};$("#referenceStatus").onchange=e=>{status=e.target.value;renderRows()};$("#newReference").onclick=()=>openModal();$("#closeReferenceModal").onclick=$("#cancelReferenceModal").onclick=()=>$("#referenceModal").hidden=true;$("#referenceForm").onsubmit=e=>{e.preventDefault();const code=$("[name=code]").value.toUpperCase(),exists=(data[current.id]||[]).some(x=>x.code===code);if(exists&&!$("#referenceModalTitle").textContent.startsWith("Modifier")){$("#codeWarning").hidden=false;return}$("#referenceModal").hidden=true;toast("Référentiel enregistré — journalisation simulée")};$("#viewDependencies").onclick=()=>{$("#dependencyList").innerHTML=[["clipboard-pen-line","Formulaires","326 dossiers utilisent des valeurs de référence"],["chart-column","Rapports","18 modèles exploitent ces dimensions"],["history","Historique","Les anciennes valeurs doivent rester interprétables"]].map(x=>`<div class="dependency-item"><i data-lucide="${x[0]}"></i><div><strong>${x[1]}</strong><small>${x[2]}</small></div></div>`).join("");$("#dependencyModal").hidden=false;icons()};$("#closeDependencies").onclick=$("#closeDependenciesFooter").onclick=()=>$("#dependencyModal").hidden=true;$("#expandHierarchy").onclick=()=>document.querySelectorAll(".hierarchy-children").forEach(x=>x.hidden=false);$("#importReferences").onclick=()=>toast("Import contrôlé à connecter à l’API");$("#exportReferences").onclick=()=>toast("Export des référentiels préparé");renderAll();icons()}init()})();
+(async function () {
+  "use strict";
+  const api = await import("/static/js/core/api.js");
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const icons = () => window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+  let refs = [], current = null, values = [], editing = null;
+
+  function toast(message, error = false) {
+    const box = $("#referenceToast");
+    box.querySelector("span").textContent = message;
+    box.classList.toggle("error", error);
+    box.hidden = false;
+    setTimeout(() => { box.hidden = true; }, 2600);
+  }
+  const statusLabel = (s) => String(s || "ACTIF").toUpperCase() === "ACTIF" ? "Actif" : "Inactif";
+
+  async function loadRefs(keep = true) {
+    const selected = keep ? current?.id : null;
+    const payload = await api.apiRequest("/api/v1/referentiels");
+    refs = payload.items || [];
+    current = refs.find((x) => x.id === selected) || refs[0] || null;
+    renderRefs();
+    await loadValues();
+  }
+  function renderRefs() {
+    $("#referenceCategories").innerHTML = refs.length ? refs.map((r) => `
+      <button class="reference-category ${r.id === current?.id ? "active" : ""}" data-ref="${r.id}">
+        <span><i data-lucide="library-big"></i></span>
+        <div><strong>${esc(r.libelle || r.code)}</strong><small>${esc(r.code)}</small></div><b>${r.valeurs_count}</b>
+      </button>`).join("") : `<div class="reference-empty">Aucun référentiel enregistré.</div>`;
+    document.querySelectorAll("[data-ref]").forEach((b) => b.onclick = async () => {
+      current = refs.find((r) => r.id === b.dataset.ref);
+      renderRefs();
+      await loadValues();
+    });
+    $("#referenceKpis").innerHTML = [
+      ["database", "Référentiels", refs.length, "Nomenclatures réelles"],
+      ["list-tree", "Valeurs", refs.reduce((n, r) => n + r.valeurs_count, 0), "Éléments enregistrés"],
+      ["circle-check", "Actifs", refs.filter((r) => statusLabel(r.statut) === "Actif").length, "Disponibles à la saisie"],
+      ["history", "Traçabilité", "100 %", "Modifications auditées"],
+    ].map((x) => `<article class="reference-kpi"><span><i data-lucide="${x[0]}"></i></span><div><small>${x[1]}</small><strong>${x[2]}</strong><em>${x[3]}</em></div></article>`).join("");
+    icons();
+  }
+  async function loadValues() {
+    if (!current) {
+      values = [];
+      renderValues();
+      return;
+    }
+    values = await api.apiRequest(`/api/v1/referentiels/${current.id}/valeurs`);
+    renderValues();
+  }
+  function renderValues() {
+    $("#referenceGroup").textContent = current?.type_valeur || "Nomenclature";
+    $("#referenceTitle").textContent = current?.libelle || "Aucun référentiel";
+    $("#referenceDescription").textContent = current?.description || "Sélectionnez ou créez un référentiel.";
+    const q = $("#referenceSearch").value.trim().toLowerCase();
+    const status = $("#referenceStatus").value;
+    const rows = values.filter((v) => {
+      const active = statusLabel(v.statut) === "Actif";
+      return (!q || `${v.code} ${v.libelle} ${v.description || ""}`.toLowerCase().includes(q))
+        && (status === "all" || (status === "active" ? active : !active));
+    });
+    $("#referenceCount").textContent = `${rows.length} élément${rows.length > 1 ? "s" : ""}`;
+    $("#referenceUsage").textContent = current ? `${current.valeurs_count} valeur(s) dans cette nomenclature` : "";
+    $("#referenceResults").innerHTML = rows.length ? `<div class="table-responsive"><table class="table reference-table">
+      <thead><tr><th>Code</th><th>Libellé</th><th>Description</th><th>Validité</th><th>Statut</th><th></th></tr></thead>
+      <tbody>${rows.map((v) => `<tr>
+        <td><code>${esc(v.code)}</code></td><td><strong>${esc(v.libelle)}</strong></td>
+        <td>${esc(v.description || "—")}</td>
+        <td>${esc(v.date_debut_validite || "—")} ${v.date_fin_validite ? `→ ${esc(v.date_fin_validite)}` : ""}</td>
+        <td><span class="reference-status ${statusLabel(v.statut) === "Actif" ? "active" : "inactive"}">${statusLabel(v.statut)}</span></td>
+        <td><button class="icon-button" data-edit="${v.id}" title="Modifier"><i data-lucide="pencil"></i></button></td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="reference-empty"><i data-lucide="inbox"></i><strong>Aucune valeur</strong><span>Ajoutez le premier élément de cette nomenclature.</span></div>`;
+    document.querySelectorAll("[data-edit]").forEach((b) => b.onclick = (event) => { event.preventDefault(); event.stopPropagation(); openValue(values.find((v) => v.id === b.dataset.edit)); });
+    icons();
+  }
+  function openValue(value = null) {
+    if (!current) return toast("Créez d’abord un référentiel.", true);
+    editing = value;
+    const form = $("#referenceForm");
+    form.reset();
+    $("#referenceModalTitle").textContent = value ? "Modifier l’élément" : "Nouvel élément";
+    form.code.value = value?.code || "";
+    if (!value) form.code.value = `${current.code}-${String(values.length + 1).padStart(3, "0")}`;
+    form.label.value = value?.libelle || "";
+    form.description.value = value?.description || "";
+    form.order.value = value?.ordre_affichage || values.length + 1;
+    form.active.checked = statusLabel(value?.statut) === "Actif";
+    form.parent.innerHTML = `<option value="">Aucun parent</option>${values.filter((v) => v.id !== value?.id).map((v) => `<option value="${v.id}">${esc(v.libelle)}</option>`).join("")}`;
+    form.parent.value = value?.parent_id || "";
+    $("#referenceModal").hidden = false;
+    icons();
+  }
+  function createRef() {
+    const form = $("#referenceCategoryForm"); form.reset();
+    const numbers = refs.map((x) => Number(String(x.code).match(/REF-(\d+)/)?.[1] || 0));
+    form.code.value = `REF-${String(Math.max(0, ...numbers) + 1).padStart(3, "0")}`;
+    $("#referenceCategoryModal").hidden = false; icons();
+  }
+  $("#referenceSearch").oninput = renderValues;
+  $("#referenceStatus").onchange = renderValues;
+  $("#newReference").onclick = () => current ? openValue() : createRef();
+  $("#newReferenceCategory").onclick = createRef;
+  $("#seedReferences").onclick = async () => {
+    if (!confirm("Ajouter les référentiels types HAUQE absents ? Les éléments existants ne seront pas modifiés.")) return;
+    try { await api.apiRequest("/api/v1/referentiels/initialiser-type", { method: "POST" }); toast("Référentiel type ajouté. Toutes les valeurs restent modifiables."); await loadRefs(false); } catch (error) { toast(error.message, true); }
+  };
+  document.querySelectorAll("[data-close-reference-category]").forEach((b) => b.onclick = () => { $("#referenceCategoryModal").hidden = true; });
+  $("#referenceCategoryForm").onsubmit = async (event) => {
+    event.preventDefault(); const f = event.currentTarget;
+    try { await api.apiRequest("/api/v1/referentiels", { method: "POST", body: { code: f.code.value, libelle: f.label.value, description: f.description.value || null, type_valeur: "LISTE" } }); $("#referenceCategoryModal").hidden = true; toast("Référentiel créé."); await loadRefs(false); } catch (error) { toast(error.message, true); }
+  };
+  $("#closeReferenceModal").onclick = $("#cancelReferenceModal").onclick = () => { $("#referenceModal").hidden = true; };
+  $("#referenceForm").onsubmit = async (event) => {
+    event.preventDefault();
+    const f = event.currentTarget;
+    const body = {
+      code: f.code.value, libelle: f.label.value, description: f.description.value || null,
+      parent_id: f.parent.value || null, ordre_affichage: Number(f.order.value) || null,
+      statut: f.active.checked ? "ACTIF" : "INACTIF",
+    };
+    try {
+      if (editing) await api.apiRequest(`/api/v1/referentiels/${current.id}/valeurs/${editing.id}`, { method: "PATCH", body });
+      else {
+        delete body.statut;
+        await api.apiRequest(`/api/v1/referentiels/${current.id}/valeurs`, { method: "POST", body });
+      }
+      $("#referenceModal").hidden = true;
+      toast("Élément enregistré et journalisé.");
+      await loadRefs();
+    } catch (error) { toast(error.message, true); }
+  };
+  $("#viewDependencies").onclick = () => {
+    $("#dependencyList").innerHTML = `<div class="dependency-item"><i data-lucide="shield-check"></i><div><strong>Contrôle serveur actif</strong><small>Les modifications sont tracées dans le journal d’audit.</small></div></div>`;
+    $("#dependencyModal").hidden = false; icons();
+  };
+  $("#closeDependencies").onclick = $("#closeDependenciesFooter").onclick = () => { $("#dependencyModal").hidden = true; };
+  $("#exportReferences").onclick = () => {
+    const rows = [["Référentiel", "Code", "Libellé", "Statut"], ...values.map((v) => [current?.code, v.code, v.libelle, statusLabel(v.statut)])];
+    const csv = rows.map((r) => r.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(";")).join("\r\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `referentiel-${current?.code || "liste"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
+  try { await loadRefs(false); } catch (error) { toast(error.message, true); }
+})();

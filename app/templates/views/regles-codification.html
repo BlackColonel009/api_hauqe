@@ -37,7 +37,9 @@
 
   <div class="detail-tabs institutional-tabs">
     <button class="active" data-inst-tab="completeness" type="button">COLLECTE_COMPLETUDE</button>
+    <button data-inst-tab="codification" type="button">Codification BNEC</button>
     <button data-inst-tab="rules" type="button">Règles métier</button>
+    <button data-inst-tab="publication-data" type="button">Données à publier</button>
     <button data-inst-tab="scoring" type="button">Modèles de scoring</button>
     <button data-inst-tab="fuccs" type="button">Grilles FUCCS</button>
   </div>
@@ -94,6 +96,38 @@
     </div>
   </section>
 
+  <section id="publicationDataTab" hidden>
+    <div class="institutional-layout">
+      <article class="panel institutional-panel">
+        <header><div><p class="eyebrow">Diffusion contrôlée</p><h2>Préparer les données proposées à la publication</h2><p>Choisissez les champs que les demandes de publication pourront utiliser. La règle devra ensuite être publiée et approuvée.</p></div></header>
+        <div class="institutional-form-grid">
+          <label><span>Version</span><input id="publicationDataVersion" value="1.0"></label>
+          <label><span>Niveau minimal d’agrégation</span><select id="publicationAggregation"><option value="NATIONAL">National</option><option value="REGION">Région</option><option value="PREFECTURE">Préfecture</option></select></label>
+          <label><span>Début de période</span><input id="publicationPeriodStart" type="date" required></label>
+          <label><span>Fin de période</span><input id="publicationPeriodEnd" type="date" required></label>
+          <label class="full"><span>Libellé</span><input id="publicationDataLabel" value="Configuration des données autorisées pour le tableau de bord public"></label>
+        </div>
+        <div class="requirement-builder">
+          <div class="requirement-builder-head"><div><h3>Champs proposés</h3><p>Les champs nominatifs restent interdits par défaut et nécessitent une justification explicite.</p></div></div>
+          <div class="publication-field-grid">
+            <label><input type="checkbox" data-public-field value="enterprises_count" checked>Nombre d’entreprises</label>
+            <label><input type="checkbox" data-public-field value="certifications_count" checked>Nombre de certifications</label>
+            <label><input type="checkbox" data-public-field value="by_region" checked>Répartition régionale</label>
+            <label><input type="checkbox" data-public-field value="by_norm">Référentiel ou norme</label>
+            <label><input type="checkbox" data-public-field value="certification_statuses">Statut des certifications</label>
+            <label><input type="checkbox" data-public-field value="national_infc_average">INFC moyen agrégé</label>
+            <label class="sensitive"><input type="checkbox" data-public-field value="enterprise_name" data-nominal>Raison sociale de l’entreprise</label>
+            <label class="sensitive"><input type="checkbox" data-public-field value="certificate_number" data-nominal>Numéro du certificat</label>
+            <label class="sensitive"><input type="checkbox" data-public-field value="organization_name" data-nominal>Organisme certificateur</label>
+          </div>
+          <label class="full"><span>Justification des données nominatives</span><textarea id="publicationNominalReason" rows="4" placeholder="Obligatoire si un champ nominatif est sélectionné…"></textarea></label>
+        </div>
+        <div class="institutional-actions"><button class="btn btn-primary app-btn" id="savePublicationDataRule" type="button"><i data-lucide="save"></i>Créer le brouillon de publication</button></div>
+      </article>
+      <aside class="panel institutional-side"><header><div><h2>Chaîne de décision</h2></div></header><div class="institutional-reference"><strong>1. Configuration</strong><p>La HAUQE choisit ici les champs autorisés.</p></div><div class="institutional-reference"><strong>2. Publication de la règle</strong><p>Le brouillon est approuvé dans les règles métier.</p></div><div class="institutional-reference"><strong>3. Demande de publication</strong><p>L’agent crée une demande, qui suit approbation, publication ou retrait.</p></div></aside>
+    </div>
+  </section>
+
   <section id="rulesTab" hidden>
     <div class="institutional-layout">
       <article class="panel institutional-panel">
@@ -109,6 +143,191 @@
       </article>
       <aside class="panel institutional-side" id="businessRuleDetail"><div class="priority-empty">Sélectionnez une version de règle.</div></aside>
     </div>
+  </section>
+
+
+  <section id="codificationTab" hidden>
+    <section class="codification-doctrine-grid">
+      <article class="reference-card validated">
+        <span><i data-lucide="fingerprint"></i></span>
+        <div>
+          <strong>Un code institutionnel permanent par ressource officielle</strong>
+          <p>Le code d’entreprise est produit lors de la première intégration BNEC. Il reste stable et sert de segment aux codes de ses certifications.</p>
+        </div>
+      </article>
+      <article class="reference-card pending">
+        <span><i data-lucide="workflow"></i></span>
+        <div>
+          <strong>Modèle publié appliqué automatiquement</strong>
+          <p>L’intégrateur voit le modèle, sa version et le code proposé. Il ne saisit jamais le code ni la séquence.</p>
+        </div>
+      </article>
+    </section>
+
+    <div class="institutional-layout codification-layout">
+      <article class="panel institutional-panel">
+        <header>
+          <div>
+            <p class="eyebrow">Administration fonctionnelle</p>
+            <h2>Modèles de codification BNEC</h2>
+            <p>Définissez séparément la codification des entreprises et celle des certifications.</p>
+          </div>
+          <button class="btn btn-primary app-btn" id="newCodificationModel" type="button">
+            <i data-lucide="file-plus-2"></i>Nouveau modèle
+          </button>
+        </header>
+
+        <div class="institutional-toolbar two">
+          <label>
+            <span>Objet codifié</span>
+            <select id="codificationObjectFilter">
+              <option value="">Tous</option>
+              <option value="ENTREPRISE">Entreprise BNEC</option>
+              <option value="CERTIFICATION">Certification</option>
+            </select>
+          </label>
+          <label>
+            <span>Statut</span>
+            <select id="codificationStatusFilter">
+              <option value="">Tous</option>
+              <option value="BROUILLON">BROUILLON</option>
+              <option value="PUBLIE">PUBLIE</option>
+              <option value="RETIRE">RETIRE</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="institutional-list codification-model-list" id="codificationModelList"></div>
+      </article>
+
+      <aside class="panel institutional-side codification-editor" id="codificationEditor">
+        <div class="priority-empty">Sélectionnez un modèle ou créez-en un nouveau.</div>
+      </aside>
+    </div>
+
+    <section class="panel codification-builder" id="codificationBuilder" hidden>
+      <header>
+        <div>
+          <p class="eyebrow" id="codificationBuilderEyebrow">Nouveau brouillon</p>
+          <h2 id="codificationBuilderTitle">Construire le modèle</h2>
+          <p>Les variables sont résolues avec les données validées au moment de l’intégration.</p>
+        </div>
+        <span class="inst-status" id="codificationBuilderStatus">BROUILLON</span>
+      </header>
+
+      <div class="codification-form-grid">
+        <label>
+          <span>Objet codifié <b>*</b></span>
+          <select id="codificationObject">
+            <option value="ENTREPRISE">Entreprise BNEC</option>
+            <option value="CERTIFICATION">Certification</option>
+          </select>
+        </label>
+        <label>
+          <span>Version <b>*</b></span>
+          <input id="codificationVersion" maxlength="100" placeholder="1.0">
+        </label>
+        <label class="full">
+          <span>Nom du modèle <b>*</b></span>
+          <input id="codificationLabel" maxlength="255" placeholder="Modèle entreprise BNEC 2026">
+        </label>
+        <label class="full">
+          <span>Description</span>
+          <textarea id="codificationDescription" rows="2" placeholder="Finalité et portée institutionnelle du modèle"></textarea>
+        </label>
+        <label class="full codification-format-field">
+          <span>Format du code <b>*</b></span>
+          <textarea id="codificationFormat" rows="3" maxlength="255" spellcheck="false"></textarea>
+          <small>Utilisez les variables ci-dessous. Une seule variable de séquence est obligatoire.</small>
+        </label>
+      </div>
+
+      <div class="codification-token-panel">
+        <div>
+          <strong>Variables disponibles</strong>
+          <small>Cliquez pour insérer une variable à la position du curseur.</small>
+        </div>
+        <div class="codification-token-list" id="codificationTokens"></div>
+      </div>
+
+      <div class="codification-form-grid compact">
+        <label>
+          <span>Séparateur</span>
+          <select id="codificationSeparator">
+            <option value="-">Tiret —</option>
+            <option value="/">Barre oblique /</option>
+            <option value=".">Point .</option>
+            <option value="_">Tiret bas _</option>
+          </select>
+        </label>
+        <label>
+          <span>Longueur de séquence</span>
+          <input id="codificationSequenceLength" type="number" min="2" max="12" value="4">
+        </label>
+        <label>
+          <span>Portée de la séquence</span>
+          <select id="codificationSequenceScope">
+            <option value="GLOBALE">Globale</option>
+            <option value="ANNUELLE">Annuelle</option>
+            <option value="REGIONALE">Par région</option>
+            <option value="PAR_ENTREPRISE">Par entreprise</option>
+            <option value="ANNUELLE_PAR_ENTREPRISE">Annuelle par entreprise</option>
+            <option value="ANNUELLE_REGIONALE">Annuelle par région</option>
+          </select>
+        </label>
+        <label>
+          <span>Réinitialisation</span>
+          <select id="codificationSequenceReset">
+            <option value="JAMAIS">Jamais</option>
+            <option value="ANNUELLE">Chaque année</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="codification-constants">
+        <div class="requirement-builder-head">
+          <div>
+            <h3>Constantes institutionnelles</h3>
+            <p>Ces valeurs peuvent être réutilisées dans le format avec les variables correspondantes.</p>
+          </div>
+        </div>
+        <div class="codification-form-grid compact">
+          <label><span>{HAUQE}</span><input id="codificationConstHauqe" value="HAUQE" maxlength="30"></label>
+          <label><span>{BNEC}</span><input id="codificationConstBnec" value="BNEC" maxlength="30"></label>
+          <label><span>{PAYS}</span><input id="codificationConstCountry" value="TG" maxlength="10"></label>
+          <label><span>{CERTIF}</span><input id="codificationConstCertif" value="CERT" maxlength="30"></label>
+        </div>
+      </div>
+
+      <div class="codification-preview-grid">
+        <article class="codification-preview-card">
+          <div>
+            <small>Aperçu avec des données de démonstration</small>
+            <strong id="codificationPreview">—</strong>
+          </div>
+          <button class="btn btn-outline-secondary app-btn" id="copyCodificationPreview" type="button">
+            <i data-lucide="copy"></i>Copier
+          </button>
+        </article>
+        <article class="codification-validation-card" id="codificationValidation">
+          <span><i data-lucide="scan-search"></i></span>
+          <div><strong>Configuration à vérifier</strong><small>Le backend effectuera la validation définitive avant publication.</small></div>
+        </article>
+      </div>
+
+      <div class="institutional-actions codification-actions">
+        <button class="btn btn-outline-secondary app-btn" id="cancelCodificationEdit" type="button">Annuler</button>
+        <button class="btn btn-outline-secondary app-btn" id="cloneCodificationModel" type="button" hidden>
+          <i data-lucide="copy-plus"></i>Nouvelle version
+        </button>
+        <button class="btn btn-primary app-btn" id="saveCodificationModel" type="button">
+          <i data-lucide="save"></i>Enregistrer le brouillon
+        </button>
+        <button class="btn btn-primary app-btn" id="publishCodificationModel" type="button" hidden>
+          <i data-lucide="rocket"></i>Publier le modèle
+        </button>
+      </div>
+    </section>
   </section>
 
   <section id="scoringTab" hidden>
@@ -252,12 +471,16 @@
     <form method="dialog" id="ruleForm">
       <header><div><p class="eyebrow">Règle métier</p><h2 id="ruleDialogTitle">Nouvelle règle</h2></div><button class="dialog-close" type="button" data-close-inst-dialog="ruleDialog"><i data-lucide="x"></i></button></header>
       <div class="dialog-body">
-        <label><span>Code logique <b>*</b></span><input id="ruleCode" maxlength="200" required></label>
-        <label><span>Version <b>*</b></span><input id="ruleVersion" maxlength="100" required></label>
-        <label><span>Famille</span><input id="ruleFamily" maxlength="255"></label>
-        <label><span>Libellé <b>*</b></span><input id="ruleLabel" maxlength="255" required></label>
-        <label><span>Description</span><textarea id="ruleDescription" rows="3"></textarea></label>
-        <label><span>Paramètres JSON</span><textarea id="ruleParams" rows="11" spellcheck="false">{}</textarea></label>
+        <div class="rule-entry-helper" id="rulePresetField">
+          <span><i data-lucide="wand-sparkles"></i></span>
+          <label><strong>Partir d’un exemple HAUQE</strong><small>La proposition remplit tous les champs avec des valeurs valides et reste entièrement modifiable.</small><select id="rulePreset"><option value="">Choisir une proposition…</option><option value="cert_expiration">Alertes d’expiration des certifications</option><option value="verification_delay">Délai de traitement d’une vérification</option><option value="data_quality">Contrôle de complétude des données</option><option value="infc_validation">Seuil de validation INFC</option></select></label>
+        </div>
+        <label><span>Code logique <b>*</b></span><input id="ruleCode" list="ruleCodeSuggestions" maxlength="200" placeholder="Ex. CERTIFICATION_EXPIRATION_ALERTS" autocomplete="off" required><small>Code stable en majuscules, sans espace. Il regroupe toutes les versions de la règle.</small><datalist id="ruleCodeSuggestions"><option value="CERTIFICATION_EXPIRATION_ALERTS"></option><option value="VERIFICATION_PROCESSING_DELAY"></option><option value="DATA_COMPLETENESS_CONTROL"></option><option value="INFC_VALIDATION_THRESHOLD"></option></datalist></label>
+        <label><span>Version <b>*</b></span><input id="ruleVersion" maxlength="100" placeholder="Ex. 1.0" required><small>Utilisez une version lisible : 1.0, 1.1 ou 2.0.</small></label>
+        <label><span>Famille</span><input id="ruleFamily" list="ruleFamilySuggestions" maxlength="255" placeholder="Ex. CERTIFICATIONS" autocomplete="off"><small>Famille fonctionnelle utilisée pour classer et filtrer la règle.</small><datalist id="ruleFamilySuggestions"><option value="CERTIFICATIONS"></option><option value="VERIFICATIONS"></option><option value="QUALITE_DONNEES"></option><option value="INFC"></option><option value="ALERTES_ECHEANCES"></option></datalist></label>
+        <label><span>Libellé <b>*</b></span><input id="ruleLabel" maxlength="255" placeholder="Ex. Alertes avant expiration d’une certification" required><small>Nom compréhensible affiché aux agents.</small></label>
+        <label><span>Description</span><textarea id="ruleDescription" rows="4" placeholder="Décrivez l’objectif, le périmètre et le résultat attendu de la règle."></textarea><small>Expliquez quand la règle s’applique et ce qu’elle déclenche.</small></label>
+        <label><span>Paramètres JSON</span><textarea id="ruleParams" rows="11" spellcheck="false" placeholder='{"active": true}'>{}</textarea><small>Objet JSON valide. Les clés dépendent de la règle sélectionnée.</small></label>
       </div>
       <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-inst-dialog="ruleDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Créer le brouillon</button></footer>
     </form>

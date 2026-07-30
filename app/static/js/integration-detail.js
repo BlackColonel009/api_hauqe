@@ -1,41 +1,403 @@
-(function(){
-"use strict";
-const $=s=>document.querySelector(s), parts=location.hash.replace(/^#\//,"").split("/"),integrationId=parts[1];
-let apiGet,apiPost,apiPatch,currentUser=null,integration=null,context=null,elements=[],checkMode=null,editingElementId=null,resultElementId=null;
-const labels={EN_ATTENTE:"En attente",PRECONTROLE:"Précontrôle OK",INTEGRATION_EN_COURS:"Intégration en cours",POSTCONTROLE:"Postcontrôle OK",INTEGREE:"Intégrée",ECHEC:"Échec"};
-const lifecycle=[["EN_ATTENTE","Ouverture"],["PRECONTROLE","Précontrôle"],["INTEGRATION_EN_COURS","Intégration"],["POSTCONTROLE","Postcontrôle"],["INTEGREE","Clôture"]];
-const icon=n=>`<i data-lucide="${n}"></i>`;
-function refresh(){if(window.lucide)window.lucide.createIcons({attrs:{"stroke-width":1.8}})}
-function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function has(p){return Array.isArray(currentUser?.permissions)&&currentUser.permissions.includes(p)}
-function sclass(v){v=String(v||"").toUpperCase();return v==="INTEGREE"?"integrated":v==="ECHEC"?"failed":v==="POSTCONTROLE"?"postcontrol":v==="INTEGRATION_EN_COURS"?"running":v==="PRECONTROLE"?"precontrol":"waiting"}
-function fmt(v){if(!v)return"—";const d=new Date(`${v}T00:00:00`);return Number.isNaN(d.getTime())?String(v):new Intl.DateTimeFormat("fr-FR",{day:"2-digit",month:"long",year:"numeric"}).format(d)}
-function state(msg,error=false){const n=$("#integrationDetailState");n.hidden=false;n.className=`dashboard-api-state ${error?"error":""}`.trim();n.innerHTML=`${icon(error?"triangle-alert":"info")}<div><strong>${error?"Opération impossible":"Information"}</strong><span>${esc(msg)}</span></div>`;refresh()}
-function hide(){ $("#integrationDetailState").hidden=true }
-function close(id){const d=document.getElementById(id);if(d?.open)d.close()}
-function renderHeader(){const company=context.entreprise_name||"Entreprise non renseignée";$("#integrationBreadcrumb").textContent=`${company} · ${context.mission_code||"Mission"}`;$("#integrationDetailTitle").textContent=company;$("#integrationDetailSubtitle").textContent=[context.mission_code,context.campaign_code,context.zone_name].filter(Boolean).join(" · ")||"Intégration BNEC";const st=$("#integrationDetailStatus");st.className=`integration-status ${sclass(integration.statut)}`;st.innerHTML=`<i></i>${esc(labels[integration.statut]||integration.statut||"—")}`;$("#integrationDetailRefs").innerHTML=`<span><b>Validation N2</b>${esc(context.validation_decision||"—")}</span><span><b>Administrateur</b>${esc(context.administrator_name||"—")}</span><span><b>FUCCS</b>${esc(context.control_rate||"0.00")} %</span><span><b>Sauvegarde</b>${esc(context.backup_reference||"Non renseignée")}</span>`;renderLifecycle();renderKpis();actions();refresh()}
-function renderLifecycle(){const st=String(integration.statut||"").toUpperCase();if(st==="ECHEC"){$("#integrationLifecycle").innerHTML=`<article class="integration-failed-banner">${icon("circle-x")}<div><strong>Cette tentative est clôturée en échec.</strong><small>Elle reste dans l’historique. Une nouvelle tentative doit être ouverte depuis la file d’intégration.</small></div></article>`;refresh();return}const current=lifecycle.findIndex(([s])=>s===st);$("#integrationLifecycle").innerHTML=`<div class="integration-stepper">${lifecycle.map(([s,l],i)=>`<div class="integration-step ${i<current?"done":""} ${i===current?"active":""}"><span>${i<current?icon("check"):i+1}</span><div><strong>${esc(l)}</strong><small>${esc(labels[s])}</small></div></div>${i<lifecycle.length-1?'<i class="integration-step-line"></i>':""}`).join("")}</div>`;refresh()}
-function renderKpis(){const cards=[["blue","list-checks","Éléments",integration.elements_count,"Traçabilité enregistrée"],["green","circle-check-big","Intégrés",integration.elements_success_count,"Résultats réussis"],["red","circle-x","Échecs",integration.elements_error_count,"Éléments en erreur"],["gray","database-backup","Sauvegarde",integration.sauvegarde_reference?"OK":"—",integration.sauvegarde_reference||"Référence requise avant clôture"]];$("#integrationDetailKpis").innerHTML=cards.map(([t,i,l,v,d])=>`<article class="integration-detail-kpi ${t}"><span>${icon(i)}</span><div><small>${esc(l)}</small><strong>${esc(v)}</strong><em>${esc(d)}</em></div></article>`).join("");$("#integrationElementCount").textContent=String(elements.length);refresh()}
-function actions(){const st=String(integration.statut||"").toUpperCase();$("#integrationPrecontrol").hidden=!(has("INTEGRATION.PRECONTROLER")&&["EN_ATTENTE","PRECONTROLE"].includes(st));$("#integrationStart").hidden=!(has("INTEGRATION.EXECUTER")&&st==="PRECONTROLE"&&integration.precontrole==="OK");$("#integrationPostcontrol").hidden=!(has("INTEGRATION.POSTCONTROLER")&&st==="INTEGRATION_EN_COURS");$("#integrationComplete").hidden=!(has("INTEGRATION.CLOTURER")&&st==="POSTCONTROLE"&&integration.postcontrole==="OK")}
-function overview(){ $("#integrationTabContent").innerHTML=`<div class="integration-overview-grid"><article class="panel"><div class="panel-heading"><div><h2>État technique</h2><p>Contrôles et traçabilité de cette tentative.</p></div></div><div class="cert-info-grid">${[["Statut",labels[integration.statut]||integration.statut],["Précontrôle",integration.precontrole],["Postcontrôle",integration.postcontrole],["Début",fmt(integration.date_debut)],["Fin",fmt(integration.date_fin)],["Référence sauvegarde",integration.sauvegarde_reference],["Administrateur",context.administrator_name],["Révision source",context.fiche_revision]].map(([l,v])=>`<div class="cert-info"><small>${esc(l)}</small><strong>${esc(v??"—")}</strong></div>`).join("")}</div><div class="scope-box"><strong>Résumé technique :</strong>${esc(integration.resume||"Aucun résumé enregistré.")}</div></article><aside class="panel"><div class="panel-heading"><div><h2>Sources institutionnelles</h2><p>Consultation uniquement</p></div></div><div class="integration-source-list"><div><span>${icon("shield-check")}</span><div><strong>Validation N2</strong><small>${esc(context.validation_decision||"—")} · ${esc(context.validator_name||"Validateur")} · ${esc(fmt(context.validation_date))}</small></div><a href="#/validations/${esc(context.fiche_id)}" class="btn btn-outline-secondary app-btn">Voir</a></div>${context.control_id?`<div><span>${icon("clipboard-check")}</span><div><strong>Contrôle FUCCS</strong><small>${esc(context.control_score||"0")} / ${esc(context.control_maximum||"0")} · ${esc(context.control_rate||"0.00")} %</small></div><a href="#/controle/${esc(context.control_id)}" class="btn btn-outline-secondary app-btn">Voir</a></div>`:""}</div><div class="review-warning mt-3">${icon("info")}La table <code>elements_integration</code> est un registre de passage source→cible. Elle ne remplace pas les ressources officielles.</div></aside></div>`;refresh()}
-function eclass(v){return String(v||"").toUpperCase()==="INTEGRE"?"integrated":String(v||"").toUpperCase()==="ECHEC"?"failed":"waiting"}
-function elementActions(x){const st=String(integration.statut||"").toUpperCase(),prep=has("INTEGRATION.EXECUTER")&&["PRECONTROLE","INTEGRATION_EN_COURS"].includes(st)&&x.statut!=="INTEGRE",result=has("INTEGRATION.EXECUTER")&&st==="INTEGRATION_EN_COURS";return `<div class="integration-element-actions">${prep?`<button class="btn btn-outline-secondary app-btn" type="button" data-edit-element="${esc(x.id)}">${icon("square-pen")}Préparer</button>`:""}${result?`<button class="btn btn-primary app-btn" type="button" data-result-element="${esc(x.id)}">${icon("check-check")}Résultat</button>`:""}</div>`}
-function renderElements(){const st=String(integration.statut||"").toUpperCase(),canAdd=has("INTEGRATION.EXECUTER")&&["PRECONTROLE","INTEGRATION_EN_COURS"].includes(st);const rows=elements.length?elements.map(x=>`<tr><td><div class="cert-stack"><strong>${esc(x.type_objet||"Objet")}</strong><small>${esc(x.action||"—")}</small></div></td><td><code>${esc(x.ressource_source_id||"—")}</code><small class="integration-cell-help">rév. ${esc(x.revision_source||"—")}</small></td><td><code>${esc(x.ressource_cible_id||"—")}</code><small class="integration-cell-help">${esc(x.code_genere||"Aucun code")}</small></td><td><span class="integration-status ${eclass(x.statut)}"><i></i>${esc(x.statut||"A_TRAITER")}</span>${x.message_erreur?`<small class="integration-error-message">${esc(x.message_erreur)}</small>`:""}</td><td>${elementActions(x)}</td></tr>`).join(""):'<tr><td colspan="5"><div class="priority-empty">Aucun élément d’intégration enregistré.</div></td></tr>';$("#integrationTabContent").innerHTML=`<article class="panel mt-3"><div class="panel-heading"><div><h2>Éléments d’intégration</h2><p>Registre technique des objets source, cibles et résultats.</p></div>${canAdd?`<button class="btn btn-primary app-btn" id="addIntegrationElement" type="button">${icon("plus")}Ajouter un élément</button>`:""}</div><div class="table-responsive"><table class="table integration-elements-table"><thead><tr><th>Objet / action</th><th>Source</th><th>Cible</th><th>Résultat</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></article>`;$("#addIntegrationElement")?.addEventListener("click",createDialog);document.querySelectorAll("[data-edit-element]").forEach(b=>b.addEventListener("click",()=>editDialog(b.dataset.editElement)));document.querySelectorAll("[data-result-element]").forEach(b=>b.addEventListener("click",()=>resultDialog(b.dataset.resultElement)));refresh()}
-function showTab(name){document.querySelectorAll(".detail-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));name==="elements"?renderElements():overview()}
-function checkDialog(mode){checkMode=mode;$("#integrationCheckTitle").textContent=mode==="precontrol"?"Précontrôle d’intégration":"Postcontrôle d’intégration";$("#integrationCheckResult").value="";$("#integrationCheckSummary").value=integration.resume||"";$("#integrationBackupReference").value=integration.sauvegarde_reference||"";$("#integrationCheckDialog").showModal();refresh()}
-function createDialog(){editingElementId=null;$("#integrationElementTitle").textContent="Nouvel élément d’intégration";$("#elementType").disabled=false;for(const id of ["elementType","elementAction","elementSourceId","elementTargetId","elementRevision","elementGeneratedCode"])$("#"+id).value="";$("#integrationElementDialog").showModal();refresh()}
-function editDialog(id){const x=elements.find(e=>String(e.id)===String(id));if(!x)return;editingElementId=id;$("#integrationElementTitle").textContent="Préparer l’élément";$("#elementType").value=x.type_objet||"";$("#elementType").disabled=true;$("#elementAction").value=x.action||"";$("#elementSourceId").value=x.ressource_source_id||"";$("#elementTargetId").value=x.ressource_cible_id||"";$("#elementRevision").value=x.revision_source||"";$("#elementGeneratedCode").value=x.code_genere||"";$("#integrationElementDialog").showModal();refresh()}
-function resultDialog(id){const x=elements.find(e=>String(e.id)===String(id));if(!x)return;resultElementId=id;$("#elementResult").value="";$("#elementResultTarget").value=x.ressource_cible_id||"";$("#elementResultCode").value=x.code_genere||"";$("#elementErrorMessage").value=x.message_erreur||"";$("#elementErrorField").hidden=true;$("#integrationResultDialog").showModal();refresh()}
-function uuid(v,label){v=String(v||"").trim();if(!v)return null;const re=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;if(!re.test(v))throw new Error(`${label} doit être un UUID valide.`);return v}
-async function submitCheck(e){e.preventDefault();const r=$("#integrationCheckResult").value,s=$("#integrationCheckSummary").value.trim();if(!r||!s){state("Résultat et résumé sont obligatoires.",true);return}const endpoint=checkMode==="precontrol"?`/api/v1/integrations-bnec/${integrationId}/precontrol`:`/api/v1/integrations-bnec/${integrationId}/postcontrol`;const task=async()=>{integration=await apiPost(endpoint,{resultat:r,resume:s,sauvegarde_reference:$("#integrationBackupReference").value.trim()||null});close("integrationCheckDialog");await reloadContext();renderHeader();showTab("overview")};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{title:checkMode==="precontrol"?"Précontrôle BNEC":"Postcontrôle BNEC",message:"Enregistrement du contrôle",detail:r==="OK"?"Le passage à l’étape suivante reste soumis aux prérequis.":"Cette tentative sera clôturée en échec."}):await task()}catch(err){state(err?.message||"Contrôle impossible.",true)}}
-async function submitStart(e){e.preventDefault();const task=async()=>{integration=await apiPost(`/api/v1/integrations-bnec/${integrationId}/start`,{resume:$("#integrationStartSummary").value.trim()||null});close("integrationStartDialog");await reloadContext();renderHeader();showTab("elements")};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{title:"Démarrage BNEC",message:"Passage en intégration en cours",detail:"Les éléments peuvent maintenant recevoir leur résultat."}):await task()}catch(err){state(err?.message||"Démarrage impossible.",true)}}
-async function submitElement(e){e.preventDefault();const type=$("#elementType").value.trim(),action=$("#elementAction").value.trim();if(!type||!action){state("Type d’objet et action sont obligatoires.",true);return}let source,target;try{source=uuid($("#elementSourceId").value,"Ressource source");target=uuid($("#elementTargetId").value,"Ressource cible")}catch(err){state(err.message,true);return}const payload={ressource_source_id:source,ressource_cible_id:target,revision_source:$("#elementRevision").value.trim()||null,action,code_genere:$("#elementGeneratedCode").value.trim()||null};const wasEdit=Boolean(editingElementId),task=async()=>{wasEdit?await apiPatch(`/api/v1/integrations-bnec/${integrationId}/elements/${editingElementId}`,payload):await apiPost(`/api/v1/integrations-bnec/${integrationId}/elements`,{type_objet:type,...payload});close("integrationElementDialog");$("#elementType").disabled=false;editingElementId=null;await Promise.all([reloadElements(),reloadIntegration(),reloadContext()]);renderHeader();renderElements()};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{title:"Élément d’intégration",message:wasEdit?"Mise à jour de la traçabilité":"Création de la traçabilité",detail:"La ressource cible réelle reste explicitement référencée."}):await task()}catch(err){state(err?.message||"Enregistrement impossible.",true)}}
-async function submitResult(e){e.preventDefault();const r=$("#elementResult").value;if(!r){state("Sélectionnez le résultat de l’élément.",true);return}let target;try{target=uuid($("#elementResultTarget").value,"Ressource cible")}catch(err){state(err.message,true);return}const task=async()=>{await apiPost(`/api/v1/integrations-bnec/${integrationId}/elements/${resultElementId}/result`,{resultat:r,ressource_cible_id:target,code_genere:$("#elementResultCode").value.trim()||null,message_erreur:r==="ECHEC"?$("#elementErrorMessage").value.trim()||null:null});close("integrationResultDialog");await Promise.all([reloadElements(),reloadIntegration(),reloadContext()]);renderHeader();renderElements()};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{title:"Résultat d’intégration",message:"Journalisation du résultat",detail:"Le résultat est enregistré élément par élément."}):await task()}catch(err){state(err?.message||"Résultat impossible.",true)}}
-async function complete(e){const task=async()=>{integration=await apiPost(`/api/v1/integrations-bnec/${integrationId}/complete`,{});await reloadContext();renderHeader();showTab("overview");state("Intégration BNEC clôturée avec succès. Le dossier peut maintenant alimenter les traitements de classification / INFC / SNCC.")};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{button:e.currentTarget,title:"Clôture BNEC",message:"Contrôle final des prérequis",detail:"Postcontrôle OK, sauvegarde et éléments intégrés sont vérifiés côté backend."}):await task()}catch(err){state(err?.message||"Clôture impossible.",true)}}
-async function reloadContext(){context=await apiGet(`/api/v1/integrations-bnec/workspace/${integrationId}`)}
-async function reloadElements(){elements=await apiGet(`/api/v1/integrations-bnec/${integrationId}/elements`)}
-async function reloadIntegration(){integration=await apiGet(`/api/v1/integrations-bnec/${integrationId}`)}
-async function boot(){if(!integrationId){state("Identifiant d’intégration absent.",true);return}const api=await import("/static/js/core/api.js");apiGet=api.apiGet;apiPost=api.apiPost;apiPatch=api.apiPatch;const task=async()=>{[currentUser,integration,context,elements]=await Promise.all([apiGet("/api/v1/me"),apiGet(`/api/v1/integrations-bnec/${integrationId}`),apiGet(`/api/v1/integrations-bnec/workspace/${integrationId}`),apiGet(`/api/v1/integrations-bnec/${integrationId}/elements`)]);hide();renderHeader();showTab("overview")};try{window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{title:"Intégration BNEC",message:"Chargement du dossier technique",detail:"Validation, contrôles, éléments et sauvegarde.",minVisibleMs:340}):await task()}catch(err){state(err?.message||"Erreur de chargement.",true);return}
- document.querySelectorAll(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));$("#integrationPrecontrol").addEventListener("click",()=>checkDialog("precontrol"));$("#integrationPostcontrol").addEventListener("click",()=>checkDialog("postcontrol"));$("#integrationStart").addEventListener("click",()=>{$("#integrationStartSummary").value=integration.resume||"";$("#integrationStartDialog").showModal();refresh()});$("#integrationComplete").addEventListener("click",complete);$("#integrationCheckForm").addEventListener("submit",submitCheck);$("#integrationStartForm").addEventListener("submit",submitStart);$("#integrationElementForm").addEventListener("submit",submitElement);$("#integrationResultForm").addEventListener("submit",submitResult);$("#elementResult").addEventListener("change",e=>$("#elementErrorField").hidden=e.target.value!=="ECHEC");document.querySelectorAll("[data-close-dialog]").forEach(b=>b.addEventListener("click",()=>{close(b.dataset.closeDialog);if(b.dataset.closeDialog==="integrationElementDialog"){$("#elementType").disabled=false;editingElementId=null}}));refresh()}
-boot();
+(function () {
+  "use strict";
+
+  const $ = (selector) => document.querySelector(selector);
+  const integrationId = location.hash.replace(/^#\//, "").split("/")[1];
+
+  let apiGet;
+  let apiPost;
+  let currentUser = null;
+  let integration = null;
+  let context = null;
+  let plan = null;
+  let activeTab = "overview";
+
+  const statusLabels = {
+    EN_ATTENTE: "À analyser",
+    PRECONTROLE: "Prête",
+    INTEGRATION_EN_COURS: "Intégration en cours",
+    INTEGREE: "Intégrée",
+    BLOQUE: "Bloquée",
+    ECHEC: "Échec — analyse requise",
+  };
+
+  const icon = (name) => `<i data-lucide="${name}"></i>`;
+
+  function refreshIcons() {
+    window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function hasPermission(code) {
+    return Array.isArray(currentUser?.permissions) && currentUser.permissions.includes(code);
+  }
+
+  function statusClass(value) {
+    const key = String(value || "").toUpperCase();
+    if (key === "INTEGREE") return "integrated";
+    if (key === "ECHEC" || key === "BLOQUE") return "failed";
+    if (key === "INTEGRATION_EN_COURS") return "running";
+    if (key === "PRECONTROLE") return "precontrol";
+    return "waiting";
+  }
+
+  function itemStatusClass(value) {
+    const key = String(value || "").toUpperCase();
+    if (key === "INTEGRE") return "integrated";
+    if (key === "BLOQUE" || key === "ECHEC") return "blocked";
+    return "ready";
+  }
+
+  function itemStatusLabel(value) {
+    return {
+      PRET: "Prêt",
+      INTEGRE: "Intégré",
+      BLOQUE: "Bloqué",
+      ECHEC: "Échec",
+    }[String(value || "").toUpperCase()] || String(value || "—").replaceAll("_", " ");
+  }
+
+  function formatDate(value) {
+    if (!value) return "—";
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(parsed);
+  }
+
+  function showState(message, error = false) {
+    const node = $("#integrationDetailState");
+    node.hidden = false;
+    node.className = `dashboard-api-state ${error ? "error" : ""}`.trim();
+    node.innerHTML = `${icon(error ? "triangle-alert" : "info")}<div><strong>${
+      error ? "Opération impossible" : "Information"
+    }</strong><span>${escapeHtml(message)}</span></div>`;
+    refreshIcons();
+  }
+
+  function hideState() {
+    $("#integrationDetailState").hidden = true;
+  }
+
+  function closeDialog(id) {
+    const dialog = document.getElementById(id);
+    if (dialog?.open) dialog.close();
+  }
+
+  function renderHeader() {
+    const company = context.entreprise_name || plan?.entreprise_nom || "Entreprise non renseignée";
+    $("#integrationBreadcrumb").textContent = `${company} · ${context.mission_code || "Mission"}`;
+    $("#integrationDetailTitle").textContent = company;
+    $("#integrationDetailSubtitle").textContent =
+      [context.mission_code, context.campaign_code, context.zone_name]
+        .filter(Boolean)
+        .join(" · ") || "Intégration BNEC";
+
+    const badge = $("#integrationDetailStatus");
+    badge.className = `integration-status ${statusClass(integration.statut)}`;
+    badge.innerHTML = `<i></i>${escapeHtml(
+      statusLabels[integration.statut] || integration.statut || "—"
+    )}`;
+
+    $("#integrationDetailRefs").innerHTML = `
+      <span><b>Fiche</b>Révision ${escapeHtml(context.fiche_revision || "—")}</span>
+      <span><b>Validation N2</b>${escapeHtml(context.validation_decision || "—")}</span>
+      <span><b>Validée le</b>${escapeHtml(formatDate(context.validation_date))}</span>
+      <span><b>Transaction</b>${escapeHtml(integration.sauvegarde_reference || "À créer")}</span>`;
+
+    renderLifecycle();
+    renderKpis();
+    renderActions();
+    refreshIcons();
+  }
+
+  function renderLifecycle() {
+    const status = String(integration.statut || "").toUpperCase();
+    const integrated = status === "INTEGREE";
+    const executing = status === "INTEGRATION_EN_COURS";
+    const blocked = ["BLOQUE", "ECHEC"].includes(status) || !plan?.ready;
+    const steps = [
+      ["Analyse automatique", true, plan?.ready ? "Dossier prêt" : "Correction requise"],
+      ["Intégration & codification", integrated || executing, integrated ? "Terminée" : "En attente"],
+      ["BNEC officielle", integrated, integrated ? "Ressources publiées" : "Non intégrée"],
+    ];
+
+    $("#integrationLifecycle").innerHTML = `
+      <div class="integration-stepper integration-v4-stepper">
+        ${steps.map(([label, done, detail], index) => `
+          <div class="integration-step ${done ? "done" : ""} ${
+            (!done && index === (integrated ? 3 : executing ? 1 : 0)) ? "active" : ""
+          } ${blocked && index === 0 ? "blocked" : ""}">
+            <span>${done ? icon("check") : index + 1}</span>
+            <div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(detail)}</small></div>
+          </div>${index < 2 ? '<i class="integration-step-line"></i>' : ""}`
+        ).join("")}
+      </div>`;
+    refreshIcons();
+  }
+
+  function renderKpis() {
+    const cards = [
+      ["blue", "list-checks", "Ressources", plan?.total || 0, "Détectées depuis la fiche validée"],
+      ["green", "binary", "Codification", plan?.codification_ready ? "Prête" : "Bloquée", plan?.codification_ready ? "Modèles publiés disponibles" : "Modèle publié requis"],
+      ["orange", "triangle-alert", "Blocages", (plan?.blocked_count || 0) + (plan?.error_count || 0), "Aucun blocage requis avant intégration"],
+      ["gray", "badge-check", "Résultat", integration.statut === "INTEGREE" ? "Officiel" : "En attente", integration.statut === "INTEGREE" ? "Visible dans les registres BNEC" : "Confirmation non exécutée"],
+    ];
+    $("#integrationDetailKpis").innerHTML = cards.map(([tone, cardIcon, label, value, detail]) => `
+      <article class="integration-detail-kpi ${tone}">
+        <span>${icon(cardIcon)}</span>
+        <div><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(detail)}</em></div>
+      </article>`).join("");
+    $("#integrationElementCount").textContent = String(plan?.total || 0);
+    refreshIcons();
+  }
+
+  function renderActions() {
+    const status = String(integration.statut || "").toUpperCase();
+    const closed = status === "INTEGREE";
+    const required = [
+      "INTEGRATION.EXECUTER",
+      "INTEGRATION.PRECONTROLER",
+      "INTEGRATION.POSTCONTROLER",
+      "INTEGRATION.CLOTURER",
+    ];
+    const canExecute = required.every(hasPermission);
+    $("#integrationPrepare").hidden = closed || !hasPermission("INTEGRATION.EXECUTER");
+    $("#integrationExecute").hidden = closed || !canExecute || !plan?.ready;
+    $("#integrationExecute").disabled = !plan?.ready;
+    refreshIcons();
+  }
+
+  function infoCell(label, value) {
+    return `<div class="cert-info"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value || "—")}</strong></div>`;
+  }
+
+  function renderOverview() {
+    const missing = plan?.missing_codification_models || [];
+    const blockers = (plan?.items || []).filter((item) => item.blocage);
+    const readyMessage = plan?.ready
+      ? "Le dossier a déjà subi la vérification, le contrôle FUCCS et la double validation. Il est prêt pour une intégration transactionnelle en un clic."
+      : "L’intégration reste bloquée tant que l’analyse automatique signale une anomalie.";
+
+    $("#integrationTabContent").innerHTML = `
+      <div class="integration-overview-grid bnec-overview-grid">
+        <article class="panel bnec-overview-panel">
+          <div class="panel-heading"><div><h2>État du passage BNEC</h2><p>${escapeHtml(readyMessage)}</p></div></div>
+          <div class="cert-info-grid">
+            ${infoCell("Statut", statusLabels[integration.statut] || integration.statut)}
+            ${infoCell("Décision N2", context.validation_decision)}
+            ${infoCell("Résultat FUCCS", context.control_rate ? `${context.control_rate} %` : "—")}
+            ${infoCell("Révision source", context.fiche_revision)}
+            ${infoCell("Précontrôle", integration.precontrole || "Automatique")}
+            ${infoCell("Postcontrôle", integration.postcontrole || "Automatique")}
+            ${infoCell("Début", formatDate(integration.date_debut))}
+            ${infoCell("Fin", formatDate(integration.date_fin))}
+          </div>
+          ${integration.resume ? `<div class="integration-summary-note"><i data-lucide="message-square-text"></i><span>${escapeHtml(integration.resume)}</span></div>` : ""}
+        </article>
+
+        <aside class="panel bnec-readiness-panel ${plan?.ready ? "ready" : "blocked"}">
+          <span>${icon(plan?.ready ? "shield-check" : "shield-alert")}</span>
+          <div>
+            <small>Analyse automatique</small>
+            <strong>${plan?.ready ? "Prête à intégrer" : "Intégration bloquée"}</strong>
+            <p>${plan?.ready ? "Aucune ressaisie ni validation supplémentaire n’est demandée." : "Corrigez les points listés puis actualisez l’analyse."}</p>
+          </div>
+          ${missing.length ? `<section><b>Modèles manquants</b><ul>${missing.map((item) => `<li>Codification ${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+          ${blockers.length ? `<section><b>Points bloquants</b><ul>${blockers.slice(0, 6).map((item) => `<li>${escapeHtml(item.blocage)}</li>`).join("")}</ul></section>` : ""}
+        </aside>
+      </div>`;
+    refreshIcons();
+  }
+
+  function renderCodification(item) {
+    if (!item.codification_requise && !item.code_genere) {
+      return `<div class="bnec-code-strip neutral"><i data-lucide="minus"></i><span>Aucune nouvelle codification requise pour cette ressource.</span></div>`;
+    }
+    const code = item.code_genere || item.code_propose;
+    const definitive = Boolean(item.code_genere && item.statut === "INTEGRE");
+    return `
+      <section class="bnec-code-strip ${definitive ? "definitive" : item.codification_modele ? "proposed" : "blocked"}">
+        <span>${icon(definitive ? "badge-check" : "binary")}</span>
+        <div>
+          <small>${definitive ? "Code définitif" : "Code proposé"}</small>
+          <strong>${escapeHtml(code || "Modèle indisponible")}</strong>
+          <em>${escapeHtml(item.codification_modele || item.codification_logical_code || "Aucun modèle publié")} ${item.codification_version ? `· v${escapeHtml(item.codification_version)}` : ""}</em>
+        </div>
+      </section>`;
+  }
+
+  function renderPlanItem(item, index) {
+    const technical = [
+      ["Élément", item.element_id],
+      ["Source", item.ressource_source_id],
+      ["Cible", item.ressource_cible_id],
+      ["Révision", item.revision_source],
+      ["Règle", item.codification_logical_code],
+      ["Version", item.codification_version],
+      ["Format", item.codification_format],
+    ];
+    return `
+      <article class="panel bnec-plan-card ${itemStatusClass(item.statut)}">
+        <header>
+          <div class="bnec-item-heading"><span>${index + 1}</span><div><small>${escapeHtml(item.type_libelle)}</small><strong>${escapeHtml(item.source_titre)}</strong></div></div>
+          <span class="bnec-item-status ${itemStatusClass(item.statut)}">${escapeHtml(itemStatusLabel(item.statut))}</span>
+        </header>
+        <div class="bnec-plan-flow">
+          <div class="bnec-flow-side source"><small>Donnée validée</small><strong>${escapeHtml(item.source_titre)}</strong><ul>${(item.source_details || []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul></div>
+          <div class="bnec-flow-action">${icon(item.action === "CREER" ? "plus" : item.action === "CONFIRMER" ? "check" : "git-merge")}<strong>${escapeHtml(item.action_libelle)}</strong></div>
+          <div class="bnec-flow-side target"><small>Résultat BNEC</small><strong>${escapeHtml(item.cible_titre || "À déterminer")}</strong><ul>${(item.cible_details || []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul></div>
+        </div>
+        ${renderCodification(item)}
+        ${item.blocage ? `<div class="bnec-blocking-message">${icon("triangle-alert")}<span>${escapeHtml(item.blocage)}</span></div>` : ""}
+        <details class="bnec-technical-details"><summary>${icon("braces")}Détails techniques en lecture seule</summary><div>${technical.map(([label, value]) => `<span><b>${escapeHtml(label)}</b><code>${escapeHtml(value || "—")}</code></span>`).join("")}</div></details>
+      </article>`;
+  }
+
+  function renderPlan() {
+    $("#integrationTabContent").innerHTML = `
+      <section class="bnec-plan-intro panel">
+        <span>${icon("route")}</span>
+        <div><strong>Plan automatique de création et de rapprochement</strong><small>Les codes proposés proviennent des modèles publiés dans Règles & codification. Les UUID restent strictement informatifs.</small></div>
+      </section>
+      <div class="bnec-plan-list">${(plan?.items || []).map(renderPlanItem).join("") || '<div class="priority-empty">Aucun élément détecté.</div>'}</div>`;
+    refreshIcons();
+  }
+
+  function showTab(name) {
+    activeTab = name;
+    document.querySelectorAll(".detail-tabs button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.tab === name);
+    });
+    if (name === "plan") renderPlan();
+    else renderOverview();
+  }
+
+  function openExecuteDialog() {
+    const coded = (plan?.items || []).filter((item) => item.code_propose || item.code_genere);
+    $("#integrationExecutionSummary").innerHTML = `
+      <span>${icon("database-zap")}</span>
+      <div><strong>${escapeHtml(plan.total)} ressource(s) à traiter</strong><small>${escapeHtml(coded.length)} code(s) institutionnel(s) affiché(s) · aucun conflit bloquant</small></div>`;
+    $("#integrationCodesPreview").innerHTML = coded.length
+      ? coded.map((item) => `<article><span>${escapeHtml(item.type_libelle)}</span><strong>${escapeHtml(item.code_genere || item.code_propose)}</strong><small>${escapeHtml(item.codification_modele || "Code existant conservé")}${item.codification_version ? ` · v${escapeHtml(item.codification_version)}` : ""}</small></article>`).join("")
+      : '<div class="priority-empty compact">Aucun nouveau code à générer.</div>';
+    $("#integrationExecuteSummary").value = "";
+    $("#integrationExecuteDialog").showModal();
+    refreshIcons();
+  }
+
+  async function reloadAll() {
+    [integration, context, plan] = await Promise.all([
+      apiGet(`/api/v1/integrations-bnec/${integrationId}`),
+      apiGet(`/api/v1/integrations-bnec/workspace/${integrationId}`),
+      apiGet(`/api/v1/integrations-bnec/${integrationId}/plan`),
+    ]);
+  }
+
+  function renderAll() {
+    renderHeader();
+    showTab(activeTab);
+  }
+
+  async function preparePlan(event) {
+    const task = async () => {
+      await apiPost(`/api/v1/integrations-bnec/${integrationId}/prepare`, {});
+      await reloadAll();
+      renderAll();
+      showState(plan.ready
+        ? "Analyse actualisée : le dossier est prêt à intégrer."
+        : "Analyse actualisée : des corrections restent nécessaires.",
+        !plan.ready);
+    };
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: event.currentTarget,
+          title: "Analyse BNEC",
+          message: "Actualisation des rapprochements et des codes",
+          detail: "Lecture de la dernière révision validée.",
+        });
+      } else await task();
+    } catch (error) {
+      showState(error?.message || "Impossible d’actualiser l’analyse.", true);
+    }
+  }
+
+  async function submitExecution(event) {
+    event.preventDefault();
+    const task = async () => {
+      await apiPost(`/api/v1/integrations-bnec/${integrationId}/start`, {
+        resume: $("#integrationExecuteSummary").value.trim() || null,
+      });
+      closeDialog("integrationExecuteDialog");
+      await reloadAll();
+      activeTab = "overview";
+      renderAll();
+      showState("Intégration terminée : les codes définitifs ont été attribués et les ressources sont visibles dans la BNEC.");
+    };
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: $("#confirmIntegrationExecution"),
+          title: "Intégration BNEC",
+          message: "Codification et création des ressources officielles",
+          detail: "Transaction unique avec rollback complet en cas d’erreur.",
+        });
+      } else await task();
+    } catch (error) {
+      closeDialog("integrationExecuteDialog");
+      await reloadAll().catch(() => null);
+      renderAll();
+      showState(error?.message || "L’intégration a été annulée.", true);
+    }
+  }
+
+  function bindEvents() {
+    document.querySelectorAll(".detail-tabs button").forEach((button) => {
+      button.addEventListener("click", () => showTab(button.dataset.tab));
+    });
+    $("#integrationPrepare").addEventListener("click", preparePlan);
+    $("#integrationExecute").addEventListener("click", openExecuteDialog);
+    $("#integrationExecuteForm").addEventListener("submit", submitExecution);
+    document.querySelectorAll('[data-close-dialog="integrationExecuteDialog"]').forEach((button) => {
+      button.addEventListener("click", () => closeDialog("integrationExecuteDialog"));
+    });
+  }
+
+  async function boot() {
+    if (!integrationId) {
+      showState("Identifiant d’intégration absent.", true);
+      return;
+    }
+    const api = await import("/static/js/core/api.js");
+    apiGet = api.apiGet;
+    apiPost = api.apiPost;
+    bindEvents();
+    try {
+      [currentUser, integration, context, plan] = await Promise.all([
+        apiGet("/api/v1/me"),
+        apiGet(`/api/v1/integrations-bnec/${integrationId}`),
+        apiGet(`/api/v1/integrations-bnec/workspace/${integrationId}`),
+        apiGet(`/api/v1/integrations-bnec/${integrationId}/plan`),
+      ]);
+      hideState();
+      renderAll();
+    } catch (error) {
+      showState(error?.message || "Impossible de charger le dossier d’intégration.", true);
+    }
+    refreshIcons();
+  }
+
+  boot();
 })();

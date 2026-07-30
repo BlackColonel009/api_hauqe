@@ -11,8 +11,10 @@
   let selected = null;
   let action = null;
   let view = "calendar";
+  let calendarScale = "month";
   let cursor = new Date();
   cursor.setDate(1);
+  let loadSequence = 0;
 
   const filters = {
     type_echeance: "",
@@ -78,6 +80,17 @@
     return `J-${d}`;
   }
 
+  function calendarTitle(item) {
+    const status = String(item.statut || "").toUpperCase();
+    if (status === "TERMINEE") {
+      return `Exécutée avec motif : ${item.motif_cloture || "motif consigné"}`;
+    }
+    if (status === "ANNULEE") {
+      return `Annulée avec motif : ${item.motif_cloture || "motif consigné"}`;
+    }
+    return item.titre || item.type_echeance || "Échéance";
+  }
+
   function params() {
     const p = new URLSearchParams({ limit: "300", offset: "0" });
 
@@ -87,8 +100,16 @@
     const now = new Date();
 
     if (filters.range === "month") {
-      const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-      const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      let start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      let end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      if (view === "macro" && calendarScale === "year") {
+        start = new Date(cursor.getFullYear(), 0, 1);
+        end = new Date(cursor.getFullYear(), 11, 31);
+      } else if (view === "macro" && calendarScale === "decade") {
+        const decade = Math.floor(cursor.getFullYear() / 10) * 10;
+        start = new Date(decade, 0, 1);
+        end = new Date(decade + 9, 11, 31);
+      }
       p.set("start_date", iso(start));
       p.set("end_date", iso(end));
     } else if (["30", "90", "180"].includes(filters.range)) {
@@ -121,7 +142,7 @@
     icons();
   }
 
-  function renderCalendar() {
+  function renderMonthCalendar() {
     const title = new Intl.DateTimeFormat("fr-FR", {
       month: "long", year: "numeric",
     }).format(cursor);
@@ -137,12 +158,12 @@
       const dayItems = items.filter((item) => item.date_echeance === key);
 
       cells.push(`
-        <div class="calendar-day ${iso(new Date()) === key ? "today" : ""}">
+        <div class="calendar-day ${iso(new Date()) === key ? "today" : ""}" data-date="${key}">
           <span class="calendar-day-number">${day}</span>
           <div class="calendar-day-events">
             ${dayItems.slice(0, 3).map((item) => `
               <button class="deadline-calendar-event ${urgency(item)}" type="button" data-deadline="${e(item.id)}">
-                <i></i><span>${e(item.titre || item.type_echeance || "Échéance")}</span>
+                <i></i><span>${e(calendarTitle(item))}</span>
               </button>
             `).join("")}
             ${dayItems.length > 3 ? `<small>+${dayItems.length - 3} autre(s)</small>` : ""}
@@ -159,6 +180,88 @@
         showDetail();
       };
     });
+  }
+
+  function renderYearCalendar() {
+    const year = cursor.getFullYear();
+    $("#monthTitle").textContent = `Année ${year}`;
+    $("#calendarGrid").innerHTML = Array.from({ length: 12 }, (_, month) => {
+      const monthItems = items.filter((item) => {
+        if (!item.date_echeance) return false;
+        const value = new Date(`${item.date_echeance}T00:00:00`);
+        return value.getFullYear() === year && value.getMonth() === month;
+      });
+      const urgent = monthItems.filter((item) => {
+        const tone = urgency(item);
+        return ["expired", "critical", "warning"].includes(tone);
+      }).length;
+      return `
+        <button class="calendar-period-card month-period-card" type="button" data-calendar-month="${month}">
+          <span>${new Intl.DateTimeFormat("fr-FR", { month: "short" }).format(new Date(year, month, 1))}</span>
+          <strong>${monthItems.length}</strong>
+          <small>échéance(s)</small>
+          <i style="--period-load:${Math.min(monthItems.length, 12)}"></i>
+          ${urgent ? `<b>${urgent} prioritaire(s)</b>` : `<b class="quiet">Aucune urgence</b>`}
+        </button>
+      `;
+    }).join("");
+    document.querySelectorAll("[data-calendar-month]").forEach((button) => {
+      button.onclick = async () => {
+        cursor = new Date(year, Number(button.dataset.calendarMonth), 1);
+        view = "calendar";
+        calendarScale = "month";
+        document.querySelectorAll("[data-view]").forEach((item) => {
+          item.classList.toggle("active", item.dataset.view === "calendar");
+        });
+        await load();
+      };
+    });
+  }
+
+  function renderDecadeCalendar() {
+    const startYear = Math.floor(cursor.getFullYear() / 10) * 10;
+    $("#monthTitle").textContent = `${startYear} – ${startYear + 9}`;
+    $("#calendarGrid").innerHTML = Array.from({ length: 10 }, (_, index) => {
+      const year = startYear + index;
+      const yearItems = items.filter(
+        (item) => item.date_echeance?.startsWith(String(year))
+      );
+      const overdue = yearItems.filter((item) => urgency(item) === "expired").length;
+      return `
+        <button class="calendar-period-card year-period-card" type="button" data-calendar-year="${year}">
+          <span>Année</span>
+          <strong>${year}</strong>
+          <small>${yearItems.length} échéance(s)</small>
+          ${overdue ? `<b>${overdue} en retard</b>` : `<b class="quiet">Cycle suivi</b>`}
+        </button>
+      `;
+    }).join("");
+    document.querySelectorAll("[data-calendar-year]").forEach((button) => {
+      button.onclick = async () => {
+        cursor = new Date(Number(button.dataset.calendarYear), 0, 1);
+        calendarScale = "year";
+        await load();
+      };
+    });
+  }
+
+  function renderCalendar() {
+    $("#calendarGrid").classList.toggle(
+      "period-grid",
+      view === "macro"
+    );
+    $(".weekday-row").hidden = view === "macro";
+    if (view === "macro" && calendarScale === "decade") {
+      renderDecadeCalendar();
+    } else if (view === "macro") {
+      renderYearCalendar();
+    } else {
+      renderMonthCalendar();
+    }
+    $("#calendarZoomControls").hidden = view !== "macro";
+    $("#calendarZoomIn").disabled = calendarScale === "month";
+    $("#calendarZoomOut").disabled = calendarScale === "decade";
+    icons();
   }
 
   function renderList() {
@@ -235,21 +338,43 @@
     renderList();
     renderSecondary();
 
-    $("#calendarView").hidden = view !== "calendar";
+    $("#calendarView").hidden = !["calendar", "macro"].includes(view);
+    $("#calendarView").classList.toggle("macro-view", view === "macro");
     $("#listView").hidden = view !== "list";
   }
 
   async function load() {
+    const sequence = ++loadSequence;
     try {
       const payload = await api.apiGet(
         `/api/v1/veille/workspace/deadlines?${params()}`
       );
+      if (sequence !== loadSequence) return;
       items = payload.items || [];
       renderKpis(payload.summary || {});
       render();
     } catch (error) {
+      if (sequence !== loadSequence) return;
       state(error?.message || "Chargement impossible.", true);
     }
+  }
+
+  async function navigateMonth(delta) {
+    if (view === "macro" && calendarScale === "decade") {
+      cursor = new Date(cursor.getFullYear() + (delta * 10), 0, 1);
+    } else if (view === "macro") {
+      cursor = new Date(cursor.getFullYear() + delta, 0, 1);
+    } else {
+      cursor = new Date(
+        cursor.getFullYear(),
+        cursor.getMonth() + delta,
+        1
+      );
+    }
+    filters.range = "month";
+    $("#deadlineRangeFilter").value = "month";
+    renderCalendar();
+    await load();
   }
 
   function fill(node, label, values) {
@@ -311,32 +436,76 @@
   function showDetail() {
     if (!selected) return;
 
-    const closed = ["TERMINEE","ANNULEE"].includes(
-      String(selected.statut || "").toUpperCase()
-    );
+    const status = String(selected.statut || "PLANIFIEE").toUpperCase();
+    const closed = ["TERMINEE","ANNULEE"].includes(status);
+    const dueDate = selected.date_echeance
+      ? new Date(`${String(selected.date_echeance).slice(0, 10)}T12:00:00`)
+      : null;
+    const day = dueDate && !Number.isNaN(dueDate.getTime())
+      ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit" }).format(dueDate)
+      : "—";
+    const monthYear = dueDate && !Number.isNaN(dueDate.getTime())
+      ? new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(dueDate)
+      : "Date non définie";
+    const statusLabel = {
+      PLANIFIEE: "Planifiée",
+      EN_COURS: "En cours",
+      TERMINEE: "Terminée",
+      ANNULEE: "Annulée",
+      EN_RETARD: "En retard",
+    }[status] || status.replaceAll("_", " ");
+    const priority = String(selected.priorite || "NORMALE").toUpperCase();
+    const priorityLabel = {
+      BASSE: "Basse",
+      NORMALE: "Normale",
+      MOYENNE: "Moyenne",
+      HAUTE: "Haute",
+      CRITIQUE: "Critique",
+    }[priority] || priority.replaceAll("_", " ");
+    const dialog = $("#deadlineDetailDialog");
+    dialog.dataset.status = status;
+    dialog.dataset.priority = priority;
 
-    const node = $("#deadlineApiState");
-    node.hidden = false;
-    node.className = "dashboard-api-state";
-    node.innerHTML = `
-      <i data-lucide="calendar-clock"></i>
-      <div class="deadline-inline-detail">
-        <strong>${e(selected.titre || "Échéance")}</strong>
-        <span>${e(selected.resource_label || selected.ressource_type || "Ressource")} · ${e(dateLabel(selected.date_echeance))} · ${e(selected.statut || "—")} · ${e(selected.responsable_name || "Non affectée")}</span>
-        ${
-          perm("ECHEANCES.GERER") && !closed
-            ? `<div class="deadline-detail-actions">
-                <button class="btn btn-primary app-btn" type="button" data-action="complete"><i data-lucide="circle-check"></i>Terminer</button>
-                <button class="btn btn-outline-secondary app-btn" type="button" data-action="cancel"><i data-lucide="ban"></i>Annuler</button>
-              </div>`
-            : ""
-        }
-      </div>
-    `;
+    $("#deadlineDetailTitle").textContent = selected.titre || "Échéance";
+    $("#deadlineDetailBody").innerHTML = `
+      <section class="deadline-detail-overview">
+        <div class="deadline-date-block" aria-label="Date prévue : ${e(dateLabel(selected.date_echeance))}">
+          <span>${e(day)}</span>
+          <strong>${e(monthYear)}</strong>
+        </div>
+        <div class="deadline-overview-copy">
+          <small>Date prévue</small>
+          <strong>${e(dateLabel(selected.date_echeance))}</strong>
+          <span class="deadline-resource-line"><i data-lucide="building-2"></i>${e(selected.resource_label || selected.ressource_type || "Ressource non renseignée")}</span>
+        </div>
+        <span class="deadline-status-pill"><i data-lucide="${closed ? "check-circle-2" : "activity"}"></i>${e(statusLabel)}</span>
+      </section>
+
+      <div class="deadline-detail-layout">
+        <main class="deadline-detail-main">
+          <section class="deadline-description-panel">
+            <div class="deadline-section-title"><span><i data-lucide="align-left"></i></span><div><small>Instruction</small><h3>Description de l’échéance</h3></div></div>
+            <p>${e(selected.description || "Aucune instruction complémentaire n’a été renseignée pour cette échéance.")}</p>
+          </section>
+          ${closed ? `<section class="deadline-closure-note"><span><i data-lucide="file-check-2"></i></span><div><small>Décision enregistrée</small><strong>${e(selected.motif_cloture || "Le motif est consigné dans le journal d’audit.")}</strong></div></section>` : ""}
+        </main>
+        <aside class="deadline-detail-aside">
+          <p class="deadline-aside-title">Repères</p>
+          <div class="deadline-meta-row"><span><i data-lucide="tags"></i></span><div><small>Type d’échéance</small><strong>${e(selected.type_echeance || "Non renseigné")}</strong></div></div>
+          <div class="deadline-meta-row"><span><i data-lucide="flag"></i></span><div><small>Niveau de priorité</small><strong class="deadline-priority-value">${e(priorityLabel)}</strong></div></div>
+          <div class="deadline-meta-row"><span><i data-lucide="shield-check"></i></span><div><small>Traçabilité</small><strong>Journalisation active</strong></div></div>
+        </aside>
+      </div>`;
+    $("#deadlineDetailActions").innerHTML = perm("ECHEANCES.GERER") && !closed
+      ? `<button class="btn btn-outline-secondary app-btn" type="button" data-action="cancel"><i data-lucide="ban"></i>Annuler l’échéance</button>
+         <button class="btn btn-primary app-btn" type="button" data-action="complete"><i data-lucide="circle-check"></i>Terminer l’échéance</button>`
+      : `<button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-detail>Fermer</button>`;
+    $("#deadlineDetailDialog").showModal();
 
     $$("[data-action]").forEach((button) => {
       button.onclick = () => {
         action = button.dataset.action;
+        $("#deadlineDetailDialog").close();
         $("#deadlineActionTitle").textContent =
           action === "complete" ? "Terminer l’échéance" : "Annuler l’échéance";
         $("#deadlineActionReason").value = "";
@@ -412,37 +581,63 @@
     };
 
     $("#prevMonth").onclick = async () => {
-      cursor.setMonth(cursor.getMonth() - 1);
-      filters.range = "month";
-      $("#deadlineRangeFilter").value = "month";
-      await load();
+      await navigateMonth(-1);
     };
     $("#nextMonth").onclick = async () => {
-      cursor.setMonth(cursor.getMonth() + 1);
-      filters.range = "month";
-      $("#deadlineRangeFilter").value = "month";
-      await load();
+      await navigateMonth(1);
     };
     $("#todayButton").onclick = async () => {
-      cursor = new Date(); cursor.setDate(1);
+      const today = new Date();
+      cursor = new Date(today.getFullYear(), today.getMonth(), 1);
       filters.range = "month";
       $("#deadlineRangeFilter").value = "month";
+      renderCalendar();
       await load();
+      $("#calendarGrid .calendar-day.today")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
     };
 
     $$("[data-view]").forEach((button) => {
       button.onclick = () => {
         view = button.dataset.view;
+        if (view === "macro") calendarScale = "year";
+        if (view === "calendar") calendarScale = "month";
         $$("[data-view]").forEach((x) => x.classList.toggle("active", x === button));
-        render();
+        load();
       };
     });
+
+    $("#calendarZoomOut").onclick = async () => {
+      if (calendarScale === "month") calendarScale = "year";
+      else if (calendarScale === "year") calendarScale = "decade";
+      view = "macro";
+      await load();
+    };
+    $("#calendarZoomIn").onclick = async () => {
+      if (calendarScale === "decade") calendarScale = "year";
+      else if (calendarScale === "year") {
+        calendarScale = "month";
+        view = "calendar";
+        $$("[data-view]").forEach((item) => {
+          item.classList.toggle("active", item.dataset.view === "calendar");
+        });
+      }
+      await load();
+    };
 
     $$("[data-close-deadline-dialog]").forEach((b) => {
       b.onclick = () => $("#deadlineDialog").close();
     });
     $$("[data-close-deadline-action]").forEach((b) => {
       b.onclick = () => $("#deadlineActionDialog").close();
+    });
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close-deadline-detail]")) {
+        $("#deadlineDetailDialog").close();
+      }
     });
   }
 

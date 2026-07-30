@@ -146,3 +146,24 @@
   border-radius:18px;
   box-shadow:0 28px 70px rgba(18,44,33,.20);
 }
+
+.reports-page .paper-preview{width:min(680px,calc(100% - 34px));min-height:620px;padding:30px}
+.reports-page .paper-head{border-bottom:4px solid #d9bc51}
+.reports-page .paper-head>span{width:39px;height:39px;border-radius:10px;background:#125f43;font-size:10px}
+.reports-page .paper-head strong{color:#124d38;font-size:11px}.reports-page .paper-head small{font-size:7px}
+.reports-page .paper-head em{padding:5px 7px;border-radius:5px;background:#edf7f2;color:#176b4d;font-size:6.5px;font-style:normal;font-weight:800}
+.paper-title-band{margin:22px 0 14px;padding:16px 18px;border-left:5px solid #1f7a58;background:linear-gradient(90deg,#eaf6f0,#f8fbf9)}
+.paper-title-band p{margin:0 0 3px;color:#27805f;font-size:7px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.paper-title-band h1{margin:0 0 5px!important;color:#153e2e;font-size:18px!important}.paper-title-band span{color:#64796f;font-size:7px}
+.paper-report-meta{display:grid;grid-template-columns:1.4fr 1.4fr .7fr;gap:8px;margin-bottom:14px}
+.paper-report-meta span{padding:9px 10px;border:1px solid #dce8e2;border-radius:7px;background:#fff}
+.paper-report-meta small,.paper-report-meta strong{display:block}.paper-report-meta small{margin-bottom:3px;color:#7a8e84;font-size:6px;text-transform:uppercase}.paper-report-meta strong{overflow:hidden;color:#28483a;font-size:7px;text-overflow:ellipsis;white-space:nowrap}
+.paper-table-wrap{width:100%;overflow-x:auto;border:1px solid #d8e5de;border-radius:8px}
+.paper-table-wrap table{width:100%;min-width:500px;border-collapse:collapse;table-layout:fixed}
+.paper-table-wrap th{padding:8px;background:#176b4d;color:#fff;border-right:1px solid rgba(255,255,255,.18);font-size:6.5px;text-align:left;text-transform:uppercase}
+.paper-table-wrap td{max-width:140px;padding:8px;border-right:1px solid #dce7e1;border-bottom:1px solid #dce7e1;color:#40584e;font-size:6.5px;overflow-wrap:anywhere;vertical-align:top}
+.paper-table-wrap tbody tr:nth-child(even) td{background:#eef7f2}
+.paper-table-note{margin:0;padding:8px 10px;background:#f8faf9;color:#71827a;font-size:6.5px}
+.paper-empty{padding:40px 20px;color:#74857d;font-size:8px;text-align:center}
+.paper-confidentiality{margin:18px 0 0;padding-top:9px;border-top:2px solid #176b4d;color:#788a81;font-size:6.5px}
+@media(max-width:700px){.reports-page .paper-preview{width:calc(100% - 18px);padding:18px}.paper-report-meta{grid-template-columns:1fr}.paper-title-band{margin-top:16px}.paper-table-wrap table{min-width:460px}}

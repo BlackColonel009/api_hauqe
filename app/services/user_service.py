@@ -15,7 +15,7 @@ Les routes FastAPI restent volontairement fines.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.audit.service import write_audit_event
 from app.models.utilisateur import Utilisateur
 from app.models.utilisateur_role import UtilisateurRole
+from app.models.notification import Notification
 from app.repositories.user_repository import (
     UserRepository,
 )
@@ -264,6 +265,32 @@ class UserService:
 
         await db.flush()
 
+        if payload.envoyer_identifiants_email:
+            display_name = " ".join(
+                value for value in (user.prenoms, user.nom) if value
+            ).strip() or user.email
+            db.add(
+                Notification(
+                    destinataire_utilisateur_id=None,
+                    adresse_externe=user.email,
+                    canal="EMAIL",
+                    objet="Création de votre compte HAUQE",
+                    contenu=(
+                        f"Bonjour {display_name},\n\n"
+                        "Votre compte HAUQE vient d’être créé.\n"
+                        f"Identifiant : {user.email}\n"
+                        f"Mot de passe temporaire : {payload.password}\n\n"
+                        "Pour votre sécurité, changez ce mot de passe dès "
+                        "votre première connexion et ne le communiquez à personne.\n\n"
+                        "HAUQE — Haute Autorité de la Qualité et de "
+                        "l’Environnement"
+                    ),
+                    date_envoi=date.today(),
+                    nombre_tentatives=0,
+                    statut="EN_ATTENTE",
+                )
+            )
+
         for role in roles:
             db.add(
                 UtilisateurRole(
@@ -300,6 +327,9 @@ class UserService:
                 "fonction": user.fonction,
                 "statut": user.statut,
                 "roles": [role.code for role in roles],
+                "notification_identifiants_email": (
+                    payload.envoyer_identifiants_email
+                ),
             },
         )
 

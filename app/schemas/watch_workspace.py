@@ -19,6 +19,7 @@ class WatchFilters(BaseModel):
     alert_types: list[str] = Field(default_factory=list)
     alert_statuses: list[str] = Field(default_factory=list)
     watch_case_statuses: list[str] = Field(default_factory=list)
+    watch_case_event_types: list[str] = Field(default_factory=list)
     watch_case_priorities: list[str] = Field(default_factory=list)
     report_types: list[str] = Field(default_factory=list)
     report_statuses: list[str] = Field(default_factory=list)

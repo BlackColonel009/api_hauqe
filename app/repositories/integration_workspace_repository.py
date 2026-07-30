@@ -72,7 +72,7 @@ class IntegrationWorkspaceRepository:
         base=(select(IntegrationBnec.id,IntegrationBnec.statut).select_from(IntegrationBnec).join(Validation,Validation.id==IntegrationBnec.validation_id).join(FicheCollecte,FicheCollecte.id==Validation.fiche_collecte_id).join(MissionCollecte,MissionCollecte.id==FicheCollecte.mission_id).join(Campagne,Campagne.id==MissionCollecte.campagne_id).join(ZoneAdministrative,ZoneAdministrative.id==MissionCollecte.zone_id).outerjoin(Entreprise,Entreprise.id==FicheCollecte.entreprise_id).where(*filters).subquery())
         out={}
         out['total']=int((await db.execute(select(func.count(base.c.id)))).scalar_one() or 0)
-        for status in ('EN_ATTENTE','PRECONTROLE','INTEGRATION_EN_COURS','POSTCONTROLE','INTEGREE','ECHEC'):
+        for status in ('EN_ATTENTE','BLOQUE','PRECONTROLE','INTEGRATION_EN_COURS','POSTCONTROLE','INTEGREE','ECHEC'):
             out[status]=int((await db.execute(select(func.count(base.c.id)).where(func.upper(func.coalesce(base.c.statut,''))==status))).scalar_one() or 0)
         return out
 

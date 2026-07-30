@@ -35,12 +35,15 @@ from app.schemas.organismes_certifications import (
     CouvertureUpdateRequest,
     EvenementCertificationResponse,
     NormeResponse,
+    NormeCreateRequest,
     OrganismeCreateRequest,
     OrganismeFiltersResponse,
     OrganismeRegistryResponse,
     OrganismeResponse,
     OrganismeUpdateRequest,
     OrganismeVerificationRequest,
+    RenouvellementCompletionRequest,
+    RenouvellementCompletionResponse,
     RenouvellementCreateRequest,
     RenouvellementDecisionRequest,
     RenouvellementResponse,
@@ -92,6 +95,16 @@ async def get_norme(
     actor: AuthContext = Depends(require_permission("REFERENTIELS.LIRE")),
 ):
     return await NormeService.get(db, norme_id)
+
+
+@router.post("/normes", response_model=NormeResponse, status_code=status.HTTP_201_CREATED, tags=["Référentiels - Normes"])
+async def create_norme(
+    payload: NormeCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("CERTIFICATIONS.CREER")),
+):
+    return await NormeService.create(db, payload=payload, actor=actor, request=request)
 
 
 # ============================================================
@@ -885,4 +898,27 @@ async def decide_renewal(
     return await RenouvellementService.decide(
         db, certification_id=certification_id, renouvellement_id=renouvellement_id,
         payload=payload, actor=actor, request=request
+    )
+
+
+@router.post(
+    "/certifications/{certification_id}/renewals/{renouvellement_id}/complete",
+    response_model=RenouvellementCompletionResponse,
+    tags=["Certifications - Renouvellements"],
+)
+async def complete_renewal(
+    certification_id: UUID,
+    renouvellement_id: UUID,
+    payload: RenouvellementCompletionRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("CERTIFICATIONS.VERIFIER")),
+):
+    return await RenouvellementService.complete(
+        db,
+        certification_id=certification_id,
+        renouvellement_id=renouvellement_id,
+        payload=payload,
+        actor=actor,
+        request=request,
     )

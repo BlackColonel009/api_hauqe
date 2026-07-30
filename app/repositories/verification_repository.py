@@ -24,6 +24,15 @@ from app.models.zone_administrative import ZoneAdministrative
 class VerificationRepository:
 
     @staticmethod
+    async def get_fiche_for_update(db: AsyncSession, fiche_id: UUID):
+        result = await db.execute(
+            select(FicheCollecte)
+            .where(FicheCollecte.id == fiche_id)
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def workspace_filters(db: AsyncSession):
         async def values(column):
             r=await db.execute(select(column).where(column.is_not(None),func.trim(column)!="").distinct().order_by(column))

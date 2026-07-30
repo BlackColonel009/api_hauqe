@@ -21,7 +21,7 @@ elle est imposée par les permissions serveur.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -163,10 +163,70 @@ class IntegrationElementResponse(BaseModel):
     revision_source: str | None = None
     action: str | None = None
     code_genere: str | None = None
+    codification_regle_id: UUID | None = None
+    codification_logical_code: str | None = None
+    codification_version: str | None = None
+    codification_format: str | None = None
+    codification_scope_key: str | None = None
+    codification_sequence: int | None = None
+    codification_segments: dict[str, Any] | None = None
     statut: str | None = None
     message_erreur: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class IntegrationPlanItem(BaseModel):
+    """Élément métier présenté à l'administrateur BNEC.
+
+    Les UUID restent disponibles uniquement dans la section technique en
+    lecture seule. L'utilisateur ne les saisit jamais.
+    """
+
+    element_id: UUID
+    type_objet: str
+    type_libelle: str
+    source_titre: str
+    source_details: list[str] = Field(default_factory=list)
+    action: str
+    action_libelle: str
+    cible_titre: str | None = None
+    cible_details: list[str] = Field(default_factory=list)
+    statut: str
+    blocage: str | None = None
+    ressource_source_id: UUID | None = None
+    ressource_cible_id: UUID | None = None
+    revision_source: str | None = None
+    code_genere: str | None = None
+    code_propose: str | None = None
+    codification_requise: bool = False
+    codification_modele: str | None = None
+    codification_logical_code: str | None = None
+    codification_version: str | None = None
+    codification_format: str | None = None
+    codification_portee: str | None = None
+    codification_reference_approbation: str | None = None
+
+
+class IntegrationPlanResponse(BaseModel):
+    integration_id: UUID
+    validation_id: UUID
+    fiche_collecte_id: UUID
+    fiche_revision: int | None = None
+    entreprise_id: UUID | None = None
+    entreprise_nom: str | None = None
+    entreprise_identifiant: str | None = None
+    validation_decision: str | None = None
+    prepared: bool = False
+    ready: bool = False
+    total: int = 0
+    ready_count: int = 0
+    integrated_count: int = 0
+    error_count: int = 0
+    blocked_count: int = 0
+    codification_ready: bool = False
+    missing_codification_models: list[str] = Field(default_factory=list)
+    items: list[IntegrationPlanItem] = Field(default_factory=list)
 
 
 class IntegrationResponse(BaseModel):

@@ -528,6 +528,9 @@
     $("#userFunction").value = "";
     $("#userPhone").value = "";
     $("#userInitialStatus").value = "ACTIF";
+    if ($("#sendUserCredentialsEmail")) {
+      $("#sendUserCredentialsEmail").checked = false;
+    }
 
     $("#initialPasswordSection").hidden = false;
     $("#initialRolesSection").hidden = false;
@@ -748,6 +751,7 @@ const created = await run(
       fonction: $("#userFunction").value.trim() || null,
       statut: $("#userInitialStatus").value,
       role_ids: selectedRoleIds,
+      envoyer_identifiants_email: $("#sendUserCredentialsEmail")?.checked || false,
     }
   ),
   {

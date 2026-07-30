@@ -22,6 +22,13 @@
   let documents = [];
 
   let activeRubricId = null;
+  const verificationOpinionLabel = (value) => ({
+    verified_compliant: "Vérifié conforme",
+    verified_with_reservation: "Vérifié avec réserve",
+    not_verified: "Non vérifié",
+    suspect: "Suspect",
+    rejected: "Rejeté",
+  }[String(value || "").toLowerCase()] || value || "—");
   const dirty = new Map();
 
   function icon(name) {
@@ -199,7 +206,7 @@
 
       <span>
         <b>Vérification</b>
-        ${escapeHtml(context.verification_opinion || "—")}
+        ${escapeHtml(verificationOpinionLabel(context.verification_opinion))}
       </span>
 
       <span>

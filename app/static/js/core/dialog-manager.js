@@ -44,14 +44,32 @@ const SCROLL_REGION_SELECTORS = [
   "[data-dialog-scroll]",
 ];
 
+const CUSTOM_DIALOG_SELECTOR = [
+  ".reference-modal",
+  ".dependency-modal",
+  ".company-dialog",
+  ".company-detail-dialog",
+  ".assign-alert-dialog",
+  ".deadline-dialog",
+  ".return-modal",
+  ".operational-modal",
+  ".validation-modal",
+  ".integration-modal",
+].join(",");
+
 function allOpenDialogs() {
   return [...document.querySelectorAll("dialog[open]")];
+}
+
+function allOpenCustomDialogs() {
+  return [...document.querySelectorAll(CUSTOM_DIALOG_SELECTOR)]
+    .filter((element) => !element.hidden && getComputedStyle(element).display !== "none");
 }
 
 function syncBodyLock() {
   document.body.classList.toggle(
     "hauqe-dialog-open",
-    allOpenDialogs().length > 0
+    allOpenDialogs().length > 0 || allOpenCustomDialogs().length > 0
   );
 }
 
@@ -72,16 +90,7 @@ function dataCloseTarget(button) {
 function closestDialogOrOverlay(element) {
   if (!(element instanceof Element)) return null;
 
-  return element.closest([
-    "dialog",
-    ".reference-modal",
-    ".dependency-modal",
-    ".company-dialog",
-    ".company-detail-dialog",
-    ".assign-alert-dialog",
-    ".deadline-dialog",
-    "[role='dialog']",
-  ].join(","));
+  return element.closest(`dialog,${CUSTOM_DIALOG_SELECTOR},[role='dialog']`);
 }
 
 export function closeDialog(target, { returnValue = "cancel" } = {}) {
@@ -193,6 +202,12 @@ function normalizeDialog(dialog) {
 function normalizeTree(root = document) {
   if (root instanceof HTMLDialogElement) normalizeDialog(root);
   root.querySelectorAll?.("dialog").forEach(normalizeDialog);
+  if (root instanceof Element && root.matches(CUSTOM_DIALOG_SELECTOR)) {
+    root.classList.add("hauqe-custom-dialog-managed");
+  }
+  root.querySelectorAll?.(CUSTOM_DIALOG_SELECTOR).forEach((element) => {
+    element.classList.add("hauqe-custom-dialog-managed");
+  });
 }
 
 function closeFromButton(button) {
@@ -312,12 +327,7 @@ function patchDialogMethods() {
 export function closeAllDialogs() {
   allOpenDialogs().reverse().forEach((dialog) => closeDialog(dialog));
 
-  document.querySelectorAll([
-    ".reference-modal:not([hidden])",
-    ".dependency-modal:not([hidden])",
-    ".company-dialog:not([hidden])",
-    ".company-detail-dialog:not([hidden])",
-  ].join(",")).forEach((overlay) => closeDialog(overlay));
+  allOpenCustomDialogs().forEach((overlay) => closeDialog(overlay));
 }
 
 export function installDialogManager() {
@@ -340,13 +350,18 @@ export function installDialogManager() {
 
   observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      mutation.addedNodes.forEach((node) => {
-        if (node instanceof Element) normalizeTree(node);
-      });
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof Element) normalizeTree(node);
+        });
+      }
     }
+    syncBodyLock();
   });
 
   observer.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["hidden", "class", "open"],
     childList: true,
     subtree: true,
   });

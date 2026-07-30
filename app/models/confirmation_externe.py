@@ -45,6 +45,11 @@ class ConfirmationExterne(
         nullable=True,
     )
 
+    contenu_demande: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     date_envoi: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,

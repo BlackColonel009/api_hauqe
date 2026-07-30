@@ -32,7 +32,7 @@ class IntegrationWorkspaceService:
     async def registry(db: AsyncSession, *, search, statut, sort, limit, offset):
         rows,total=await IntegrationWorkspaceRepository.registry(db,search=search,statut=statut,sort=sort,limit=limit,offset=offset)
         raw=await IntegrationWorkspaceRepository.summary(db,search=search,statut=statut)
-        return IntegrationWorkspaceRegistryResponse(total=total,limit=limit,offset=offset,summary=IntegrationWorkspaceSummary(total=raw['total'],waiting=raw['EN_ATTENTE'],precontrolled=raw['PRECONTROLE'],in_progress=raw['INTEGRATION_EN_COURS'],postcontrolled=raw['POSTCONTROLE'],integrated=raw['INTEGREE'],failed=raw['ECHEC']),items=[await IntegrationWorkspaceService.item_from_row(db,row) for row in rows])
+        return IntegrationWorkspaceRegistryResponse(total=total,limit=limit,offset=offset,summary=IntegrationWorkspaceSummary(total=raw['total'],waiting=raw['EN_ATTENTE'],blocked=raw['BLOQUE'],precontrolled=raw['PRECONTROLE'],in_progress=raw['INTEGRATION_EN_COURS'],postcontrolled=raw['POSTCONTROLE'],integrated=raw['INTEGREE'],failed=raw['ECHEC']),items=[await IntegrationWorkspaceService.item_from_row(db,row) for row in rows])
 
     @staticmethod
     async def context(db: AsyncSession,integration_id):

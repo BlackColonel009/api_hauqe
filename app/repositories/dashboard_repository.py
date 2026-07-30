@@ -27,8 +27,10 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
+    Numeric,
     and_,
     case,
+    cast,
     distinct,
     func,
     or_,
@@ -1238,8 +1240,20 @@ class DashboardRepository:
                 ControleFuccs.statut.in_(list(FINAL_FUCCS_STATUSES)),
             )
         )
+        numeric_fuccs_rate = case(
+            (
+                ControleFuccs.taux.op("~")(
+                    r"^\s*[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)\s*$"
+                ),
+                cast(
+                    func.replace(ControleFuccs.taux, ",", "."),
+                    Numeric(10, 4),
+                ),
+            ),
+            else_=None,
+        )
         fuccs_avg_result = await db.execute(
-            select(func.avg(ControleFuccs.taux)).where(
+            select(func.avg(numeric_fuccs_rate)).where(
                 ControleFuccs.date_fin >= start_date,
                 ControleFuccs.date_fin <= end_date,
                 ControleFuccs.statut.in_(list(FINAL_FUCCS_STATUSES)),

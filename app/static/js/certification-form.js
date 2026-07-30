@@ -33,6 +33,12 @@
     source_donnee: "SAISIE_HAUQE",
   };
 
+  function proposedIdentifier() {
+    const year = new Date().getFullYear();
+    const token = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `HAUQE-CERT-${year}-${token}`;
+  }
+
   function icon(name) {
     return `<i data-lucide="${name}"></i>`;
   }
@@ -185,6 +191,7 @@
               placeholder: "Identifiant officiel HAUQE",
             }
           )}
+          ${!editMode ? `<button class="inline-suggestion" id="useSuggestedCertId" type="button" title="Proposition automatique conforme au format HAUQE"><i data-lucide="sparkles"></i>Proposer un identifiant HAUQE</button>` : ""}
 
           ${input(
             "numero_certificat",
@@ -203,6 +210,16 @@
               disabled: editMode,
             }
           )}
+          ${!editMode ? `
+            <div class="inline-precreate full">
+              <div><strong>Référentiel absent ?</strong><small>Saisissez-le ici ; il sera créé « À vérifier » et sélectionné automatiquement.</small></div>
+              <div class="inline-precreate-grid">
+                <input id="newNormCode" placeholder="Code, ex. ISO 9001">
+                <input id="newNormName" placeholder="Intitulé de la norme">
+                <input id="newNormDomain" placeholder="Domaine / référentiel (saisie libre)">
+                <button class="btn btn-outline-secondary app-btn" id="precreateNorm" type="button"><i data-lucide="plus"></i>Précréer</button>
+              </div>
+            </div>` : ""}
 
           ${select(
             "norme_id",
@@ -213,6 +230,15 @@
               disabled: editMode,
             }
           )}
+          ${!editMode ? `
+            <div class="inline-precreate full">
+              <div><strong>Organisme absent ?</strong><small>Précréez une fiche incomplète à compléter plus tard dans Organismes.</small></div>
+              <div class="inline-precreate-grid">
+                <input id="newOrganismName" placeholder="Nom officiel de l’organisme">
+                <input id="newOrganismAcronym" placeholder="Sigle (facultatif)">
+                <button class="btn btn-outline-secondary app-btn" id="precreateOrganism" type="button"><i data-lucide="building-2"></i>Précréer</button>
+              </div>
+            </div>` : ""}
         </div>
 
         ${
@@ -267,6 +293,15 @@
               disabled: editMode,
             }
           )}
+          ${!editMode ? `<button class="inline-suggestion" id="addAccreditation" type="button" ${state.organisme_id ? "" : "disabled"}><i data-lucide="badge-plus"></i>Ajouter une accréditation</button>
+          <div class="inline-precreate full" id="accreditationCreator" hidden>
+            <div class="inline-precreate-grid">
+              <input id="newAccreditationNumber" placeholder="Numéro d’accréditation">
+              <input id="newAccreditor" placeholder="Accréditer / autorité">
+              <input id="newAccreditationDomain" placeholder="Domaine / référentiel">
+              <button class="btn btn-outline-secondary app-btn" id="precreateAccreditation" type="button"><i data-lucide="plus"></i>Enregistrer</button>
+            </div>
+          </div>` : ""}
 
           ${select(
             "accreditation_id",
@@ -499,6 +534,70 @@
         }
       });
     }
+
+    $("#useSuggestedCertId")?.addEventListener("click", () => {
+      const field = document.querySelector('[name="identifiant_national"]');
+      field.value = proposedIdentifier();
+      state.identifiant_national = field.value;
+    });
+
+    $("#precreateNorm")?.addEventListener("click", async () => {
+      const code = $("#newNormCode").value.trim();
+      if (!code) return showState("Saisissez au moins le code du référentiel.", { error: true });
+      try {
+        const created = await apiPost("/api/v1/normes", {
+          code,
+          nom: $("#newNormName").value.trim() || null,
+          domaine: $("#newNormDomain").value.trim() || null,
+        });
+        norms.push(created);
+        state.norme_id = created.id;
+        render();
+        showState("Référentiel précréé avec le statut « À vérifier ».");
+      } catch (error) {
+        showState(error?.message || "Précréation impossible.", { error: true });
+      }
+    });
+
+    $("#precreateOrganism")?.addEventListener("click", async () => {
+      const name = $("#newOrganismName").value.trim();
+      if (!name) return showState("Saisissez le nom de l’organisme.", { error: true });
+      try {
+        const created = await apiPost("/api/v1/organismes", {
+          nom_officiel: name,
+          sigle: $("#newOrganismAcronym").value.trim() || null,
+          statut: "A_VERIFIER",
+        });
+        organisms.push(created);
+        state.organisme_id = created.id;
+        state.accreditation_id = "";
+        accreditations = [];
+        render();
+        showState("Organisme précréé. Sa fiche est signalée « À vérifier ».");
+      } catch (error) {
+        showState(error?.message || "Précréation impossible.", { error: true });
+      }
+    });
+
+    $("#addAccreditation")?.addEventListener("click", () => {
+      $("#accreditationCreator").hidden = false;
+    });
+    $("#precreateAccreditation")?.addEventListener("click", async () => {
+      try {
+        const created = await apiPost(`/api/v1/organismes/${state.organisme_id}/accreditations`, {
+          numero: $("#newAccreditationNumber").value.trim() || null,
+          accrediteur: $("#newAccreditor").value.trim() || null,
+          domaine_technique: $("#newAccreditationDomain").value.trim() || null,
+          statut: "A_VERIFIER",
+        });
+        accreditations.push(created);
+        state.accreditation_id = created.id;
+        render();
+        showState("Accréditation ajoutée et sélectionnée.");
+      } catch (error) {
+        showState(error?.message || "Ajout impossible.", { error: true });
+      }
+    });
 
     $("#certDocuments")?.addEventListener("change", (event) => {
       pendingFiles = Array.from(event.target.files || []);

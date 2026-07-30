@@ -17,6 +17,13 @@
     statut: "",
     sort: "started",
   };
+  const verificationOpinionLabel = (value) => ({
+    verified_compliant: "Vérifié conforme",
+    verified_with_reservation: "Vérifié avec réserve",
+    not_verified: "Non vérifié",
+    suspect: "Suspect",
+    rejected: "Rejeté",
+  }[String(value || "").toLowerCase()] || value || "—");
 
   function icon(name) {
     return `<i data-lucide="${name}"></i>`;
@@ -290,7 +297,7 @@
           <td>
             <div class="cert-stack">
               <strong>
-                ${escapeHtml(item.verification_opinion || "—")}
+                ${escapeHtml(verificationOpinionLabel(item.verification_opinion))}
               </strong>
               <small>
                 Risque ${escapeHtml(item.verification_risk || "—")}
@@ -405,7 +412,7 @@
             ${escapeHtml(item.mission_code || "Mission")}
             · ${escapeHtml(item.campaign_code || "—")}
             · ${escapeHtml(item.zone_name || "—")}
-            · avis ${escapeHtml(item.verification_opinion || "—")}
+            · avis ${escapeHtml(verificationOpinionLabel(item.verification_opinion))}
             · risque ${escapeHtml(item.verification_risk || "—")}
             · clôturée ${escapeHtml(formatDate(item.verification_closed_on))}
           </small>
@@ -431,33 +438,53 @@
         </div>
 
         ${
-          item.latest_control_id
-            ? `
-              <a
-                href="#/controle/${escapeHtml(item.latest_control_id)}"
-                class="btn btn-outline-secondary app-btn"
-              >
-                ${icon("eye")}
-                Voir le dernier
-              </a>
-            `
-            : ""
-        }
-
-        ${
           hasPermission("FUCCS.CONTROLER")
           && activeGrid
             ? `
-              <button
-                class="btn btn-primary app-btn"
-                type="button"
-                data-start-fuccs="${escapeHtml(item.dossier_id)}"
-              >
-                ${icon("play")}
-                Démarrer
-              </button>
+              ${
+                item.latest_control_id
+                  ? `
+                    <a
+                      href="#/controle/${escapeHtml(item.latest_control_id)}"
+                      class="btn btn-primary app-btn"
+                    >
+                      ${icon(
+                        String(item.latest_control_status || "").toUpperCase()
+                          === "FINALISE"
+                          ? "eye"
+                          : "play"
+                      )}
+                      ${
+                        String(item.latest_control_status || "").toUpperCase()
+                          === "FINALISE"
+                          ? "Consulter"
+                          : "Reprendre"
+                      }
+                    </a>
+                  `
+                  : `
+                    <button
+                      class="btn btn-primary app-btn"
+                      type="button"
+                      data-start-fuccs="${escapeHtml(item.dossier_id)}"
+                    >
+                      ${icon("play")}
+                      Démarrer
+                    </button>
+                  `
+              }
             `
-            : ""
+            : item.latest_control_id
+              ? `
+                <a
+                  href="#/controle/${escapeHtml(item.latest_control_id)}"
+                  class="btn btn-outline-secondary app-btn"
+                >
+                  ${icon("eye")}
+                  Consulter
+                </a>
+              `
+              : ""
         }
       </article>
     `).join("");

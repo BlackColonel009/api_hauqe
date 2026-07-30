@@ -19,10 +19,15 @@ Elle ne dépend pas du frontend.
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 
+from app.config.logging import configure_logging
 from app.database.session import AsyncSessionLocal
 from app.services.veille_service import WatchService
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 async def run() -> None:
@@ -32,10 +37,11 @@ async def run() -> None:
             actor=None,
             request=None,
         )
-        print(
+        logger.info(
             "Scan veille terminé : "
-            f"{result.deadlines_created} échéance(s) créée(s), "
-            f"{result.alerts_created} alerte(s) créée(s)."
+            "%s échéance(s) créée(s), %s alerte(s) créée(s).",
+            result.deadlines_created,
+            result.alerts_created,
         )
 
 

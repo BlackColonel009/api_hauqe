@@ -26,6 +26,7 @@ from app.schemas.validation_bnec import (
     IntegrationElementUpdateRequest,
     IntegrationListResponse,
     IntegrationOpenRequest,
+    IntegrationPlanResponse,
     IntegrationQueueItem,
     IntegrationResponse,
     IntegrationStartRequest,
@@ -95,6 +96,36 @@ async def open_integration(
     )
 
 
+@router.get(
+    "/{integration_id}/plan",
+    response_model=IntegrationPlanResponse,
+)
+async def get_integration_plan(
+    integration_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("INTEGRATION.LIRE")),
+):
+    return await ValidationBnecService.integration_plan(db, integration_id)
+
+
+@router.post(
+    "/{integration_id}/prepare",
+    response_model=IntegrationPlanResponse,
+)
+async def prepare_integration_plan(
+    integration_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("INTEGRATION.EXECUTER")),
+):
+    return await ValidationBnecService.prepare_plan(
+        db,
+        integration_id=integration_id,
+        actor=actor,
+        request=request,
+    )
+
+
 @router.get("/{integration_id}", response_model=IntegrationResponse)
 async def get_integration(
     integration_id: UUID,
@@ -157,6 +188,7 @@ async def list_elements(
     "/{integration_id}/elements",
     response_model=IntegrationElementResponse,
     status_code=status.HTTP_201_CREATED,
+    deprecated=True,
 )
 async def create_element(
     integration_id: UUID,
@@ -177,6 +209,7 @@ async def create_element(
 @router.patch(
     "/{integration_id}/elements/{element_id}",
     response_model=IntegrationElementResponse,
+    deprecated=True,
 )
 async def update_element(
     integration_id: UUID,
@@ -199,6 +232,7 @@ async def update_element(
 @router.post(
     "/{integration_id}/elements/{element_id}/result",
     response_model=IntegrationElementResponse,
+    deprecated=True,
 )
 async def element_result(
     integration_id: UUID,

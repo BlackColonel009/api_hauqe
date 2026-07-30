@@ -127,23 +127,26 @@
   top:10px;
   right:11px;
   z-index:2;
-  width:25px;
-  height:25px;
+  width:30px;
+  height:30px;
   display:grid;
   place-items:center;
-  border:0;
-  border-radius:7px;
-  background:transparent;
-  color:#9aa7a1;
+  border:1px solid #bfe0d1;
+  border-radius:10px;
+  background:#edf8f3;
+  color:var(--green-700);
+  box-shadow:0 5px 14px rgba(29,105,77,.1);
+  touch-action:manipulation;
 }
 
 .metric-card .metric-info:hover{
-  background:#f1f6f3;
-  color:var(--green-700);
+  background:var(--green-600);
+  color:#fff;
+  transform:translateY(-1px);
 }
 
 .metric-card .metric-info svg{
-  width:13px;
+  width:15px;
 }
 
 .metric-card .metric-value b.neutral{

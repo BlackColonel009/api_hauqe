@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.archive import Archive
 from app.models.decision_institutionnelle import DecisionInstitutionnelle
@@ -28,6 +29,15 @@ from app.models.utilisateur import Utilisateur
 
 
 class GovernanceRepository:
+
+    @staticmethod
+    async def list_active_users(db: AsyncSession) -> list[Utilisateur]:
+        result = await db.execute(
+            select(Utilisateur).where(
+                or_(Utilisateur.statut.is_(None), func.upper(Utilisateur.statut) == "ACTIF")
+            )
+        )
+        return list(result.scalars().all())
 
     # ========================================================
     # COMMUN
@@ -379,7 +389,9 @@ class GovernanceRepository:
         event_id: UUID,
     ) -> EvenementAudit | None:
         result = await db.execute(
-            select(EvenementAudit).where(EvenementAudit.id == event_id)
+            select(EvenementAudit)
+            .options(selectinload(EvenementAudit.utilisateur))
+            .where(EvenementAudit.id == event_id)
         )
         return result.scalar_one_or_none()
 
@@ -420,6 +432,7 @@ class GovernanceRepository:
 
         query = (
             select(EvenementAudit)
+            .options(selectinload(EvenementAudit.utilisateur))
             .where(*filters)
             .order_by(
                 EvenementAudit.date_evenement.desc().nullslast(),

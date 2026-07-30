@@ -37,7 +37,7 @@ Les transports externes sont séparés du domaine métier.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 import re
 from typing import Any
@@ -48,11 +48,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.models.alerte import Alerte
+from app.models.accreditation import Accreditation
+from app.models.audit_certification import AuditCertification
+from app.models.certification import Certification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
 from app.models.notification import Notification
 from app.models.rapport_veille import RapportVeille
 from app.models.relance_veille import RelanceVeille
+from app.models.renouvellement_certification import RenouvellementCertification
 from app.repositories.veille_repository import WatchRepository
 from app.schemas.veille import (
     AlertAssignRequest,
@@ -183,8 +187,10 @@ def followup_response(item: RelanceVeille) -> FollowUpResponse:
         id=item.id,
         dossier_veille_id=item.dossier_veille_id,
         destinataire=item.destinataire,
+        adresse_email=item.adresse_email,
         canal=item.canal,
         objet=item.objet,
+        contenu=item.contenu,
         date_envoi=item.date_envoi,
         date_echeance=item.date_echeance,
         date_reponse=item.date_reponse,
@@ -344,6 +350,7 @@ class WatchService:
             responsable_id=item.responsable_id,
             priorite=item.priorite,
             statut=item.statut,
+            motif_cloture=item.motif_cloture,
             jours_restants=days_remaining,
             alertes_actives_count=alert_count,
             created_at=item.created_at,
@@ -525,6 +532,7 @@ class WatchService:
             return await WatchService.deadline_response(db, item)
 
         item.statut = target_status
+        item.motif_cloture = payload.motif.strip()
 
         await write_audit_event(
             db,
@@ -1143,14 +1151,15 @@ class WatchService:
         title: str,
         due_date: date,
     ) -> tuple[Echeance, bool]:
-        existing = await WatchRepository.find_active_deadline(
+        existing = await WatchRepository.find_active_deadline_for_resource(
             db,
             ressource_type=resource_type,
             ressource_id=resource_id,
             type_echeance=deadline_type,
-            due_date=due_date,
         )
         if existing:
+            existing.date_echeance = due_date
+            existing.titre = title
             return existing, False
 
         item = Echeance(
@@ -1214,6 +1223,177 @@ class WatchService:
         db.add(item)
         await db.flush()
         return True
+
+    @staticmethod
+    def _anniversary(value: date, years: int) -> date:
+        try:
+            return value.replace(year=value.year + years)
+        except ValueError:
+            # 29 février : l'échéance tombe le dernier jour de février.
+            return value.replace(year=value.year + years, day=28)
+
+    @staticmethod
+    async def synchronize_certification_schedule(
+        db: AsyncSession,
+        *,
+        certification: Certification,
+        declared_situation: str | None,
+        cycle_start_date: date | None = None,
+    ) -> dict[str, int]:
+        """Prépare la veille BNEC sans commit, donc dans la transaction d'intégration."""
+        counters = {
+            "audits_created": 0,
+            "renewals_created": 0,
+            "deadlines_created": 0,
+            "alerts_created": 0,
+        }
+        expiration = certification.date_expiration
+        obtained = cycle_start_date or certification.date_obtention
+        if expiration is None:
+            return counters
+
+        thresholds = await WatchService.get_thresholds(db)
+
+        async def register_deadline(
+            *,
+            resource_type: str,
+            resource_id: UUID,
+            deadline_type: str,
+            title: str,
+            due_date: date,
+        ) -> None:
+            deadline, created = await WatchService.ensure_generated_deadline(
+                db,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                deadline_type=deadline_type,
+                title=title,
+                due_date=due_date,
+            )
+            counters["deadlines_created"] += int(created)
+            threshold = WatchService.due_threshold(
+                thresholds,
+                (due_date - date.today()).days,
+            )
+            if threshold and await WatchService.ensure_threshold_alert(
+                db,
+                deadline=deadline,
+                threshold=threshold,
+            ):
+                counters["alerts_created"] += 1
+
+        label = (
+            certification.identifiant_national
+            or certification.numero_certificat
+            or str(certification.id)
+        )
+        await register_deadline(
+            resource_type="CERTIFICATION",
+            resource_id=certification.id,
+            deadline_type="EXPIRATION_CERTIFICATION",
+            title=f"Expiration certification {label}",
+            due_date=expiration,
+        )
+
+        renewal = await WatchRepository.find_certification_renewal(
+            db,
+            certification_id=certification.id,
+            due_date=expiration,
+        )
+        if renewal is None:
+            renewal = RenouvellementCertification(
+                certification_id=certification.id,
+                date_ouverture=expiration - timedelta(days=180),
+                date_limite=expiration,
+                justification=(
+                    "Cycle de renouvellement généré automatiquement lors de "
+                    "l'intégration BNEC."
+                ),
+                statut="PLANIFIE",
+            )
+            db.add(renewal)
+            await db.flush()
+            counters["renewals_created"] += 1
+        await register_deadline(
+            resource_type="RENOUVELLEMENT_CERTIFICATION",
+            resource_id=renewal.id,
+            deadline_type="RENOUVELLEMENT_CERTIFICATION",
+            title=f"Renouvellement certification {label}",
+            due_date=expiration,
+        )
+
+        situation = (declared_situation or "PRESENTE").strip().upper()
+        next_number = {
+            "PRESENTE": 1,
+            "AUDIT_SURVEILLANCE_1": 2,
+            "AUDIT_SURVEILLANCE_2": 3,
+            "AUDIT_SURVEILLANCE_3": 4,
+            "RENOUVELLEMENT": 4,
+        }.get(situation, 1)
+        if obtained:
+            for number in range(next_number, 4):
+                audit_date = WatchService._anniversary(obtained, number)
+                if audit_date <= date.today() or audit_date >= expiration:
+                    continue
+                audit_type = f"AUDIT_SURVEILLANCE_{number}"
+                audit = await WatchRepository.find_certification_audit(
+                    db,
+                    certification_id=certification.id,
+                    audit_type=audit_type,
+                    due_date=audit_date,
+                )
+                if audit is None:
+                    audit = AuditCertification(
+                        certification_id=certification.id,
+                        type_audit=audit_type,
+                        date_prevue=audit_date,
+                        observations=(
+                            "Date estimée automatiquement à partir de la date "
+                            "d'obtention validée ; à confirmer par un agent."
+                        ),
+                        statut="PLANIFIE_A_CONFIRMER",
+                    )
+                    db.add(audit)
+                    await db.flush()
+                    counters["audits_created"] += 1
+                await register_deadline(
+                    resource_type="AUDIT_CERTIFICATION",
+                    resource_id=audit.id,
+                    deadline_type="AUDIT_CERTIFICATION",
+                    title=f"Audit de surveillance {number} — {label}",
+                    due_date=audit_date,
+                )
+
+        return counters
+
+    @staticmethod
+    async def synchronize_accreditation_schedule(
+        db: AsyncSession,
+        *,
+        accreditation: Accreditation,
+    ) -> dict[str, int]:
+        counters = {"deadlines_created": 0, "alerts_created": 0}
+        if accreditation.date_expiration is None:
+            return counters
+        label = accreditation.numero or str(accreditation.id)
+        deadline, created = await WatchService.ensure_generated_deadline(
+            db,
+            resource_type="ACCREDITATION",
+            resource_id=accreditation.id,
+            deadline_type="EXPIRATION_ACCREDITATION",
+            title=f"Expiration accréditation {label}",
+            due_date=accreditation.date_expiration,
+        )
+        counters["deadlines_created"] += int(created)
+        threshold = WatchService.due_threshold(
+            await WatchService.get_thresholds(db),
+            (accreditation.date_expiration - date.today()).days,
+        )
+        if threshold and await WatchService.ensure_threshold_alert(
+            db, deadline=deadline, threshold=threshold
+        ):
+            counters["alerts_created"] += 1
+        return counters
 
     @staticmethod
     async def run_daily_scan(
@@ -1346,6 +1526,60 @@ class WatchService:
         return item
 
     @staticmethod
+    async def synchronize_watch_case_reminder(
+        db: AsyncSession,
+        *,
+        case: DossierVeille,
+    ) -> None:
+        if case.prochaine_action_at is None:
+            return
+        due_date = case.prochaine_action_at.date()
+        deadline, _ = await WatchService.ensure_generated_deadline(
+            db,
+            resource_type="DOSSIER_VEILLE",
+            resource_id=case.id,
+            deadline_type="PROCHAINE_ACTION_VEILLE",
+            title=f"Prochaine action du dossier de veille {case.id}",
+            due_date=due_date,
+        )
+        deadline.responsable_id = case.responsable_id
+        rule = f"WATCH_CASE_NEXT_ACTION:{case.id}"
+        alert = await WatchRepository.find_active_alert_for_rule(
+            db, deadline_id=deadline.id, rule_code=rule
+        )
+        message = f"Action attendue le {due_date.isoformat()} pour le dossier de veille."
+        if alert is None:
+            alert = Alerte(
+                echeance_id=deadline.id,
+                type_alerte="RAPPEL_VEILLE",
+                niveau=2,
+                titre="Rappel - prochaine action de veille",
+                message=message,
+                ressource_type="DOSSIER_VEILLE",
+                ressource_id=case.id,
+                responsable_id=case.responsable_id,
+                date_detection=date.today(),
+                regle_notification=rule,
+                statut="NOUVELLE",
+            )
+            db.add(alert)
+            await db.flush()
+        else:
+            alert.message = message
+            alert.responsable_id = case.responsable_id
+        db.add(Notification(
+            alerte_id=alert.id,
+            destinataire_utilisateur_id=case.responsable_id,
+            canal="IN_APP",
+            objet="Rappel de veille",
+            contenu=message,
+            date_envoi=date.today(),
+            nombre_tentatives=0,
+            resultat="Disponible dans l'application",
+            statut="ENVOYEE",
+        ))
+
+    @staticmethod
     async def watch_case_response(
         db: AsyncSession,
         item: DossierVeille,
@@ -1450,6 +1684,7 @@ class WatchService:
                 "statut": item.statut,
             },
         )
+        await WatchService.synchronize_watch_case_reminder(db, case=item)
 
         await db.commit()
         await db.refresh(item)
@@ -1502,6 +1737,7 @@ class WatchService:
                 ),
             },
         )
+        await WatchService.synchronize_watch_case_reminder(db, case=item)
 
         await db.commit()
         await db.refresh(item)
@@ -1573,6 +1809,9 @@ class WatchService:
             raise HTTPException(409, "Dossier de veille clôturé.")
 
         sent = payload.date_envoi or date.today()
+        email = payload.adresse_email.strip().lower()
+        if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+            raise HTTPException(422, "L'adresse e-mail du destinataire est invalide.")
         if payload.date_echeance and payload.date_echeance < sent:
             raise HTTPException(
                 422,
@@ -1582,8 +1821,10 @@ class WatchService:
         item = RelanceVeille(
             dossier_veille_id=case_id,
             destinataire=payload.destinataire.strip(),
+            adresse_email=email,
             canal=normalize_code(payload.canal),
             objet=payload.objet.strip(),
+            contenu=payload.contenu.strip(),
             date_envoi=sent,
             date_echeance=payload.date_echeance,
             date_reponse=None,
@@ -1593,6 +1834,36 @@ class WatchService:
         )
         db.add(item)
         await db.flush()
+
+        for code, due_date, label in (
+            ("ENVOI", item.date_envoi, "Envoi de la relance"),
+            ("REPONSE", item.date_echeance, "Délai de réponse à la relance"),
+        ):
+            if due_date is None:
+                continue
+            deadline, _ = await WatchService.ensure_generated_deadline(
+                db,
+                resource_type="RELANCE_VEILLE",
+                resource_id=item.id,
+                deadline_type=f"RELANCE_VEILLE_{code}",
+                title=f"{label} - {item.objet}",
+                due_date=due_date,
+            )
+            deadline.responsable_id = case.responsable_id
+
+        channel = normalize_code(item.canal or "")
+        if channel in {"EMAIL", "COURRIEL"}:
+            db.add(Notification(
+                destinataire_utilisateur_id=None,
+                adresse_externe=item.adresse_email,
+                canal="EMAIL",
+                objet=item.objet,
+                contenu=item.contenu,
+                date_envoi=item.date_envoi if item.date_envoi > date.today() else None,
+                nombre_tentatives=0,
+                resultat=None,
+                statut="PLANIFIEE" if item.date_envoi > date.today() else "EN_ATTENTE",
+            ))
 
         await write_audit_event(
             db,
@@ -1606,6 +1877,7 @@ class WatchService:
             valeurs_apres={
                 "dossier_veille_id": str(case_id),
                 "destinataire": item.destinataire,
+                "adresse_email": item.adresse_email,
                 "canal": item.canal,
                 "date_echeance": (
                     item.date_echeance.isoformat()

@@ -48,4 +48,88 @@
   </div>
 
   <section id="certTabContent"></section>
+
+  <dialog class="hauqe-dialog renewal-completion-dialog" id="renewalCompletionDialog">
+    <form id="renewalCompletionForm">
+      <header class="renewal-completion-header">
+        <span><i data-lucide="refresh-cw"></i></span>
+        <div>
+          <p class="eyebrow">Cycle de certification</p>
+          <h2>Traiter le renouvellement</h2>
+          <small id="renewalCompletionSubtitle">Décision et nouveau cycle de validité</small>
+        </div>
+        <button class="dialog-close" type="button" data-close-renewal-dialog aria-label="Fermer">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body renewal-completion-body" data-dialog-scroll>
+        <section class="renewal-current-cycle">
+          <span><i data-lucide="calendar-range"></i></span>
+          <div>
+            <small>Cycle actuel</small>
+            <strong id="renewalCurrentCycle">—</strong>
+          </div>
+        </section>
+
+        <div class="renewal-completion-grid">
+          <label>
+            <span>Décision <b>*</b></span>
+            <select id="renewalDecision" required>
+              <option value="RENOUVELE">Renouvellement accordé</option>
+              <option value="REFUSE">Renouvellement refusé</option>
+            </select>
+          </label>
+          <label>
+            <span>Référence de décision <b>*</b></span>
+            <input id="renewalDecisionReference" required placeholder="Ex. DEC-HAUQE-2026-018">
+          </label>
+          <label data-renewed-field>
+            <span>Nouvelle date d’effet <b>*</b></span>
+            <input id="renewalNewEffectiveDate" type="date">
+          </label>
+          <label data-renewed-field>
+            <span>Nouvelle date d’expiration <b>*</b></span>
+            <input id="renewalNewExpiryDate" type="date">
+          </label>
+          <label class="full" data-renewed-field>
+            <span>Nouveau numéro du certificat</span>
+            <input id="renewalNewNumber" placeholder="Conserver le numéro actuel si ce champ reste vide">
+          </label>
+          <label class="full">
+            <span>Justification <b>*</b></span>
+            <textarea id="renewalJustification" rows="4" required placeholder="Ex. Renouvellement accordé après examen des preuves et validation de la conformité."></textarea>
+          </label>
+          <label class="full">
+            <span>Références des preuves</span>
+            <textarea id="renewalEvidence" rows="3" placeholder="Ex. Rapport d’audit, certificat renouvelé, décision signée…"></textarea>
+          </label>
+          <label class="full renewal-upload-field" data-renewed-field>
+            <span>Justificatifs à téléverser <b>*</b></span>
+            <div class="renewal-upload-box">
+              <i data-lucide="upload-cloud"></i>
+              <div>
+                <strong>Ajouter les preuves du renouvellement</strong>
+                <small>PDF, image ou document autorisé par le système</small>
+              </div>
+              <input id="renewalEvidenceFiles" type="file" multiple>
+            </div>
+            <div class="renewal-file-selection" id="renewalFileSelection">Aucun fichier sélectionné.</div>
+          </label>
+        </div>
+
+        <section class="renewal-impact-note">
+          <i data-lucide="info"></i>
+          <span id="renewalImpactText">La certification, l’échéance, les alertes et le nouveau calendrier seront mis à jour ensemble.</span>
+        </section>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-renewal-dialog>Annuler</button>
+        <button class="btn btn-primary app-btn" id="renewalCompletionSubmit" type="submit">
+          <i data-lucide="badge-check"></i>Confirmer le renouvellement
+        </button>
+      </footer>
+    </form>
+  </dialog>
 </div>

@@ -18,16 +18,21 @@ from datetime import date, datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.models.accreditation import Accreditation
 from app.models.audit_certification import AuditCertification
+from app.models.alerte import Alerte
 from app.models.certification import Certification
 from app.models.couverture_certification import CouvertureCertification
+from app.models.document import Document
 from app.models.evenement_certification import EvenementCertification
+from app.models.echeance import Echeance
 from app.models.organisme import Organisme
+from app.models.norme import Norme
 from app.models.renouvellement_certification import RenouvellementCertification
 from app.repositories.organismes_certifications_repository import (
     AccreditationRepository,
@@ -58,6 +63,7 @@ from app.schemas.organismes_certifications import (
     CouvertureUpdateRequest,
     EvenementCertificationResponse,
     NormeResponse,
+    NormeCreateRequest,
     OrganismeCreateRequest,
     OrganismeFiltersResponse,
     OrganismeRegistryItem,
@@ -67,6 +73,8 @@ from app.schemas.organismes_certifications import (
     OrganismeUpdateRequest,
     OrganismeVerificationRequest,
     RenouvellementCreateRequest,
+    RenouvellementCompletionRequest,
+    RenouvellementCompletionResponse,
     RenouvellementDecisionRequest,
     RenouvellementResponse,
     RenouvellementUpdateRequest,
@@ -281,6 +289,32 @@ class NormeService:
         item = await NormeRepository.get(db, norme_id)
         if item is None:
             raise HTTPException(status_code=404, detail="Norme introuvable.")
+        return norme_response(item)
+
+    @staticmethod
+    async def create(
+        db: AsyncSession, *, payload: NormeCreateRequest,
+        actor: AuthContext, request: Request,
+    ) -> NormeResponse:
+        code = payload.code.strip().upper()
+        item = Norme(
+            code=code,
+            nom=clean_text(payload.nom),
+            version=clean_text(payload.version),
+            domaine=clean_text(payload.domaine),
+            statut="A_VERIFIER",
+        )
+        db.add(item)
+        await db.flush()
+        await write_audit_event(
+            db, action="NORME_PRECREATION", categorie="DONNEES_METIER",
+            resultat="SUCCES", utilisateur_id=actor.user.id,
+            ressource_type="norme", ressource_id=item.id,
+            adresse_ip=client_ip(request),
+            valeurs_apres={"code": code, "statut": "A_VERIFIER"},
+        )
+        await db.commit()
+        await db.refresh(item)
         return norme_response(item)
 
 
@@ -636,6 +670,10 @@ class AccreditationService:
                 "statut": item.statut,
             },
         )
+        from app.services.veille_service import WatchService
+        await WatchService.synchronize_accreditation_schedule(
+            db, accreditation=item
+        )
         await db.commit()
         await db.refresh(item)
         return accreditation_response(item)
@@ -687,6 +725,10 @@ class AccreditationService:
                 "statut": item.statut,
                 "reference_officielle": item.reference_officielle,
             },
+        )
+        from app.services.veille_service import WatchService
+        await WatchService.synchronize_accreditation_schedule(
+            db, accreditation=item
         )
         await db.commit()
         await db.refresh(item)
@@ -879,6 +921,12 @@ class CertificationService:
                     "authenticite_verifiee": False,
                 },
             )
+            from app.services.veille_service import WatchService
+            await WatchService.synchronize_certification_schedule(
+                db,
+                certification=item,
+                declared_situation=None,
+            )
             await db.commit()
         except IntegrityError:
             await db.rollback()
@@ -913,6 +961,13 @@ class CertificationService:
             if field in {"numero_certificat", "portee", "source_donnee"}:
                 value = clean_text(value)
             setattr(item, field, value)
+
+        from app.services.veille_service import WatchService
+        await WatchService.synchronize_certification_schedule(
+            db,
+            certification=item,
+            declared_situation=None,
+        )
 
         await write_audit_event(
             db, action="CERTIFICATION_UPDATE", categorie="DONNEES_METIER",
@@ -1329,3 +1384,218 @@ class RenouvellementService:
         await db.commit()
         await db.refresh(item)
         return renewal_response(item)
+
+    @staticmethod
+    async def complete(
+        db: AsyncSession, *, certification_id: UUID, renouvellement_id: UUID,
+        payload: RenouvellementCompletionRequest, actor: AuthContext,
+        request: Request,
+    ) -> RenouvellementCompletionResponse:
+        certification = await CertificationService.require(db, certification_id)
+        item = await RenouvellementRepository.get(
+            db,
+            certification_id=certification_id,
+            renouvellement_id=renouvellement_id,
+        )
+        if item is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Procédure de renouvellement introuvable.",
+            )
+        if item.date_decision is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cette procédure de renouvellement possède déjà une décision.",
+            )
+
+        decision = payload.decision.strip().upper()
+        if decision not in {"RENOUVELE", "REFUSE"}:
+            raise HTTPException(
+                status_code=422,
+                detail="La décision doit être RENOUVELE ou REFUSE.",
+            )
+        if decision == "RENOUVELE":
+            if not payload.nouvelle_date_effet or not payload.nouvelle_date_expiration:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Les nouvelles dates d’effet et d’expiration sont obligatoires.",
+                )
+            validate_period(
+                payload.nouvelle_date_effet,
+                payload.nouvelle_date_expiration,
+                "le nouveau cycle de certification",
+            )
+            if not payload.justificatif_document_ids:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Au moins un justificatif est obligatoire pour accorder le renouvellement.",
+                )
+
+        documents = []
+        if payload.justificatif_document_ids:
+            document_result = await db.execute(
+                select(Document).where(
+                    Document.id.in_(payload.justificatif_document_ids),
+                    func.upper(func.coalesce(Document.ressource_type, "")) ==
+                    "RENOUVELLEMENT_CERTIFICATION",
+                    Document.ressource_id == item.id,
+                    func.upper(func.coalesce(Document.statut, "ACTIF")) != "INACTIF",
+                )
+            )
+            documents = list(document_result.scalars().all())
+            if len(documents) != len(set(payload.justificatif_document_ids)):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Un ou plusieurs justificatifs sont absents ou ne sont pas rattachés à ce renouvellement.",
+                )
+
+        old_values = {
+            "numero_certificat": certification.numero_certificat,
+            "date_effet": certification.date_effet.isoformat() if certification.date_effet else None,
+            "date_expiration": certification.date_expiration.isoformat() if certification.date_expiration else None,
+            "statut": certification.statut,
+        }
+        old_expiration = certification.date_expiration
+
+        item.date_decision = date.today()
+        item.decision = decision
+        item.resultat = payload.reference_decision.strip()
+        item.justification = payload.justification.strip()
+        item.preuves = {
+            "documents": [str(document.id) for document in documents],
+            "references": payload.preuves,
+        }
+        item.statut = "RENOUVELE" if decision == "RENOUVELE" else "REFUSE"
+
+        if decision == "RENOUVELE":
+            certification.date_effet = payload.nouvelle_date_effet
+            certification.date_expiration = payload.nouvelle_date_expiration
+            if clean_text(payload.nouveau_numero_certificat):
+                certification.numero_certificat = clean_text(
+                    payload.nouveau_numero_certificat
+                )
+            certification.statut = "ACTIF"
+            certification.motif_statut = (
+                f"Renouvellement {payload.reference_decision.strip()}"
+            )
+        else:
+            certification.statut = "NON_RENOUVELEE"
+            certification.motif_statut = payload.justification.strip()[:255]
+
+        deadline_filters = [
+            func.upper(func.coalesce(Echeance.statut, "")).not_in(
+                ["TERMINEE", "ANNULEE"]
+            ),
+            (
+                (
+                    (func.upper(func.coalesce(Echeance.ressource_type, "")) ==
+                     "RENOUVELLEMENT_CERTIFICATION")
+                    & (Echeance.ressource_id == item.id)
+                )
+                | (
+                    (func.upper(func.coalesce(Echeance.ressource_type, "")) ==
+                     "CERTIFICATION")
+                    & (Echeance.ressource_id == certification.id)
+                    & (func.upper(func.coalesce(Echeance.type_echeance, "")).in_(
+                        ["EXPIRATION_CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"]
+                    ))
+                    & (
+                        (Echeance.date_echeance == old_expiration)
+                        if old_expiration else True
+                    )
+                )
+            ),
+        ]
+        deadline_result = await db.execute(select(Echeance).where(*deadline_filters))
+        deadlines = list(deadline_result.scalars().all())
+        deadline_ids = [deadline.id for deadline in deadlines]
+        closure_reason = (
+            f"Renouvellement {decision.lower()} — "
+            f"{payload.reference_decision.strip()} : {payload.justification.strip()}"
+        )
+        for deadline in deadlines:
+            deadline.statut = "TERMINEE"
+            deadline.motif_cloture = closure_reason
+
+        alerts = []
+        if deadline_ids:
+            alert_result = await db.execute(
+                select(Alerte).where(
+                    Alerte.echeance_id.in_(deadline_ids),
+                    func.upper(func.coalesce(Alerte.statut, "")).not_in(
+                        ["RESOLUE", "ANNULEE"]
+                    ),
+                )
+            )
+            alerts = list(alert_result.scalars().all())
+            for alert in alerts:
+                alert.statut = "RESOLUE"
+                alert.date_resolution = date.today()
+
+        event = EvenementCertification(
+            certification_id=certification.id,
+            type_evenement="RENOUVELLEMENT_CERTIFICATION",
+            ancien_statut=old_values["statut"],
+            nouveau_statut=certification.statut,
+            date_evenement=datetime.now(timezone.utc),
+            motif=(
+                f"{payload.reference_decision.strip()} — "
+                f"{payload.justification.strip()} — ancien cycle "
+                f"{old_values['date_effet'] or '—'} au "
+                f"{old_values['date_expiration'] or '—'}"
+            ),
+            source="INTERFACE_CERTIFICATION",
+            acteur_id=actor.user.id,
+        )
+        db.add(event)
+        await db.flush()
+
+        schedule = {
+            "audits_created": 0,
+            "renewals_created": 0,
+            "deadlines_created": 0,
+            "alerts_created": 0,
+        }
+        if decision == "RENOUVELE":
+            from app.services.veille_service import WatchService
+            schedule = await WatchService.synchronize_certification_schedule(
+                db,
+                certification=certification,
+                declared_situation="PRESENTE",
+                cycle_start_date=payload.nouvelle_date_effet,
+            )
+
+        await write_audit_event(
+            db,
+            action="CERTIFICATION_RENEWAL_COMPLETE",
+            categorie="DECISION_METIER",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="renouvellement_certification",
+            ressource_id=item.id,
+            adresse_ip=client_ip(request),
+            valeurs_avant=old_values,
+            valeurs_apres={
+                "decision": decision,
+                "reference_decision": payload.reference_decision.strip(),
+                "justificatifs": [str(document.id) for document in documents],
+                "numero_certificat": certification.numero_certificat,
+                "date_effet": certification.date_effet.isoformat() if certification.date_effet else None,
+                "date_expiration": certification.date_expiration.isoformat() if certification.date_expiration else None,
+                "statut": certification.statut,
+                "echeances_terminees": len(deadlines),
+                "alertes_resolues": len(alerts),
+                "nouveau_cycle": schedule,
+            },
+            contexte={"justification": payload.justification.strip()},
+        )
+        await db.commit()
+        await db.refresh(item)
+        await db.refresh(certification)
+        return RenouvellementCompletionResponse(
+            renouvellement=renewal_response(item),
+            certification=certification_response(certification),
+            echeances_terminees=len(deadlines),
+            alertes_resolues=len(alerts),
+            nouveau_cycle=schedule,
+        )

@@ -1,6 +1,6 @@
-import { installActionLoader } from "./action-loader.js?v=20260729-1";
-import { installDialogManager } from "./dialog-manager.js?v=20260729-2";
-import { initRouter } from "./router.js";
+import { installActionLoader } from "./action-loader.js?v=20260730-1";
+import { installDialogManager } from "./dialog-manager.js?v=20260729-3";
+import { initRouter } from "./router.js?v=20260730-2";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
@@ -16,6 +16,88 @@ import {
 
 installActionLoader();
 installDialogManager();
+
+const SIDEBAR_BADGE_REFRESH_MS = 60_000;
+let sidebarBadgeTimer = null;
+
+function setSidebarBadge(selector, value) {
+  const badge = document.querySelector(selector);
+  if (!badge) return;
+
+  const count = Math.max(0, Number(value) || 0);
+  badge.textContent = count > 99 ? "99+" : String(count);
+  badge.hidden = count === 0;
+  badge.title = count ? `${count} élément${count > 1 ? "s" : ""} à traiter` : "";
+}
+
+async function refreshSidebarBadges() {
+  if (!hasAccessToken()) return;
+
+  const requests = [
+    apiGet("/api/v1/veille/workspace/alerts?limit=1&offset=0"),
+    apiGet("/api/v1/veille/workspace/deadlines?limit=1&offset=0"),
+    apiGet("/api/v1/verifications/registry?limit=1&offset=0"),
+    apiGet("/api/v1/validations/workspace/registry?limit=1&offset=0"),
+  ];
+  const [alerts, deadlines, verifications, validations] = await Promise.allSettled(requests);
+
+  if (alerts.status === "fulfilled") {
+    setSidebarBadge(
+      "#navAlertsBadge",
+      alerts.value?.summary?.active ?? alerts.value?.total
+    );
+  } else if (alerts.reason?.status === 403) {
+    setSidebarBadge("#navAlertsBadge", 0);
+  }
+
+  if (deadlines.status === "fulfilled") {
+    setSidebarBadge(
+      "#navDeadlinesBadge",
+      deadlines.value?.summary?.active ?? deadlines.value?.total
+    );
+  } else if (deadlines.reason?.status === 403) {
+    setSidebarBadge("#navDeadlinesBadge", 0);
+  }
+
+  if (verifications.status === "fulfilled") {
+    setSidebarBadge(
+      "#navVerificationsBadge",
+      verifications.value?.summary?.open ?? verifications.value?.total
+    );
+  } else if (verifications.reason?.status === 403) {
+    setSidebarBadge("#navVerificationsBadge", 0);
+  }
+
+  if (validations.status === "fulfilled") {
+    const summary = validations.value?.summary || {};
+    setSidebarBadge(
+      "#navValidationsBadge",
+      Number(summary.ready_n1 || 0)
+        + Number(summary.ready_n2 || 0)
+        + Number(summary.correction_pending || 0)
+    );
+  } else if (validations.reason?.status === 403) {
+    setSidebarBadge("#navValidationsBadge", 0);
+  }
+}
+
+function startSidebarBadgeRuntime() {
+  if (!hasAccessToken()) return;
+  refreshSidebarBadges();
+  clearInterval(sidebarBadgeTimer);
+  sidebarBadgeTimer = setInterval(refreshSidebarBadges, SIDEBAR_BADGE_REFRESH_MS);
+}
+
+function stopSidebarBadgeRuntime() {
+  clearInterval(sidebarBadgeTimer);
+  sidebarBadgeTimer = null;
+  setSidebarBadge("#navAlertsBadge", 0);
+  setSidebarBadge("#navDeadlinesBadge", 0);
+  setSidebarBadge("#navVerificationsBadge", 0);
+  setSidebarBadge("#navValidationsBadge", 0);
+}
+
+window.addEventListener("hauqe:page-ready", refreshSidebarBadges);
 
 /* ============================================================
    SIDEBAR MOBILE ROBUSTE
@@ -967,9 +1049,11 @@ window.addEventListener("hauqe:auth-state", (event) => {
     hydrateAuthenticatedShell();
     startPresenceRuntime();
     startNotificationRuntime();
+    startSidebarBadgeRuntime();
   } else {
     stopPresenceRuntime();
     stopNotificationRuntime();
+    stopSidebarBadgeRuntime();
   }
 });
 
@@ -980,7 +1064,9 @@ hydrateAuthenticatedShell();
 if (hasAccessToken()) {
   startPresenceRuntime();
   startNotificationRuntime();
+  startSidebarBadgeRuntime();
 } else {
   stopPresenceRuntime();
   stopNotificationRuntime();
+  stopSidebarBadgeRuntime();
 }

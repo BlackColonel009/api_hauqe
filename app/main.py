@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -5,16 +7,32 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.config.logging import configure_logging
 from app.routes.api.v1.router import api_router
+from app.tasks.run_background_services import serve, stop
 
 
 BASE_DIR = Path(__file__).resolve().parent
+configure_logging()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    worker = asyncio.create_task(
+        serve(),
+        name="hauqe-background-services",
+    )
+    try:
+        yield
+    finally:
+        await stop(worker)
 
 
 app = FastAPI(
     title="HAUQE Certif",
     version="0.2.0",
     description="API BNEC / HAUQE Certif",
+    lifespan=lifespan,
 )
 
 
@@ -100,12 +118,18 @@ async def frontend_view(
 
         "regles-codification": "views/regles-codification.html",
         "journal-audit": "views/journal-audit.html",
+        "qualite-donnees": "views/qualite-donnees.html",
+        "sauvegardes": "views/sauvegardes.html",
+        "publications": "views/publications.html",
+        "publications": "views/publications.html",
 
         "connexion": "views/connexion.html",
         "mot-de-passe-oublie": "views/mot-de-passe-oublie.html",
         "profil": "views/profil.html",
 
         "governance-module": "views/governance-module.html",
+        "dashboard-advanced": "views/dashboard-advanced.html",
+        "operations-stage13": "views/operations-stage13.html",
     }
 
     template_name = allowed_pages.get(

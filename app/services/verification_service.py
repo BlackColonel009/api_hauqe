@@ -9,6 +9,9 @@ from app.models.anomalie_verification import AnomalieVerification
 from app.models.confirmation_externe import ConfirmationExterne
 from app.models.dossier_verification import DossierVerification
 from app.models.point_verification import PointVerification
+from app.models.alerte import Alerte
+from app.models.notification import Notification
+from app.models.echeance import Echeance
 from app.repositories.verification_repository import VerificationRepository
 from app.schemas.verification import *
 from app.services.auth_service import AuthContext
@@ -39,11 +42,98 @@ def anomaly_response(x):
 def confirmation_response(x):
     return ExternalConfirmationResponse(
         id=x.id,dossier_verification_id=x.dossier_verification_id,organisme_id=x.organisme_id,
-        canal=x.canal,destinataire=x.destinataire,objet=x.objet,date_envoi=x.date_envoi,
+        canal=x.canal,destinataire=x.destinataire,objet=x.objet,contenu_demande=x.contenu_demande,date_envoi=x.date_envoi,
         date_echeance=x.date_echeance,date_reponse=x.date_reponse,contenu_reponse=x.contenu_reponse,
         resultat=x.resultat,document_id=x.document_id,statut=x.statut,created_at=x.created_at,updated_at=x.updated_at)
 
 class VerificationService:
+
+    @staticmethod
+    async def synchronize_assignment_watch(db, *, assignment, verifier, is_update=False):
+        """Synchronise les dates validées avec la veille et avertit l'agent."""
+        from app.repositories.veille_repository import WatchRepository
+        from app.services.veille_service import WatchService
+
+        dates = [
+            ("DEBUT", assignment.date_debut, "Début de l'affectation"),
+            ("FIN", assignment.date_fin, "Fin prévue de l'affectation"),
+            ("ECHEANCE", assignment.date_echeance, "Échéance de vérification"),
+        ]
+        for code, due_date, label in dates:
+            deadline_type = f"AFFECTATION_VERIFICATION_{code}"
+            if due_date is None:
+                previous = await WatchRepository.find_active_deadline_for_resource(
+                    db,
+                    ressource_type="AFFECTATION_VERIFICATION",
+                    ressource_id=assignment.id,
+                    type_echeance=deadline_type,
+                )
+                if previous is not None:
+                    previous.statut = "ANNULEE"
+                    previous.motif_cloture = "Date retirée lors de la modification de l'affectation."
+                continue
+            deadline, _ = await WatchService.ensure_generated_deadline(
+                db,
+                resource_type="AFFECTATION_VERIFICATION",
+                resource_id=assignment.id,
+                deadline_type=deadline_type,
+                title=f"{label} - dossier {assignment.dossier_verification_id}",
+                due_date=due_date,
+            )
+            deadline.responsable_id = assignment.verificateur_id
+            deadline.priorite = "HAUTE" if code == "ECHEANCE" else "NORMALE"
+            rule = f"VERIFICATION_ASSIGNMENT:{assignment.id}:{code}"
+            alert = await WatchRepository.find_active_alert_for_rule(
+                db, deadline_id=deadline.id, rule_code=rule
+            )
+            message = (
+                f"{label} fixée au {due_date.isoformat()} pour le dossier "
+                f"{assignment.dossier_verification_id}."
+            )
+            if alert is None:
+                alert = Alerte(
+                    echeance_id=deadline.id,
+                    type_alerte="AFFECTATION_VERIFICATION",
+                    niveau=2 if code != "ECHEANCE" else 3,
+                    titre=f"{'Mise à jour - ' if is_update else ''}{label}",
+                    message=message,
+                    ressource_type="AFFECTATION_VERIFICATION",
+                    ressource_id=assignment.id,
+                    responsable_id=assignment.verificateur_id,
+                    date_detection=date.today(),
+                    regle_notification=rule,
+                    statut="NOUVELLE",
+                )
+                db.add(alert)
+                await db.flush()
+            else:
+                alert.message = message
+                alert.responsable_id = assignment.verificateur_id
+                alert.date_detection = date.today()
+
+            subject = f"HAUQE - {label}"
+            content = message + " Consultez votre espace Vérifications pour traiter le dossier."
+            db.add(Notification(
+                alerte_id=alert.id,
+                destinataire_utilisateur_id=assignment.verificateur_id,
+                canal="IN_APP",
+                objet=subject,
+                contenu=content,
+                date_envoi=date.today(),
+                nombre_tentatives=0,
+                resultat="Disponible dans l'application",
+                statut="ENVOYEE",
+            ))
+            if verifier.email:
+                db.add(Notification(
+                    alerte_id=alert.id,
+                    destinataire_utilisateur_id=assignment.verificateur_id,
+                    canal="EMAIL",
+                    objet=subject,
+                    contenu=content,
+                    nombre_tentatives=0,
+                    statut="EN_ATTENTE",
+                ))
 
     @staticmethod
     def workspace_item_response(row):
@@ -102,7 +192,8 @@ class VerificationService:
 
     @staticmethod
     async def open_from_fiche(db, *, fiche_id, payload, actor, request):
-        fiche = await VerificationRepository.get_fiche(db, fiche_id)
+        # Le verrou sérialise les doubles clics et deux ouvertures concurrentes.
+        fiche = await VerificationRepository.get_fiche_for_update(db, fiche_id)
         if fiche is None: raise HTTPException(404, "Fiche de collecte introuvable.")
         if (fiche.statut or "").upper() != "SOUMISE":
             raise HTTPException(409, "Seule une fiche SOUMISE peut ouvrir une vérification.")
@@ -176,6 +267,8 @@ class VerificationService:
         if (user.statut or "").upper()!="ACTIF": raise HTTPException(409,"Vérificateur inactif.")
         if payload.date_debut and payload.date_fin and payload.date_fin < payload.date_debut:
             raise HTTPException(422,"Période d'affectation incohérente.")
+        if payload.date_debut and payload.date_echeance and payload.date_echeance < payload.date_debut:
+            raise HTTPException(422,"L'échéance ne peut pas précéder le début de l'affectation.")
         if await VerificationRepository.active_assignment(db,dossier_id=dossier_id,verifier_id=payload.verificateur_id):
             raise HTTPException(409,"Affectation active déjà existante.")
         x=AffectationVerification(dossier_verification_id=dossier_id,verificateur_id=payload.verificateur_id,
@@ -185,6 +278,9 @@ class VerificationService:
         await write_audit_event(db,action="VERIFICATION_ASSIGN",categorie="AFFECTATION",resultat="SUCCES",
             utilisateur_id=actor.user.id,ressource_type="affectation_verification",ressource_id=x.id,
             adresse_ip=ip(request),valeurs_apres={"verificateur_id":str(x.verificateur_id),"statut":x.statut})
+        await VerificationService.synchronize_assignment_watch(
+            db, assignment=x, verifier=user
+        )
         await db.commit(); await db.refresh(x); return assignment_response(x)
 
     @staticmethod
@@ -193,11 +289,17 @@ class VerificationService:
         if x is None: raise HTTPException(404,"Affectation introuvable.")
         changes=payload.model_dump(exclude_unset=True)
         start=changes.get("date_debut",x.date_debut); end=changes.get("date_fin",x.date_fin)
+        due=changes.get("date_echeance",x.date_echeance)
         if start and end and end<start: raise HTTPException(422,"Période d'affectation incohérente.")
+        if start and due and due<start: raise HTTPException(422,"L'échéance ne peut pas précéder le début de l'affectation.")
         for k,v in changes.items(): setattr(x,k,txt(v))
+        user=await VerificationRepository.get_user(db,x.verificateur_id)
         await write_audit_event(db,action="VERIFICATION_ASSIGN_UPDATE",categorie="AFFECTATION",resultat="SUCCES",
             utilisateur_id=actor.user.id,ressource_type="affectation_verification",ressource_id=x.id,
             adresse_ip=ip(request),valeurs_apres={"statut":x.statut})
+        await VerificationService.synchronize_assignment_watch(
+            db, assignment=x, verifier=user, is_update=True
+        )
         await db.commit(); await db.refresh(x); return assignment_response(x)
 
     @staticmethod
@@ -306,9 +408,35 @@ class VerificationService:
         if payload.date_echeance and payload.date_echeance<sent: raise HTTPException(422,"Échéance antérieure à l'envoi.")
         x=ConfirmationExterne(dossier_verification_id=dossier_id,organisme_id=payload.organisme_id,
             canal=txt(payload.canal),destinataire=payload.destinataire.strip(),objet=payload.objet.strip(),
+            contenu_demande=payload.contenu_demande.strip(),
             date_envoi=sent,date_echeance=payload.date_echeance,date_reponse=None,contenu_reponse=None,
             resultat=None,document_id=None,statut=txt(payload.statut) or "EN_ATTENTE")
         db.add(x); await db.flush()
+        if (x.canal or "").upper() in {"EMAIL", "COURRIEL"}:
+            db.add(Notification(
+                adresse_externe=x.destinataire, canal="EMAIL",
+                objet=x.objet, contenu=x.contenu_demande,
+                date_envoi=x.date_envoi, nombre_tentatives=0,
+                statut="EN_ATTENTE",
+            ))
+        if x.date_echeance:
+            deadline = Echeance(
+                ressource_type="CONFIRMATION_EXTERNE", ressource_id=x.id,
+                type_echeance="REPONSE_ORGANISME",
+                titre=f"Réponse attendue — {x.objet}",
+                description=f"Réponse attendue de {x.destinataire}.",
+                date_echeance=x.date_echeance, responsable_id=actor.user.id,
+                priorite="HAUTE", statut="PLANIFIEE",
+            )
+            db.add(deadline); await db.flush()
+            db.add(Alerte(
+                echeance_id=deadline.id, type_alerte="ECHEANCE", niveau=2,
+                titre=f"Échange à suivre — {x.objet}",
+                message=f"Réponse attendue au plus tard le {x.date_echeance.isoformat()}.",
+                ressource_type="CONFIRMATION_EXTERNE", ressource_id=x.id,
+                responsable_id=actor.user.id, date_detection=date.today(),
+                regle_notification=f"CONFIRMATION:{x.id}", statut="NOUVELLE",
+            ))
         await write_audit_event(db,action="VERIFICATION_CONFIRMATION_CREATE",categorie="VERIFICATION",resultat="SUCCES",
             utilisateur_id=actor.user.id,ressource_type="confirmation_externe",ressource_id=x.id,
             adresse_ip=ip(request),valeurs_apres={"destinataire":x.destinataire,"statut":x.statut})

@@ -311,9 +311,10 @@
                   class="metric-info"
                   type="button"
                   data-metric-definition="${escapeHtml(meta.key)}"
-                  aria-label="Définition de l'indicateur"
+                  aria-label="Afficher la définition de l’indicateur"
+                  title="Afficher la définition"
                 >
-                  ${icon("circle-help")}
+                  ${icon("info")}
                 </button>
 
                 <div
@@ -356,7 +357,7 @@
     container
       .querySelectorAll("[data-metric-definition]")
       .forEach((button) => {
-        button.addEventListener("click", (event) => {
+        button.addEventListener("pointerup", (event) => {
           event.preventDefault();
           event.stopPropagation();
 
@@ -374,6 +375,13 @@
             });
 
           box.hidden = !box.hidden;
+          button.setAttribute("aria-expanded", String(!box.hidden));
+        });
+        button.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+          }
         });
       });
 
@@ -1217,12 +1225,6 @@
     const reset = $("#dashboardResetFilters");
     if (reset) reset.disabled = false;
 
-    const scope = $("#dashboardFilterScope");
-    if (scope) {
-      scope.textContent =
-        `${zones.length} région(s) · ${sectors.length} secteur(s) · `
-        + `${norms.length} norme(s) · ${bodies.length} organisme(s) chargés depuis la base`;
-    }
   }
 
   async function loadMetadata() {

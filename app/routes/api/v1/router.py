@@ -20,6 +20,7 @@ from app.routes.api.v1.roles import (
 from app.routes.api.v1.zones_administratives import (
     router as zones_administratives_router,
 )
+from app.routes.api.v1.referentiels import router as referentiels_router
 
 # ============================================================
 # MODULE ENTREPRISES
@@ -235,6 +236,7 @@ api_router.include_router(
 api_router.include_router(
     zones_administratives_router
 )
+api_router.include_router(referentiels_router)
 
 api_router.include_router(
     enterprises_router
@@ -424,4 +426,3 @@ api_router.include_router(
 api_router.include_router(
     public_dashboard_router
 )
-

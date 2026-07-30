@@ -40,10 +40,10 @@
     <article>
       <span><i data-lucide="shield-check"></i></span>
       <div>
-        <strong>Rôles métier versionnés en base</strong>
+        <strong>Rôles métier administrés</strong>
         <small>
-          Les rôles disponibles proviennent de PostgreSQL, jamais d’une
-          liste simulée côté frontend.
+          Les rôles disponibles proviennent du référentiel sécurisé de
+          l’application.
         </small>
       </div>
     </article>
@@ -134,7 +134,7 @@
       <div>
         <strong id="userCount">0 utilisateur</strong>
         <small>
-          Comptes réellement enregistrés dans PostgreSQL
+          Comptes enregistrés dans le système
         </small>
       </div>
     </div>
@@ -289,6 +289,13 @@
               </select>
             </label>
           </div>
+          <label class="switch-field credential-mail-choice">
+            <span>
+              <strong>Envoyer directement les identifiants par courriel</strong>
+              <small>Le mot de passe temporaire sera placé dans la file d’envoi sécurisée.</small>
+            </span>
+            <input id="sendUserCredentialsEmail" type="checkbox">
+          </label>
         </section>
 
         <section

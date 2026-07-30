@@ -29,6 +29,11 @@ class RelanceVeille(
         nullable=True,
     )
 
+    adresse_email: Mapped[str | None] = mapped_column(
+        String(320),
+        nullable=True,
+    )
+
     canal: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -36,6 +41,11 @@ class RelanceVeille(
 
     objet: Mapped[str | None] = mapped_column(
         String(255),
+        nullable=True,
+    )
+
+    contenu: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 

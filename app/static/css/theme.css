@@ -353,3 +353,422 @@
   background:#202b26!important;
   box-shadow:0 28px 70px rgba(0,0,0,.28)!important;
 }
+
+/* ============================================================
+   MODE NUIT V2 — RÉFÉRENCE INTÉGRATION BNEC
+   Couche globale finale chargée après toutes les pages.
+   ============================================================ */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --canvas:#151d19;
+  --ink:#e4ede8;
+  --muted:#97a59e;
+  --line:rgba(255,255,255,.075);
+  --shadow:0 12px 30px rgba(0,0,0,.14);
+  --green-50:#26372f;
+  --green-100:#29453a;
+  --green-600:#42a77d;
+  --green-700:#68c59f;
+  --green-950:#101914;
+  --night-canvas:#151d19;
+  --night-surface:#202b26;
+  --night-surface-soft:#1d2723;
+  --night-field:#1c2722;
+  --night-hover:#28362f;
+  --night-line:rgba(255,255,255,.085);
+  --night-text:#e4ede8;
+  --night-muted:#97a59e;
+}
+html[data-theme="dark"] body{background:var(--night-canvas)!important;color:var(--night-text)!important}
+html[data-theme="dark"] .main-content{background:linear-gradient(145deg,#171f1b,#151d19 58%,#17221d)!important}
+html[data-theme="dark"] .page-content{color:var(--night-text)}
+html[data-theme="dark"] .page-heading{
+  border-color:transparent!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] .page-heading h1,
+html[data-theme="dark"] .page-heading h2{color:#edf4f0!important}
+html[data-theme="dark"] .page-heading p,
+html[data-theme="dark"] .eyebrow+*+small{color:var(--night-muted)!important}
+html[data-theme="dark"] .topbar{
+  border-color:var(--night-line)!important;
+  background:rgba(27,37,32,.94)!important;
+  box-shadow:0 8px 25px rgba(0,0,0,.12)!important;
+  backdrop-filter:blur(14px);
+}
+html[data-theme="dark"] .sidebar{border-color:rgba(255,255,255,.065)!important;background:linear-gradient(180deg,#10271f,#0d211b)!important}
+
+html[data-theme="dark"] .page-content :is(
+  .panel,.form-card,
+  [class$="-panel"],[class*="-panel "],
+  [class$="-card"],[class*="-card "],
+  [class$="-kpi"],[class*="-kpi "],
+  [class$="-toolbar"],[class*="-toolbar "],
+  [class$="-doctrine"],[class*="-doctrine "],
+  [class$="-notice"],[class*="-notice "],
+  [class$="-summary"],[class*="-summary "]
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+html[data-theme="dark"] .page-content :is(
+  [class$="-head"],[class*="-head "],
+  [class$="-header"],[class*="-header "],
+  [class$="-footer"],[class*="-footer "]
+):not(.page-heading):not(.operational-dialog-header):not(.alert-record-header):not(.sncc-record-header):not(.institutional-dialog header){
+  border-color:var(--night-line)!important;
+}
+html[data-theme="dark"] .page-content :is(h1,h2,h3,h4,h5,strong,label){color:var(--night-text)}
+html[data-theme="dark"] .page-content :is(p,small,em,time,.text-muted,.field-help,.field-hint){color:var(--night-muted)!important}
+
+html[data-theme="dark"] .page-content input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] .page-content select,
+html[data-theme="dark"] .page-content textarea,
+html[data-theme="dark"] dialog input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] dialog select,
+html[data-theme="dark"] dialog textarea{
+  border-color:rgba(255,255,255,.09)!important;
+  background-color:var(--night-field)!important;
+  color:#e5eee9!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] .page-content input::placeholder,
+html[data-theme="dark"] .page-content textarea::placeholder,
+html[data-theme="dark"] dialog input::placeholder,
+html[data-theme="dark"] dialog textarea::placeholder{color:#74837c!important}
+html[data-theme="dark"] .page-content :is(input,select,textarea):focus,
+html[data-theme="dark"] dialog :is(input,select,textarea):focus{
+  border-color:#4d9e7c!important;
+  box-shadow:0 0 0 3px rgba(64,161,121,.14)!important;
+}
+html[data-theme="dark"] option{background:#1c2722;color:#e5eee9}
+
+html[data-theme="dark"] .page-content table,
+html[data-theme="dark"] .page-content .table{
+  --bs-table-bg:transparent;
+  --bs-table-color:#dce8e2;
+  --bs-table-border-color:var(--night-line);
+  color:#dce8e2!important;
+}
+html[data-theme="dark"] .page-content :is(table,.table) thead th{
+  border-color:rgba(255,255,255,.07)!important;
+  background:#1a2420!important;
+  color:#9aa8a1!important;
+}
+html[data-theme="dark"] .page-content :is(table,.table) tbody td{
+  border-color:rgba(255,255,255,.065)!important;
+  background:transparent!important;
+  color:#d9e5df!important;
+}
+html[data-theme="dark"] .page-content :is(table,.table) tbody tr:hover td{background:var(--night-hover)!important;color:#f1f6f3!important}
+html[data-theme="dark"] .table-responsive{border-color:var(--night-line)!important;scrollbar-color:#536b60 #19231e}
+
+html[data-theme="dark"] .page-content :is(
+  .alert-row,.notification-center-row,.upcoming-row,.deadline-list-row,
+  .scoring-entity-row,.watch-report-row,.cert-doc-row,.reference-row,
+  .session-row,.setting-row,.review-row,.dependency-item,.priority-item
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .page-content :is(
+  .alert-row,.notification-center-row,.upcoming-row,.deadline-list-row,
+  .scoring-entity-row,.watch-report-row,.cert-doc-row,.reference-row,
+  .session-row,.setting-row,.review-row,.dependency-item,.priority-item
+):hover{background:var(--night-hover)!important}
+
+html[data-theme="dark"] .btn-outline-secondary,
+html[data-theme="dark"] .reset-filter,
+html[data-theme="dark"] .icon-button{
+  border-color:rgba(255,255,255,.12)!important;
+  background:var(--night-field)!important;
+  color:#c5d2cc!important;
+}
+html[data-theme="dark"] .btn-outline-secondary:hover,
+html[data-theme="dark"] .reset-filter:hover,
+html[data-theme="dark"] .icon-button:hover{border-color:#527466!important;background:#2a3b33!important;color:#fff!important}
+html[data-theme="dark"] .btn-primary{border-color:#2d8e68!important;background:linear-gradient(135deg,#23805d,#31956e)!important;color:#fff!important;box-shadow:0 8px 20px rgba(15,94,65,.2)!important}
+
+html[data-theme="dark"] dialog.hauqe-dialog-managed,
+html[data-theme="dark"] dialog.hauqe-dialog>form,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .drawer,
+html[data-theme="dark"] [class$="-drawer"]{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+  box-shadow:0 32px 85px rgba(0,0,0,.34)!important;
+}
+html[data-theme="dark"] dialog .dialog-body,
+html[data-theme="dark"] dialog [class$="-body"]{background:var(--night-surface-soft)!important;color:var(--night-text)!important}
+html[data-theme="dark"] dialog :is(.dialog-body,[class$="-body"]) :is(section,article):not(.severity-scale):not(.historical-template-grid){
+  border-color:var(--night-line)!important;
+}
+html[data-theme="dark"] dialog :is(footer,[class$="-footer"]):not(.operational-dialog-footer){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+}
+html[data-theme="dark"] dialog::backdrop{background:rgba(5,12,9,.72);backdrop-filter:blur(7px)}
+
+html[data-theme="dark"] :is(.dashboard-api-state,.companies-api-state,.company-form-api-state,.save-indicator){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:#cbd8d2!important;
+}
+html[data-theme="dark"] :is(.review-warning,.publication-warning,.renewal-callout,.watch-close-warning){
+  border-color:#66572f!important;
+  background:#352f20!important;
+  color:#e7cf8c!important;
+}
+html[data-theme="dark"] :is(.priority-empty,.alerts-empty){color:#91a098!important}
+html[data-theme="dark"] hr{border-color:var(--night-line)!important;opacity:1}
+
+/* Les documents et aperçus exportables restent volontairement en papier clair. */
+html[data-theme="dark"] .paper-preview,
+html[data-theme="dark"] .paper-preview *{
+  color-scheme:light;
+}
+html[data-theme="dark"] .paper-preview{border-color:#dce5e0!important;background:#fff!important;color:#31483f!important}
+html[data-theme="dark"] .paper-preview :is(h1,h2,h3,h4,strong,p,small,span,td){color:inherit}
+
+@media(max-width:760px){
+  html[data-theme="dark"] .topbar{background:rgba(27,37,32,.98)!important}
+}
+
+/* ============================================================
+   MODE NUIT V2.1 — MODULES RÉCENTS
+   Corrige les surfaces claires locales qui résistaient au thème.
+   Les aperçus papier des rapports sont volontairement exclus.
+   ============================================================ */
+html[data-theme="dark"] :is(
+  .backup-page,.quality-page,.stage13-page,.institutional-page,.rules-page,
+  .references-page,.reports-page,.advanced-dashboard-page,.watch-page,
+  .scoring-workspace-page,.scoring-page,.infc-page,.sncc-page,.zones-admin-page
+){
+  background:transparent!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] :is(
+  .backup-page,.quality-page,.stage13-page,.institutional-page,.rules-page,
+  .references-page,.reports-page,.advanced-dashboard-page,.watch-page,
+  .scoring-workspace-page,.scoring-page,.infc-page,.sncc-page,.zones-admin-page
+) :is(
+  .backup-kpi,.quality-kpis article,.stage13-kpis article,
+  .readiness-card,.institutional-doctrine,.institutional-panel,.institutional-side,
+  .rule-version,.rule-card,.reference-card,.fuccs-grid-summary article,
+  .fuccs-rubric-card,.reference-kpi,.reference-alert,.reference-toolbar,
+  .report-kpi,.report-catalog,.report-builder,.report-history,
+  .advanced-dashboard-hero,.advanced-dashboard-kpis article,
+  .dashboard-visual-panel,.dashboard-analysis-panel,
+  .scoring-model-banner,.scoring-independence,.score-selector,
+  .classification-kpis .score-stat,.scoring-workspace-toolbar,
+  .scoring-registry-panel,.scoring-enterprises-panel,.scoring-entity-row,
+  .sncc-notation-legend,.sncc-legend-grid article,
+  .zones-summary article,.zones-panel
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+
+html[data-theme="dark"] :is(
+  .stage13-page,.institutional-page,.rules-page,.references-page,.reports-page,
+  .advanced-dashboard-page,.watch-page,.scoring-workspace-page,.scoring-page,
+  .infc-page,.sncc-page,.zones-admin-page
+) :is(
+  .stage13-toolbar,.reference-toolbar,.zones-toolbar,
+  .rule-editor>header,.rule-simulator>header,.code-register>header,
+  .institutional-panel>header,.institutional-side>header,
+  .reference-nav>header,.reference-panel>header,
+  .report-catalog>header,.report-builder>header,.report-history>header,
+  .scoring-registry-panel>header,.scoring-enterprises-panel>header,
+  .domain-analysis>header,.score-scale>header,.score-details>header,
+  .actions-panel>header,.score-history>header,.report-builder>footer,
+  .hierarchy-children,.fuccs-rubric-card>header,.fuccs-rubric-card>footer
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface-soft)!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] :is(
+  .stage13-page,.institutional-page,.rules-page,.references-page,.reports-page,
+  .watch-page,.scoring-workspace-page,.scoring-page,.infc-page,.sncc-page,
+  .zones-admin-page
+) :is(
+  .institutional-list-row,.reference-category,.hierarchy-head,.report-item,
+  .scoring-entity-row,.zone-actions button,.stage13-actions button
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:#dce8e2!important;
+}
+html[data-theme="dark"] :is(
+  .institutional-list-row,.reference-category,.hierarchy-head,.report-item,
+  .scoring-entity-row,.zone-actions button,.stage13-actions button
+):hover,
+html[data-theme="dark"] :is(.institutional-list-row,.reference-category,.report-item).active{
+  background:var(--night-hover)!important;
+  color:#f0f6f2!important;
+}
+
+html[data-theme="dark"] :is(
+  .requirement-builder,.validation-summary,.json-editor textarea,
+  .weights-admin-head,.fuccs-version-meta>div,.fuccs-codification-card,
+  .fuccs-criteria-head,.fuccs-code-preview,.fuccs-switch-field,
+  .publication-field-grid label,.custom-dates,.score-model-context,
+  .score-input-empty,.sncc-notation-legend>footer,.stage13-form-grid,
+  .zone-form-grid,.zone-status-summary,.zone-status-fields
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .advanced-dashboard-page .dashboard-donut::after{
+  background:var(--night-surface)!important;
+}
+
+/* Modales des nouveaux modules : même langage visuel que l'intégration BNEC. */
+html[data-theme="dark"] :is(
+  .stage13-dialog,.zone-dialog,#infcDialog,#snccDialog,#classificationDialog,
+  #snccCloseDialog,.score-history-dialog,.reference-modal form,
+  .dependency-modal>div,.publish-modal>div,.version-modal>div
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] :is(
+  .stage13-dialog,.zone-dialog,#infcDialog,#snccDialog,#classificationDialog,
+  #snccCloseDialog,.score-history-dialog,.reference-modal form,
+  .dependency-modal>div,.publish-modal>div,.version-modal>div
+) :is(header,footer,.dialog-body){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface-soft)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] :is(
+  #infcScoreInputs,#classificationScoreInputs,.sncc-form-grid,
+  .sncc-close-fields,.score-history-entry
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+}
+
+/* Les zones d'impression et le document exporté conservent leur rendu papier. */
+html[data-theme="dark"] .reports-page :is(.report-preview-modal,.report-preview-modal>header,.report-preview-modal>footer){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .reports-page .paper-preview,
+html[data-theme="dark"] .reports-page .paper-preview *{
+  color-scheme:light;
+}
+
+/* Échéances — liste « Échéances prioritaires ». */
+html[data-theme="dark"] .deadlines-page .upcoming-grid>article,
+html[data-theme="dark"] .deadlines-page #upcomingList{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row:hover,
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row:focus-visible{
+  background:var(--night-hover)!important;
+}
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row>span{
+  background:#29453a!important;
+  color:#68c59f!important;
+}
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row strong{
+  color:#e4ede8!important;
+}
+html[data-theme="dark"] .deadlines-page .upcoming-deadline-row :is(small,em){
+  color:#97a59e!important;
+}
+
+/* Fiche certification — route certifications/{id}. */
+html[data-theme="dark"] .certification-detail-page{
+  background:transparent!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .cert-profile,.cert-detail-kpis article,.cert-overview>article,
+  .cert-overview aside>article,#certTabContent>article,.detail-tabs
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+html[data-theme="dark"] .certification-detail-page .panel-heading{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface-soft)!important;
+}
+html[data-theme="dark"] .certification-detail-page .detail-tabs button{
+  background:transparent!important;
+  color:var(--night-muted)!important;
+}
+html[data-theme="dark"] .certification-detail-page .detail-tabs button:hover,
+html[data-theme="dark"] .certification-detail-page .detail-tabs button.active{
+  background:var(--night-hover)!important;
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .certification-detail-page .detail-tabs b{
+  background:#31443b!important;
+  color:#b9c9c1!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .cert-info,.entity-card,.cert-doc-row,.cert-history-row,
+  .audit-table th,.audit-table td
+){
+  border-color:var(--night-line)!important;
+}
+html[data-theme="dark"] .certification-detail-page .cert-info-grid{
+  background:var(--night-surface)!important;
+}
+html[data-theme="dark"] .certification-detail-page .cert-info{
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .scope-box,.verification-check
+){
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .cert-profile-logo,.entity-card>span,.cert-doc-row>span,.audit-result
+){
+  background:#29453a!important;
+  color:#68c59f!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .cert-profile-main h1,.profile-refs span,.cert-info strong,
+  .entity-card strong,.cert-doc-row strong,.cert-history-row strong
+){
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .certification-detail-page :is(
+  .cert-profile-main p,.cert-info small,.entity-card small,
+  .cert-doc-row small,.cert-history-row small,.cert-history-row time
+){
+  color:var(--night-muted)!important;
+}

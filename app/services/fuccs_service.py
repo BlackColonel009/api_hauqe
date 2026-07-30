@@ -513,10 +513,24 @@ class FuccsService:
 
     @staticmethod
     async def create_control(db,*,dossier_id,payload,actor,request):
-        d=await FuccsRepository.get_dossier(db,dossier_id)
+        # Le verrou du dossier sérialise aussi deux requêtes issues d'un
+        # double clic : la seconde retrouve le contrôle créé par la première.
+        d=await FuccsRepository.get_dossier_for_update(db,dossier_id)
         if d is None: raise HTTPException(404,"Dossier de vérification introuvable.")
         if d.date_fin is None: raise HTTPException(409,"Clôturez d'abord la vérification.")
         if d.avis not in ADMISSIBLE: raise HTTPException(409,"Avis de vérification non admissible au FUCCS.")
+        existing=await FuccsRepository.latest_control_for_dossier(db,dossier_id)
+        if existing is not None:
+            await write_audit_event(
+                db, action="FUCCS_CONTROL_RESUME",
+                categorie="CONTROLE_FUCCS", resultat="SUCCES",
+                utilisateur_id=actor.user.id,
+                ressource_type="controle_fuccs", ressource_id=existing.id,
+                adresse_ip=ip(request),
+                contexte={"dossier_verification_id": str(dossier_id)},
+            )
+            await db.commit()
+            return await FuccsService.control_response(db,existing)
         g=await FuccsService.require_grid(db,payload.grille_fuccs_id) if payload.grille_fuccs_id else await FuccsRepository.active_grid(db)
         if g is None or (g.statut_publication or "").upper()!="PUBLIE": raise HTTPException(409,"Aucune grille publiée utilisable.")
         _,count,maxscore=await FuccsRepository.grid_counts(db,g.id)

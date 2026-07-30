@@ -92,8 +92,27 @@ class FuccsRepository:
         r=await db.execute(select(DossierVerification).where(DossierVerification.id==dossier_id)); return r.scalar_one_or_none()
 
     @staticmethod
+    async def get_dossier_for_update(db, dossier_id):
+        r=await db.execute(
+            select(DossierVerification)
+            .where(DossierVerification.id==dossier_id)
+            .with_for_update()
+        )
+        return r.scalar_one_or_none()
+
+    @staticmethod
     async def get_control(db, control_id):
         r=await db.execute(select(ControleFuccs).where(ControleFuccs.id==control_id)); return r.scalar_one_or_none()
+
+    @staticmethod
+    async def latest_control_for_dossier(db, dossier_id):
+        r=await db.execute(
+            select(ControleFuccs)
+            .where(ControleFuccs.dossier_verification_id==dossier_id)
+            .order_by(ControleFuccs.created_at.desc())
+            .limit(1)
+        )
+        return r.scalar_one_or_none()
 
     @staticmethod
     async def list_controls(db, *, dossier_id, statut, limit, offset):

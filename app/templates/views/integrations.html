@@ -1,7 +1,7 @@
 <div class="page-content container-fluid integrations-page">
-  <section class="page-heading"><div><p class="eyebrow">Passage vers le registre officiel</p><h1>Intégration BNEC</h1><p>Ouvrez et contrôlez le passage des données validées vers les ressources officielles de la BNEC.</p></div></section>
+  <section class="page-heading"><div><p class="eyebrow">Passage vers le registre officiel</p><h1>Intégration BNEC (Base nationale des entreprises certifiées)</h1><p>Analysez les données validées, contrôlez les codes proposés puis confirmez leur passage rapide dans la BNEC.</p></div><div class="heading-actions"><a class="btn btn-outline-secondary app-btn" href="/static/docs/guide-integration-bnec-hauqe.pdf" target="_blank" rel="noopener"><i data-lucide="book-open-check"></i>Guide d’utilisation</a></div></section>
   <section class="dashboard-api-state" id="integrationApiState" hidden></section>
-  <section class="integration-doctrine panel"><span><i data-lucide="git-merge"></i></span><div><strong>Une validation favorable n’intègre rien automatiquement.</strong><small>L’intégration exige un précontrôle, des éléments tracés source→cible, un postcontrôle OK et une référence de sauvegarde.</small></div></section>
+  <section class="integration-doctrine panel"><span><i data-lucide="git-merge"></i></span><div><strong>La validation N2 ouvre un passage contrôlé vers la BNEC.</strong><small>Le système analyse les ressources, applique les modèles de codification publiés et exécute l’intégration en une transaction, sans saisie d’UUID ni de code.</small></div></section>
   <section class="integration-kpis" id="integrationKpis"></section>
   <section class="integration-toolbar panel">
     <label class="integration-search"><i data-lucide="search"></i><input id="integrationSearch" type="search" placeholder="Entreprise, mission, campagne, zone ou sauvegarde…"></label>
@@ -11,7 +11,7 @@
   </section>
   <section class="panel integration-panel">
     <div class="cert-list-head"><div><strong id="integrationCount">0 intégration</strong><small id="integrationRange">Historique technique</small></div></div>
-    <div class="table-responsive"><table class="table integration-table"><thead><tr><th>Entreprise</th><th>Validation N2</th><th>Administrateur</th><th>Progression</th><th>Éléments</th><th>Sauvegarde</th><th>Statut</th><th></th></tr></thead><tbody id="integrationRows"></tbody></table></div>
+    <div class="table-responsive"><table class="table integration-table"><thead><tr><th>Entreprise</th><th>Validation N2</th><th>Administrateur</th><th>Traitement</th><th>Ressources</th><th>Traçabilité</th><th>Statut</th><th></th></tr></thead><tbody id="integrationRows"></tbody></table></div>
     <div class="integration-empty" id="integrationEmpty" hidden><i data-lucide="database-zap"></i><strong>Aucune intégration trouvée</strong><span>Aucune donnée fictive n’est affichée.</span></div>
     <footer class="companies-footer"><span id="integrationPagination"></span><div><button class="btn btn-outline-secondary app-btn" id="integrationPrev" type="button"><i data-lucide="chevron-left"></i>Précédent</button><button class="btn btn-outline-secondary app-btn" id="integrationNext" type="button">Suivant<i data-lucide="chevron-right"></i></button></div></footer>
   </section>

@@ -15,6 +15,13 @@ class Settings(BaseSettings):
 
     timezone: str = "Africa/Lome"
 
+    hauqe_smtp_host: str | None = None
+    hauqe_smtp_port: int = 587
+    hauqe_smtp_user: str | None = None
+    hauqe_smtp_password: str | None = None
+    hauqe_smtp_from: str | None = None
+    hauqe_smtp_use_tls: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

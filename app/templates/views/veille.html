@@ -9,6 +9,7 @@
     </div>
 
     <div class="heading-actions">
+      <a class="btn btn-outline-secondary app-btn" href="/static/docs/guide-dossiers-veille-hauqe.pdf" target="_blank" rel="noopener"><i data-lucide="book-open-check"></i>Guide</a>
       <button class="btn btn-outline-secondary app-btn" id="watchScan" type="button" hidden>
         <i data-lucide="radar"></i>Scan quotidien
       </button>
@@ -172,21 +173,30 @@
             <span>Type d’événement <b>*</b></span>
             <input
               id="watchEventType"
+              list="watchEventTypeOptions"
               maxlength="255"
-              placeholder="Ex. RENOUVELLEMENT_PROCHE"
+              placeholder="Sélectionnez ou saisissez un événement"
+              autocomplete="off"
               required
             >
+            <datalist id="watchEventTypeOptions"></datalist>
+            <small>
+              Sélection rapide ou saisie libre si le cas n’est pas proposé.
+            </small>
           </label>
 
           <label class="operational-field">
             <span>Priorité</span>
             <input
               id="watchCasePriority"
+              list="watchCasePriorityOptions"
               maxlength="255"
-              placeholder="Ex. HAUTE"
+              placeholder="Sélectionnez ou saisissez une priorité"
+              autocomplete="off"
             >
+            <datalist id="watchCasePriorityOptions"></datalist>
             <small>
-              Facultatif, selon la codification de veille.
+              Facultatif — les priorités déjà utilisées sont proposées.
             </small>
           </label>
         </div>
@@ -251,41 +261,67 @@
   <dialog class="hauqe-dialog" id="followupDialog">
     <form method="dialog" id="followupForm">
       <header>
-        <div><p class="eyebrow">Relance</p><h2>Nouvelle relance</h2></div>
+        <div><p class="eyebrow">Suivi du dossier</p><h2>Nouvelle relance</h2><small>Enregistrez le contact, le canal et le délai de réponse attendu.</small></div>
         <button class="dialog-close" type="button" data-close-watch-dialog="followupDialog"><i data-lucide="x"></i></button>
       </header>
 
       <div class="dialog-body">
-        <label><span>Destinataire <b>*</b></span><input id="followupRecipient" maxlength="255" required></label>
-        <label><span>Canal <b>*</b></span><input id="followupChannel" maxlength="255" required></label>
-        <label><span>Objet <b>*</b></span><input id="followupSubject" maxlength="255" required></label>
-        <label><span>Date d’envoi</span><input id="followupSendDate" type="date"></label>
-        <label><span>Échéance de réponse</span><input id="followupDueDate" type="date"></label>
+        <div class="followup-dialog-notice">
+          <span><i data-lucide="send"></i></span>
+          <div><strong>Traçabilité de la relance</strong><small>La relance et sa réponse éventuelle resteront rattachées au dossier de veille sélectionné.</small></div>
+        </div>
+        <div class="followup-dialog-fields">
+          <label><span>Destinataire <b>*</b></span><input id="followupRecipient" maxlength="255" placeholder="Nom, service ou organisme" required></label>
+          <label><span>Adresse e-mail <b>*</b></span><input id="followupEmail" type="email" maxlength="320" placeholder="destinataire@organisme.tg" autocomplete="email" required></label>
+          <label><span>Canal <b>*</b></span><input id="followupChannel" list="followupChannelOptions" maxlength="255" placeholder="Sélectionnez ou saisissez un canal" autocomplete="off" required><datalist id="followupChannelOptions"><option value="EMAIL"></option><option value="TELEPHONE"></option><option value="COURRIER"></option><option value="VISITE"></option><option value="AUTRE"></option></datalist></label>
+          <label><span>Date d’envoi</span><input id="followupSendDate" type="date"></label>
+          <label class="full"><span>Objet <b>*</b></span><input id="followupSubject" maxlength="255" placeholder="Objet précis de la relance" required></label>
+          <label class="full"><span>Contenu du message <b>*</b></span><textarea id="followupMessage" rows="6" placeholder="Bonjour,&#10;&#10;Dans le cadre du suivi de votre dossier, nous vous prions de bien vouloir…" required></textarea><small>Ce contenu sera envoyé tel quel à l’adresse indiquée lorsque la date d’envoi sera atteinte.</small></label>
+          <label class="full"><span>Échéance de réponse</span><input id="followupDueDate" type="date"><small>Facultatif si aucun délai formel n’a été fixé.</small></label>
+        </div>
       </div>
 
       <footer>
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="followupDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Enregistrer</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Enregistrer la relance</button>
       </footer>
     </form>
   </dialog>
 
-  <dialog class="hauqe-dialog" id="followupResponseDialog">
+  <dialog class="hauqe-dialog followup-response-dialog" id="followupResponseDialog">
     <form method="dialog" id="followupResponseForm">
-      <header>
-        <div><p class="eyebrow">Réponse à une relance</p><h2>Enregistrer la réponse</h2></div>
+      <header class="followup-response-header">
+        <div class="followup-response-title">
+          <span><i data-lucide="message-circle-reply"></i></span>
+          <div><p class="eyebrow">Suivi d’une relance</p><h2>Enregistrer la réponse</h2><small>Consignez la réponse reçue et son résultat pour compléter la traçabilité du dossier.</small></div>
+        </div>
         <button class="dialog-close" type="button" data-close-watch-dialog="followupResponseDialog"><i data-lucide="x"></i></button>
       </header>
 
-      <div class="dialog-body">
-        <label><span>Date de réponse</span><input id="followupResponseDate" type="date"></label>
-        <label><span>Réponse <b>*</b></span><textarea id="followupResponseText" rows="4" required></textarea></label>
-        <label><span>Résultat</span><textarea id="followupResult" rows="3"></textarea></label>
+      <div class="dialog-body followup-response-body">
+        <div class="followup-response-notice">
+          <span><i data-lucide="shield-check"></i></span>
+          <div><strong>Réponse rattachée au dossier</strong><small>La date, le contenu et le résultat seront conservés dans l’historique de la relance.</small></div>
+        </div>
+        <section class="followup-response-card">
+          <div class="followup-response-card-head">
+            <span><i data-lucide="clipboard-pen-line"></i></span>
+            <div><strong>Informations de la réponse</strong><small>Les champs marqués d’un astérisque sont obligatoires.</small></div>
+          </div>
+          <div class="followup-response-fields">
+            <label class="response-date"><span>Date de réponse</span><input id="followupResponseDate" type="date"><small>Date de réception effective.</small></label>
+            <label class="full"><span>Réponse reçue <b>*</b></span><textarea id="followupResponseText" rows="5" placeholder="Saisissez ou résumez fidèlement la réponse communiquée…" required></textarea><small>Précisez les engagements, observations ou éléments transmis.</small></label>
+            <label class="full"><span>Résultat du suivi</span><textarea id="followupResult" rows="4" placeholder="Ex. : justificatif reçu, action corrective attendue, dossier régularisé…"></textarea><small>Indiquez la conséquence opérationnelle de cette réponse.</small></label>
+          </div>
+        </section>
       </div>
 
-      <footer>
-        <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="followupResponseDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer</button>
+      <footer class="followup-response-footer">
+        <span><i data-lucide="history"></i>Cette opération sera journalisée.</span>
+        <div>
+          <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="followupResponseDialog">Annuler</button>
+          <button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer la réponse</button>
+        </div>
       </footer>
     </form>
   </dialog>
@@ -293,17 +329,23 @@
   <dialog class="hauqe-dialog" id="closeWatchCaseDialog">
     <form method="dialog" id="closeWatchCaseForm">
       <header>
-        <div><p class="eyebrow">Clôture</p><h2>Clôturer le dossier</h2></div>
+        <div><p class="eyebrow">Fin du suivi</p><h2>Clôturer le dossier de veille</h2><small>Le dossier quittera la file active mais restera disponible dans l’historique.</small></div>
         <button class="dialog-close" type="button" data-close-watch-dialog="closeWatchCaseDialog"><i data-lucide="x"></i></button>
       </header>
 
       <div class="dialog-body">
-        <label><span>Motif <b>*</b></span><textarea id="closeWatchReason" rows="4" required></textarea></label>
+        <div class="watch-close-warning">
+          <span><i data-lucide="folder-lock"></i></span>
+          <div><strong>Clôture du suivi actif</strong><small>Vérifiez que les relances, réponses et actions attendues ont été traitées avant de confirmer.</small></div>
+        </div>
+        <div class="watch-close-fields">
+          <label><span>Motif de la clôture <b>*</b></span><textarea id="closeWatchReason" rows="5" placeholder="Résumez le résultat du suivi et la raison de sa clôture…" required></textarea><small>Cette justification sera conservée dans la traçabilité du dossier.</small></label>
+        </div>
       </div>
 
       <footer>
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="closeWatchCaseDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="lock"></i>Clôturer</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="lock"></i>Confirmer la clôture</button>
       </footer>
     </form>
   </dialog>

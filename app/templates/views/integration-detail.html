@@ -1,17 +1,96 @@
-<div class="page-content container-fluid integration-detail-page">
-  <nav class="detail-breadcrumb"><a href="#/integrations">Intégration BNEC</a><i data-lucide="chevron-right"></i><span id="integrationBreadcrumb">Dossier</span></nav>
+<div class="page-content container-fluid integration-detail-page integration-v4-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/integrations">Intégration BNEC</a>
+    <i data-lucide="chevron-right"></i>
+    <span id="integrationBreadcrumb">Dossier</span>
+  </nav>
+
   <section class="dashboard-api-state" id="integrationDetailState" hidden></section>
-  <section class="integration-detail-header panel"><div class="integration-detail-identity"><span><i data-lucide="database"></i></span><div><div class="profile-title-line"><h1 id="integrationDetailTitle">Chargement…</h1><span class="integration-status waiting" id="integrationDetailStatus"><i></i>—</span></div><p id="integrationDetailSubtitle">Intégration BNEC</p><div class="profile-refs" id="integrationDetailRefs"></div></div></div><div class="profile-actions"><button class="btn btn-outline-secondary app-btn" id="integrationPrecontrol" type="button" hidden><i data-lucide="shield-check"></i>Précontrôle</button><button class="btn btn-primary app-btn" id="integrationStart" type="button" hidden><i data-lucide="play"></i>Démarrer</button><button class="btn btn-outline-secondary app-btn" id="integrationPostcontrol" type="button" hidden><i data-lucide="scan-check"></i>Postcontrôle</button><button class="btn btn-primary app-btn" id="integrationComplete" type="button" hidden><i data-lucide="badge-check"></i>Clôturer</button></div></section>
+
+  <section class="integration-detail-header panel">
+    <div class="integration-detail-identity">
+      <span><i data-lucide="database-zap"></i></span>
+      <div>
+        <div class="profile-title-line">
+          <h1 id="integrationDetailTitle">Chargement…</h1>
+          <span class="integration-status waiting" id="integrationDetailStatus"><i></i>—</span>
+        </div>
+        <p id="integrationDetailSubtitle">Passage rapide vers la BNEC officielle</p>
+        <div class="profile-refs" id="integrationDetailRefs"></div>
+      </div>
+    </div>
+
+    <div class="profile-actions integration-business-actions">
+      <button class="btn btn-outline-secondary app-btn" id="integrationPrepare" type="button" hidden>
+        <i data-lucide="refresh-cw"></i>Actualiser l’analyse
+      </button>
+      <button class="btn btn-primary app-btn" id="integrationExecute" type="button" hidden>
+        <i data-lucide="database-zap"></i>Intégrer dans la BNEC
+      </button>
+    </div>
+  </section>
+
+  <section class="integration-v4-doctrine panel">
+    <span><i data-lucide="badge-check"></i></span>
+    <div>
+      <strong>Une confirmation, aucun UUID, aucune ressaisie.</strong>
+      <small>Le précontrôle, la codification, l’intégration, le postcontrôle et la clôture sont exécutés automatiquement dans une transaction unique.</small>
+    </div>
+  </section>
+
   <section class="integration-lifecycle" id="integrationLifecycle"></section>
   <section class="integration-detail-kpis" id="integrationDetailKpis"></section>
-  <div class="detail-tabs" role="tablist"><button class="active" data-tab="overview">Vue d’ensemble</button><button data-tab="elements">Éléments <b id="integrationElementCount">0</b></button></div>
+
+  <div class="detail-tabs" role="tablist">
+    <button class="active" data-tab="overview">Vue d’ensemble</button>
+    <button data-tab="plan">Plan et codification <b id="integrationElementCount">0</b></button>
+  </div>
   <section id="integrationTabContent"></section>
 
-  <dialog class="hauqe-dialog" id="integrationCheckDialog"><form method="dialog" id="integrationCheckForm"><header><div><p class="eyebrow">Contrôle technique</p><h2 id="integrationCheckTitle">Contrôle</h2></div><button class="dialog-close" type="button" data-close-dialog="integrationCheckDialog"><i data-lucide="x"></i></button></header><div class="dialog-body"><label><span>Résultat <b>*</b></span><select id="integrationCheckResult" required><option value="">Sélectionner</option><option value="OK">OK</option><option value="ECHEC">Échec</option></select></label><label><span>Résumé <b>*</b></span><textarea id="integrationCheckSummary" rows="4" required></textarea></label><label><span>Référence de sauvegarde</span><input id="integrationBackupReference" maxlength="255" placeholder="Référence réelle de sauvegarde"></label><div class="review-warning"><i data-lucide="database-backup"></i>Une référence de sauvegarde est obligatoire avant la clôture définitive.</div></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-close-dialog="integrationCheckDialog">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="check"></i>Enregistrer</button></footer></form></dialog>
-
-  <dialog class="hauqe-dialog" id="integrationStartDialog"><form method="dialog" id="integrationStartForm"><header><div><p class="eyebrow">Exécution</p><h2>Démarrer l’intégration</h2></div><button class="dialog-close" type="button" data-close-dialog="integrationStartDialog"><i data-lucide="x"></i></button></header><div class="dialog-body"><label><span>Résumé / note de démarrage</span><textarea id="integrationStartSummary" rows="4"></textarea></label><div class="review-warning"><i data-lucide="info"></i>Le démarrage ne crée pas automatiquement les ressources BNEC.</div></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-close-dialog="integrationStartDialog">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="play"></i>Démarrer</button></footer></form></dialog>
-
-  <dialog class="hauqe-dialog" id="integrationElementDialog"><form method="dialog" id="integrationElementForm"><header><div><p class="eyebrow">Traçabilité source → cible</p><h2 id="integrationElementTitle">Élément d’intégration</h2></div><button class="dialog-close" type="button" data-close-dialog="integrationElementDialog"><i data-lucide="x"></i></button></header><div class="dialog-body integration-element-fields"><label><span>Type d’objet <b>*</b></span><input id="elementType" maxlength="255" required></label><label><span>Action <b>*</b></span><input id="elementAction" maxlength="255" required></label><label><span>Ressource source UUID</span><input id="elementSourceId"></label><label><span>Ressource cible UUID</span><input id="elementTargetId"></label><label><span>Révision source</span><input id="elementRevision" maxlength="255"></label><label><span>Code généré</span><input id="elementGeneratedCode" maxlength="255"></label></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-close-dialog="integrationElementDialog">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Enregistrer</button></footer></form></dialog>
-
-  <dialog class="hauqe-dialog" id="integrationResultDialog"><form method="dialog" id="integrationResultForm"><header><div><p class="eyebrow">Résultat d’intégration</p><h2>Résultat de l’élément</h2></div><button class="dialog-close" type="button" data-close-dialog="integrationResultDialog"><i data-lucide="x"></i></button></header><div class="dialog-body"><label><span>Résultat <b>*</b></span><select id="elementResult" required><option value="">Sélectionner</option><option value="INTEGRE">Intégré</option><option value="ECHEC">Échec</option></select></label><label><span>Ressource cible UUID</span><input id="elementResultTarget"></label><label><span>Code généré</span><input id="elementResultCode" maxlength="255"></label><label id="elementErrorField" hidden><span>Message d’erreur</span><textarea id="elementErrorMessage" rows="3" maxlength="255"></textarea></label></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-close-dialog="integrationResultDialog">Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Enregistrer</button></footer></form></dialog>
+  <dialog class="hauqe-dialog integration-execute-dialog integration-v4-dialog" id="integrationExecuteDialog">
+    <form method="dialog" id="integrationExecuteForm">
+      <header>
+        <div>
+          <p class="eyebrow">Intégration transactionnelle</p>
+          <h2>Confirmer l’intégration et la codification</h2>
+        </div>
+        <button class="dialog-close" type="button" data-close-dialog="integrationExecuteDialog" aria-label="Fermer">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div class="dialog-body" data-dialog-scroll>
+        <div class="bnec-execution-summary" id="integrationExecutionSummary"></div>
+        <section class="integration-confirm-codes">
+          <header>
+            <span><i data-lucide="binary"></i></span>
+            <div>
+              <strong>Codes institutionnels proposés</strong>
+              <small>Les séquences définitives seront réservées au moment de la transaction.</small>
+            </div>
+          </header>
+          <div id="integrationCodesPreview"></div>
+        </section>
+        <div class="bnec-execution-rules">
+          <div><i data-lucide="shield-check"></i><span>Précontrôle automatique des décisions N1/N2 et des données validées.</span></div>
+          <div><i data-lucide="binary"></i><span>Application des modèles publiés dans Règles & codification.</span></div>
+          <div><i data-lucide="database"></i><span>Création ou rapprochement des ressources officielles.</span></div>
+          <div><i data-lucide="undo-2"></i><span>Rollback complet si une seule ressource échoue.</span></div>
+        </div>
+        <label>
+          <span>Observation d’intégration</span>
+          <textarea id="integrationExecuteSummary" rows="4" maxlength="2000" placeholder="Observation facultative pour le journal d’audit."></textarea>
+        </label>
+        <div class="review-warning" id="integrationExecutionWarning">
+          <i data-lucide="triangle-alert"></i>
+          Vérifiez les codes proposés avant de confirmer. Les codes définitifs ne seront plus modifiés après l’intégration.
+        </div>
+      </div>
+      <footer>
+        <button type="button" class="btn btn-outline-secondary app-btn" data-close-dialog="integrationExecuteDialog">Annuler</button>
+        <button type="submit" class="btn btn-primary app-btn" id="confirmIntegrationExecution">
+          <i data-lucide="database-zap"></i>Confirmer l’intégration
+        </button>
+      </footer>
+    </form>
+  </dialog>
 </div>

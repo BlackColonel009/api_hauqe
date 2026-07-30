@@ -16,20 +16,26 @@ Cette tâche :
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 
+from app.config.logging import configure_logging
 from app.database.session import AsyncSessionLocal
 from app.services.account_inactivity_service import AccountInactivityService
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 async def run() -> None:
     async with AsyncSessionLocal() as db:
         result = await AccountInactivityService.run(db)
-        print(
+        logger.info(
             "Scan comptes terminé : "
-            f"{result.warnings_queued} préavis, "
-            f"{result.users_deactivated} désactivation(s), "
-            f"{result.sessions_revoked} session(s) révoquée(s)."
+            "%s préavis, %s désactivation(s), %s session(s) révoquée(s).",
+            result.warnings_queued,
+            result.users_deactivated,
+            result.sessions_revoked,
         )
 
 

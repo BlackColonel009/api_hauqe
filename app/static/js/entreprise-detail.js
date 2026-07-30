@@ -617,7 +617,7 @@
 
     try {
       if (withLoader && loader()) {
-        await loader().run(task, { title: "Dossier entreprise", message: "Chargement du dossier", detail: "Récupération des données autorisées depuis PostgreSQL." });
+        await loader().run(task, { title: "Dossier entreprise", message: "Chargement du dossier", detail: "Récupération des données autorisées." });
       } else {
         await task();
       }

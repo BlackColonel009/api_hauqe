@@ -230,6 +230,7 @@ class ExternalConfirmationCreateRequest(BaseModel):
     canal: str | None = Field(default=None, max_length=255)
     destinataire: str = Field(min_length=1, max_length=255)
     objet: str = Field(min_length=1, max_length=255)
+    contenu_demande: str = Field(min_length=1)
     date_envoi: date | None = None
     date_echeance: date | None = None
     statut: str | None = Field(default="EN_ATTENTE", max_length=255)
@@ -239,6 +240,7 @@ class ExternalConfirmationUpdateRequest(BaseModel):
     canal: str | None = Field(default=None, max_length=255)
     destinataire: str | None = Field(default=None, max_length=255)
     objet: str | None = Field(default=None, max_length=255)
+    contenu_demande: str | None = None
     date_envoi: date | None = None
     date_echeance: date | None = None
     statut: str | None = Field(default=None, max_length=255)
@@ -257,6 +259,7 @@ class ExternalConfirmationResponse(BaseModel):
     canal: str | None = None
     destinataire: str | None = None
     objet: str | None = None
+    contenu_demande: str | None = None
     date_envoi: date | None = None
     date_echeance: date | None = None
     date_reponse: date | None = None

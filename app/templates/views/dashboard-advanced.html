@@ -1,0 +1,40 @@
+<div class="page-content container-fluid advanced-dashboard-page">
+  <section class="advanced-dashboard-hero">
+    <div>
+      <p class="eyebrow" id="advancedDashboardEyebrow">Pilotage</p>
+      <h1 id="advancedDashboardTitle">Tableau de bord</h1>
+      <p id="advancedDashboardDescription"></p>
+    </div>
+    <div class="advanced-dashboard-period" id="advancedDashboardPeriod"></div>
+  </section>
+
+  <section class="dashboard-api-state" id="advancedDashboardState" hidden></section>
+
+  <section class="panel advanced-dashboard-toolbar" id="advancedDashboardToolbar">
+    <div id="advancedDashboardFilters"></div>
+    <button class="btn btn-primary app-btn" id="refreshAdvancedDashboard" type="button">
+      <i data-lucide="refresh-cw"></i>Actualiser
+    </button>
+  </section>
+
+  <section class="advanced-dashboard-kpis" id="advancedDashboardKpis"></section>
+
+  <section class="advanced-dashboard-grid">
+    <article class="panel dashboard-visual-panel dashboard-visual-main">
+      <header><div><p class="eyebrow" id="visualOneEyebrow">Analyse</p><h2 id="visualOneTitle">Répartition</h2></div></header>
+      <div id="advancedVisualOne"></div>
+    </article>
+    <article class="panel dashboard-visual-panel">
+      <header><div><p class="eyebrow" id="visualTwoEyebrow">Tendance</p><h2 id="visualTwoTitle">Évolution</h2></div></header>
+      <div id="advancedVisualTwo"></div>
+    </article>
+  </section>
+
+  <section class="panel dashboard-analysis-panel">
+    <header>
+      <div><p class="eyebrow" id="analysisEyebrow">Lecture détaillée</p><h2 id="analysisTitle">Indicateurs complémentaires</h2></div>
+      <small id="advancedDashboardUpdated"></small>
+    </header>
+    <div id="advancedDashboardAnalysis"></div>
+  </section>
+</div>

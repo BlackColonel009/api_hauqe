@@ -14,11 +14,13 @@ Il ne produit aucune décision métier.
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
 
+from app.config.logging import configure_logging
 from app.database.session import AsyncSessionLocal
 from app.models.alerte import Alerte
 from app.models.echeance import Echeance
@@ -26,6 +28,9 @@ from app.models.notification import Notification
 from app.models.preference_utilisateur import PreferenceUtilisateur
 from app.models.utilisateur import Utilisateur
 from app.repositories.account_repository import AccountRepository
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 async def run() -> None:
@@ -99,7 +104,7 @@ async def run() -> None:
             queued += 1
 
         await db.commit()
-        print(f"Résumés hebdomadaires préparés : {queued}")
+        logger.info("Résumés hebdomadaires préparés : %s", queued)
 
 
 if __name__ == "__main__":

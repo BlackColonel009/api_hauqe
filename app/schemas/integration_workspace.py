@@ -44,6 +44,7 @@ class IntegrationWorkspaceItem(BaseModel):
 class IntegrationWorkspaceSummary(BaseModel):
     total: int = 0
     waiting: int = 0
+    blocked: int = 0
     precontrolled: int = 0
     in_progress: int = 0
     postcontrolled: int = 0

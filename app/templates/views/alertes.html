@@ -9,6 +9,9 @@
     </div>
 
     <div class="heading-actions">
+      <a class="btn btn-outline-secondary app-btn" href="/static/docs/guide-alertes-hauqe.pdf" target="_blank" rel="noopener">
+        <i data-lucide="book-open-check"></i>Guide d’utilisation
+      </a>
       <button class="btn btn-primary app-btn" id="newSpecialAlert" type="button" hidden>
         <i data-lucide="triangle-alert"></i>Alerte spéciale
       </button>
@@ -59,7 +62,7 @@
       </button>
     </section>
 
-    <section class="alerts-layout">
+    <section class="alerts-layout alerts-layout-modal">
       <article class="alerts-list-panel panel">
         <div class="alerts-list-head">
           <div>
@@ -72,11 +75,14 @@
         <div id="emptyAlerts" class="priority-empty" hidden>Aucune alerte trouvée.</div>
       </article>
 
-      <aside class="alert-detail panel" id="alertDetail">
-        <div class="priority-empty">Sélectionnez une alerte.</div>
-      </aside>
     </section>
   </section>
+
+  <dialog id="alertDetailDialog" class="hauqe-dialog alert-record-dialog">
+    <form method="dialog">
+      <div id="alertDetail"></div>
+    </form>
+  </dialog>
 
   <section id="notificationsTab" hidden>
     <section class="panel notification-center-panel">
@@ -95,19 +101,25 @@
     </section>
   </section>
 
-  <dialog id="assignAlertDialog" class="hauqe-dialog">
+  <dialog id="assignAlertDialog" class="hauqe-dialog alert-action-dialog">
     <form method="dialog" id="assignAlertForm">
-      <header>
-        <div><p class="eyebrow">Affectation</p><h2>Affecter l’alerte</h2></div>
+      <header class="alert-action-header">
+        <div class="alert-action-title"><span><i data-lucide="user-round-plus"></i></span><div><p class="eyebrow">HAUQE · Traitement opérationnel</p><h2>Affecter l’alerte</h2><small>Désignez l’agent chargé du traitement et consignez les instructions utiles.</small></div></div>
         <button class="dialog-close" type="button" data-close-alert-dialog="assignAlertDialog"><i data-lucide="x"></i></button>
       </header>
-      <div class="dialog-body">
-        <label><span>Responsable <b>*</b></span><select id="assignAlertResponsible" required></select></label>
-        <label><span>Commentaire</span><textarea id="assignAlertComment" rows="3"></textarea></label>
+      <div class="dialog-body alert-action-body">
+        <div class="alert-action-notice"><span><i data-lucide="shield-check"></i></span><div><strong>Affectation traçable</strong><small>Le responsable sélectionné retrouvera cette alerte dans sa file de traitement.</small></div></div>
+        <section class="alert-action-card">
+          <div class="alert-action-card-head"><span><i data-lucide="clipboard-user"></i></span><div><strong>Responsabilité du traitement</strong><small>Sélectionnez un agent actif et précisez le contexte si nécessaire.</small></div></div>
+          <div class="alert-action-fields">
+            <label><span>Responsable <b>*</b></span><select id="assignAlertResponsible" required></select><small>Agent qui prendra en charge l’alerte.</small></label>
+            <label><span>Commentaire d’affectation</span><textarea id="assignAlertComment" rows="5" placeholder="Ex. : vérifier les justificatifs reçus et rendre compte avant l’échéance…"></textarea><small>Instruction facultative conservée dans la traçabilité.</small></label>
+          </div>
+        </section>
       </div>
-      <footer>
-        <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="assignAlertDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="user-check"></i>Affecter</button>
+      <footer class="alert-action-footer">
+        <span><i data-lucide="history"></i>Cette affectation sera journalisée.</span>
+        <div><button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="assignAlertDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="user-check"></i>Confirmer l’affectation</button></div>
       </footer>
     </form>
   </dialog>
@@ -132,37 +144,28 @@
     </form>
   </dialog>
 
-  <dialog id="notifyAlertDialog" class="hauqe-dialog">
+  <dialog id="notifyAlertDialog" class="hauqe-dialog alert-action-dialog alert-notify-dialog">
     <form method="dialog" id="notifyAlertForm">
-      <header>
-        <div><p class="eyebrow">Notification</p><h2>Notifier depuis l’alerte</h2></div>
+      <header class="alert-action-header">
+        <div class="alert-action-title"><span><i data-lucide="send"></i></span><div><p class="eyebrow">HAUQE · Communication opérationnelle</p><h2>Notifier depuis l’alerte</h2><small>Préparez une notification interne ou un courriel directement lié à cette alerte.</small></div></div>
         <button class="dialog-close" type="button" data-close-alert-dialog="notifyAlertDialog"><i data-lucide="x"></i></button>
       </header>
-      <div class="dialog-body">
-        <label>
-          <span>Canal <b>*</b></span>
-          <select id="alertNotificationChannel">
-            <option value="IN_APP">IN_APP</option>
-            <option value="EMAIL">EMAIL</option>
-          </select>
-        </label>
-
-        <label id="internalRecipientField">
-          <span>Utilisateur <b>*</b></span>
-          <select id="alertNotificationUser"></select>
-        </label>
-
-        <label id="externalRecipientField" hidden>
-          <span>Adresse externe <b>*</b></span>
-          <input id="alertNotificationEmail" type="email">
-        </label>
-
-        <label><span>Objet <b>*</b></span><input id="alertNotificationSubject" maxlength="255" required></label>
-        <label><span>Contenu <b>*</b></span><textarea id="alertNotificationContent" rows="4" required></textarea></label>
+      <div class="dialog-body alert-action-body">
+        <div class="alert-action-notice"><span><i data-lucide="mail-check"></i></span><div><strong>Notification rattachée à l’alerte</strong><small>Le canal, le destinataire et le résultat d’envoi resteront consultables dans l’historique.</small></div></div>
+        <section class="alert-action-card">
+          <div class="alert-action-card-head"><span><i data-lucide="message-square-more"></i></span><div><strong>Destinataire et message</strong><small>Choisissez le canal puis vérifiez le contenu avant création.</small></div></div>
+          <div class="alert-action-fields alert-notify-fields">
+            <label><span>Canal <b>*</b></span><select id="alertNotificationChannel"><option value="IN_APP">Notification dans l’application</option><option value="EMAIL">Courriel</option></select></label>
+            <label id="internalRecipientField"><span>Utilisateur <b>*</b></span><select id="alertNotificationUser"></select></label>
+            <label id="externalRecipientField" hidden><span>Adresse e-mail <b>*</b></span><input id="alertNotificationEmail" type="email" placeholder="destinataire@organisme.tg"></label>
+            <label class="full"><span>Objet <b>*</b></span><input id="alertNotificationSubject" maxlength="255" placeholder="Objet précis de la notification" required></label>
+            <label class="full"><span>Contenu du message <b>*</b></span><textarea id="alertNotificationContent" rows="6" placeholder="Rédigez un message clair indiquant le contexte et l’action attendue…" required></textarea><small>Le message sera envoyé par le canal sélectionné.</small></label>
+          </div>
+        </section>
       </div>
-      <footer>
-        <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="notifyAlertDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Créer la notification</button>
+      <footer class="alert-action-footer">
+        <span><i data-lucide="history"></i>La création et l’envoi seront journalisés.</span>
+        <div><button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="notifyAlertDialog">Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="send"></i>Créer la notification</button></div>
       </footer>
     </form>
   </dialog>

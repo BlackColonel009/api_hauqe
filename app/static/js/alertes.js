@@ -113,7 +113,7 @@
     $("#emptyAlerts").hidden = rows.length > 0;
 
     $("#alertsList").innerHTML = rows.map((item) => `
-      <button class="alert-row ${selected?.id === item.id ? "selected" : ""}" type="button" data-alert="${e(item.id)}">
+      <button class="alert-row ${selected?.id === item.id ? "selected" : ""}" type="button" data-alert="${e(item.id)}" aria-label="Afficher le détail de l’alerte ${e(item.titre || "")}">
         <span class="row-level-icon ${levelClass(item.niveau)}">
           <i data-lucide="${Number(item.niveau) === 4 ? "triangle-alert" : Number(item.niveau) >= 2 ? "clock-alert" : "info"}"></i>
         </span>
@@ -127,7 +127,7 @@
           <span>${e(item.responsable_name || "Non affectée")}</span>
         </div>
         <span class="alert-state">${e(item.statut || "—")}</span>
-        <i data-lucide="chevron-right"></i>
+        <span class="alert-row-action" aria-hidden="true"><i data-lucide="chevron-right"></i></span>
       </button>
     `).join("");
 
@@ -136,6 +136,7 @@
         selected = alerts.find((x) => String(x.id) === String(button.dataset.alert));
         renderList();
         renderDetail();
+        $("#alertDetailDialog").showModal();
       };
     });
 
@@ -146,65 +147,86 @@
     const container = $("#alertDetail");
     if (!selected) {
       container.innerHTML = `<div class="priority-empty">Sélectionnez une alerte.</div>`;
+      if ($("#alertDetailDialog").open) $("#alertDetailDialog").close();
       return;
     }
 
-    const resolved = String(selected.statut || "").toUpperCase() === "RESOLUE";
+    const status = String(selected.statut || "NOUVELLE").toUpperCase();
+    const resolved = status === "RESOLUE";
+    const detection = selected.date_detection
+      ? new Date(`${String(selected.date_detection).slice(0, 10)}T12:00:00`)
+      : null;
+    const day = detection && !Number.isNaN(detection.getTime())
+      ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit" }).format(detection)
+      : "—";
+    const monthYear = detection && !Number.isNaN(detection.getTime())
+      ? new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(detection)
+      : "Date inconnue";
+    const statusLabel = {
+      NOUVELLE: "Nouvelle",
+      AFFECTEE: "Affectée",
+      EN_COURS: "En cours",
+      RESOLUE: "Résolue",
+      CLOTUREE: "Clôturée",
+    }[status] || status.replaceAll("_", " ");
+    const resource = selected.resource_label || selected.ressource_type || "Ressource non renseignée";
 
     container.innerHTML = `
-      <div class="detail-head">
-        <div class="detail-head-top">
-          <span class="level-pill ${levelClass(selected.niveau)}">
-            N${e(selected.niveau || "—")} · ${e(selected.level_label || "Alerte")}
-          </span>
+      <header class="alert-record-header">
+        <div class="alert-record-brand">
+          <span><i data-lucide="bell-ring"></i></span>
+          <div><p class="eyebrow">HAUQE · Centre opérationnel</p><h2>${e(selected.titre || "Détail de l’alerte")}</h2><small>Fiche de consultation et de traitement</small></div>
         </div>
-        <h2>${e(selected.titre || "Alerte")}</h2>
-        <p>${e(selected.resource_label || selected.ressource_type || "Ressource")}</p>
-      </div>
+        <button class="dialog-close alert-record-close" type="button" aria-label="Fermer" data-close-alert-detail><i data-lucide="x"></i></button>
+      </header>
 
-      <div class="detail-body">
-        <section class="detail-section">
-          <h3>Informations</h3>
-          <div class="detail-grid">
-            <div><small>Type</small><strong>${e(selected.type_alerte || "—")}</strong></div>
-            <div><small>Statut</small><strong>${e(selected.statut || "—")}</strong></div>
-            <div><small>Responsable</small><strong>${e(selected.responsable_name || "Non affectée")}</strong></div>
-            <div><small>Détection</small><strong>${e(dateLabel(selected.date_detection))}</strong></div>
-          </div>
+      <div class="alert-record-scroll">
+        <section class="alert-record-overview">
+          <div class="alert-record-date"><strong>${e(day)}</strong><span>${e(monthYear)}</span></div>
+          <div class="alert-record-summary"><small>Date de détection</small><strong>${e(dateLabel(selected.date_detection))}</strong><span><i data-lucide="building-2"></i>${e(resource)}</span></div>
+          <span class="alert-record-status ${levelClass(selected.niveau)}"><i data-lucide="${resolved ? "check-circle-2" : "activity"}"></i>${e(statusLabel)}</span>
         </section>
 
-        <section class="detail-section">
-          <h3>Message</h3>
-          <div class="detail-note">${e(selected.message || "—")}</div>
-        </section>
-
-        <section class="detail-section">
-          <h3>Traçabilité</h3>
-          <div class="detail-grid">
-            <div><small>Règle</small><strong>${e(selected.regle_notification || "Aucune")}</strong></div>
-            <div><small>Notifications</small><strong>${e(selected.notifications_count || 0)}</strong></div>
-            <div><small>Échéance liée</small><strong>${selected.echeance_id ? "Oui" : "Non"}</strong></div>
-            <div><small>Résolution</small><strong>${e(dateLabel(selected.date_resolution))}</strong></div>
-          </div>
-        </section>
-
-        ${selected.resource_route ? `<a class="btn btn-outline-secondary app-btn" href="${e(selected.resource_route)}"><i data-lucide="arrow-up-right"></i>Ouvrir la ressource</a>` : ""}
+        <div class="alert-record-layout">
+          <main>
+            <section class="alert-record-message">
+              <div class="alert-record-section-head"><span><i data-lucide="message-square-warning"></i></span><div><small>Signalement</small><h3>Message de l’alerte</h3></div></div>
+              <p>${e(selected.message || "Aucun message complémentaire n’a été renseigné.")}</p>
+            </section>
+            ${selected.resource_route ? `<a class="alert-record-resource" href="${e(selected.resource_route)}"><span><i data-lucide="arrow-up-right"></i></span><div><small>Ressource associée</small><strong>Ouvrir la fiche concernée</strong></div><i data-lucide="chevron-right"></i></a>` : ""}
+          </main>
+          <aside class="alert-record-aside">
+            <h3>Repères</h3>
+            <div><span><i data-lucide="tags"></i></span><section><small>Type d’alerte</small><strong>${e(selected.type_alerte || "Non renseigné")}</strong></section></div>
+            <div><span><i data-lucide="gauge"></i></span><section><small>Niveau de criticité</small><strong class="${levelClass(selected.niveau)}">N${e(selected.niveau || "—")} · ${e(selected.level_label || "Alerte")}</strong></section></div>
+            <div><span><i data-lucide="user-round"></i></span><section><small>Responsable</small><strong>${e(selected.responsable_name || "Non affectée")}</strong></section></div>
+            <div><span><i data-lucide="shield-check"></i></span><section><small>Traçabilité</small><strong>${e(selected.notifications_count || 0)} notification(s) · ${selected.echeance_id ? "Échéance liée" : "Sans échéance"}</strong></section></div>
+            ${resolved ? `<div><span><i data-lucide="calendar-check-2"></i></span><section><small>Date de résolution</small><strong>${e(dateLabel(selected.date_resolution))}</strong></section></div>` : ""}
+          </aside>
+        </div>
       </div>
 
-      <div class="detail-actions">
-        ${perm("ALERTES.AFFECTER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="assignAlert" type="button"><i data-lucide="user-round-plus"></i>Affecter</button>` : ""}
-        ${perm("NOTIFICATIONS.CREER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="notifyAlert" type="button"><i data-lucide="send"></i>Notifier</button>` : ""}
-        ${perm("ALERTES.RESOUDRE") && !resolved ? `<button class="btn btn-primary app-btn" id="resolveAlert" type="button"><i data-lucide="circle-check"></i>Résoudre</button>` : ""}
-      </div>
+      <footer class="alert-record-actions">
+        <span><i data-lucide="history"></i>Chaque action est journalisée.</span>
+        <div>
+          ${perm("ALERTES.AFFECTER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="assignAlert" type="button"><i data-lucide="user-round-plus"></i>Affecter</button>` : ""}
+          ${perm("NOTIFICATIONS.CREER") && !resolved ? `<button class="btn btn-outline-secondary app-btn" id="notifyAlert" type="button"><i data-lucide="send"></i>Notifier</button>` : ""}
+          ${perm("ALERTES.RESOUDRE") && !resolved ? `<button class="btn btn-primary app-btn" id="resolveAlert" type="button"><i data-lucide="circle-check"></i>Résoudre</button>` : `<button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-detail>Fermer</button>`}
+        </div>
+      </footer>
     `;
 
     $("#assignAlert")?.addEventListener("click", openAssign);
     $("#notifyAlert")?.addEventListener("click", openNotify);
     $("#resolveAlert")?.addEventListener("click", () => {
+      $("#alertDetailDialog").close();
       $("#alertResolution").value = "";
       $("#closeAlertAfterResolution").checked = true;
       $("#resolveAlertDialog").showModal();
       icons();
+    });
+    $$("[data-close-alert-detail]").forEach((button) => {
+      button.onclick = () => $("#alertDetailDialog").close();
     });
 
     icons();
@@ -257,6 +279,7 @@
       await ensureOptions();
       $("#assignAlertResponsible").innerHTML = userOptions(selected?.responsable_id);
       $("#assignAlertComment").value = "";
+      $("#alertDetailDialog").close();
       $("#assignAlertDialog").showModal();
       icons();
     } catch (error) {
@@ -317,6 +340,7 @@
       $("#alertNotificationContent").value = selected?.message || "";
       $("#alertNotificationEmail").value = "";
       recipientMode();
+      $("#alertDetailDialog").close();
       $("#notifyAlertDialog").showModal();
       icons();
     } catch (error) {

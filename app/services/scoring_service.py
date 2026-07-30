@@ -68,6 +68,11 @@ from app.models.modele_scoring import ModeleScoring
 from app.models.ponderation_scoring import PonderationScoring
 from app.models.resultat_infc import ResultatInfc
 from app.repositories.scoring_repository import ScoringRepository
+from app.rules.sncc_reference import (
+    SNCC_ADMIN_STATUSES,
+    SNCC_CLASSES,
+    SNCC_RISK_LEVELS,
+)
 from app.schemas.scoring import (
     EnterpriseClassificationListResponse,
     EnterpriseClassificationResponse,
@@ -113,6 +118,31 @@ def clean_text(value: str | None) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def validated_sncc_values(payload) -> tuple[str, str, str]:
+    classe = payload.classe.strip().upper()
+    admin_status = payload.statut_administratif.strip().upper()
+    risk_level = payload.niveau_risque.strip().upper()
+    errors = []
+    if classe not in SNCC_CLASSES:
+        errors.append(f"classe autorisée : {', '.join(SNCC_CLASSES)}")
+    if admin_status not in SNCC_ADMIN_STATUSES:
+        errors.append(
+            "statut administratif autorisé : "
+            + ", ".join(SNCC_ADMIN_STATUSES)
+        )
+    if risk_level not in SNCC_RISK_LEVELS:
+        errors.append(
+            "niveau de risque autorisé : "
+            + ", ".join(SNCC_RISK_LEVELS)
+        )
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Valeur SNCC hors référentiel — " + " ; ".join(errors) + ".",
+        )
+    return classe, admin_status, risk_level
 
 
 def json_rule_dump(rule: dict[str, Any]) -> str:
@@ -1216,20 +1246,12 @@ class ScoringService:
             payload=payload,
         )
 
-        if result.niveau is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "Le modèle INFC doit définir les niveaux dans "
-                    "sa règle de calcul."
-                ),
-            )
-
         sources = dict(payload.sources)
         sources["_calcul"] = {
             "modele_code": model.code,
             "modele_version": model.version,
             "mode_calcul": result.mode_calcul,
+            "niveau_configure": result.niveau is not None,
         }
 
         domain_snapshot = {
@@ -1239,6 +1261,23 @@ class ScoringService:
             },
             "contributions": result.contributions,
         }
+
+        latest = await ScoringRepository.latest_infc_result(
+            db,
+            certification_id,
+        )
+        if (
+            latest is not None
+            and latest.modele_scoring_id == model.id
+            and latest.score_global == result.score
+            and latest.niveau == result.niveau
+            and latest.scores_domaines == domain_snapshot
+            and latest.sources == sources
+        ):
+            # Un double clic ou la répétition stricte du même calcul ne doit
+            # pas polluer l'historique. Un changement d'entrée ou de modèle
+            # créera en revanche un nouveau résultat traçable.
+            return infc_response(latest)
 
         item = ResultatInfc(
             certification_id=certification_id,
@@ -1291,6 +1330,16 @@ class ScoringService:
 
         if item.statut == "VALIDE":
             return infc_response(item)
+
+        if item.niveau is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Le score INFC a bien été calculé, mais il ne peut pas "
+                    "être validé tant que le modèle publié ne définit pas "
+                    "ses niveaux dans la règle de calcul."
+                ),
+            )
 
         item.date_validation = date.today()
         item.statut = "VALIDE"
@@ -1406,11 +1455,12 @@ class ScoringService:
                 ),
             )
 
+        classe, admin_status, risk_level = validated_sncc_values(payload)
         item = ClassementSncc(
             certification_id=certification_id,
-            classe=payload.classe.strip().upper(),
-            statut_administratif=payload.statut_administratif.strip().upper(),
-            niveau_risque=payload.niveau_risque.strip().upper(),
+            classe=classe,
+            statut_administratif=admin_status,
+            niveau_risque=risk_level,
             justification=payload.justification.strip(),
             date_effet=payload.date_effet,
             date_fin=None,
@@ -1504,11 +1554,12 @@ class ScoringService:
 
         current.date_fin = payload.date_effet - timedelta(days=1)
 
+        classe, admin_status, risk_level = validated_sncc_values(payload)
         item = ClassementSncc(
             certification_id=certification_id,
-            classe=payload.classe.strip().upper(),
-            statut_administratif=payload.statut_administratif.strip().upper(),
-            niveau_risque=payload.niveau_risque.strip().upper(),
+            classe=classe,
+            statut_administratif=admin_status,
+            niveau_risque=risk_level,
             justification=payload.justification.strip(),
             date_effet=payload.date_effet,
             date_fin=None,

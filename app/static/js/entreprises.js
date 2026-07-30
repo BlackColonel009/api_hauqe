@@ -826,7 +826,7 @@
           button,
           title: state.archives ? "Archives entreprises" : "Registre entreprises",
           message,
-          detail: "Lecture sécurisée des données enregistrées dans PostgreSQL.",
+          detail: "Lecture sécurisée des données autorisées.",
           minVisibleMs: forceLoader ? 320 : 220,
         });
       } else {
@@ -962,16 +962,24 @@
       loadRegistry({ button: event.currentTarget, forceLoader: true, message: state.archives ? "Chargement des archives" : "Retour au registre actif" });
     });
 
-    document.querySelectorAll(".view-button").forEach((button) => {
+    document.querySelectorAll(".view-button[data-view]").forEach((button) => {
       button.addEventListener("click", () => {
-        document.querySelectorAll(".view-button").forEach((item) => item.classList.remove("active"));
+        document.querySelectorAll(".view-button[data-view]").forEach((item) => item.classList.remove("active"));
         button.classList.add("active");
 
-        const cards = button.dataset.view === "cards";
+        const cards = button.dataset.view === "cards" || button.dataset.view === "grid";
         $("#cardView").hidden = !cards || state.items.length === 0;
         $("#tableView").hidden = cards || state.items.length === 0;
+        try {
+          localStorage.setItem("hauqe-entreprises-view", cards ? "cards" : "table");
+        } catch (_) {}
       });
     });
+
+    const savedView = localStorage.getItem("hauqe-entreprises-view");
+    if (savedView) {
+      document.querySelector(`.view-button[data-view="${savedView}"]`)?.click();
+    }
 
     document.addEventListener("click", (event) => {
       if (state.currentMenu && !event.target.closest("#companyActionMenu,[data-company-menu]")) {

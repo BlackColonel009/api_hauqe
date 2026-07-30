@@ -170,6 +170,27 @@ class WatchRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def find_active_deadline_for_resource(
+        db: AsyncSession,
+        *,
+        ressource_type: str,
+        ressource_id: UUID,
+        type_echeance: str,
+    ) -> Echeance | None:
+        result = await db.execute(
+            select(Echeance)
+            .where(
+                Echeance.ressource_type == ressource_type,
+                Echeance.ressource_id == ressource_id,
+                Echeance.type_echeance == type_echeance,
+                Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+            )
+            .order_by(Echeance.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def deadline_alert_count(
         db: AsyncSession,
         deadline_id: UUID,
@@ -380,7 +401,13 @@ class WatchRepository:
             select(Notification)
             .where(
                 func.upper(Notification.canal) == "EMAIL",
-                Notification.statut == "EN_ATTENTE",
+                or_(
+                    Notification.statut == "EN_ATTENTE",
+                    (
+                        (Notification.statut == "PLANIFIEE")
+                        & (Notification.date_envoi <= date.today())
+                    ),
+                ),
             )
             .order_by(Notification.created_at)
             .limit(limit)
@@ -423,6 +450,38 @@ class WatchRepository:
             )
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    async def find_certification_audit(
+        db: AsyncSession,
+        *,
+        certification_id: UUID,
+        audit_type: str,
+        due_date: date,
+    ) -> AuditCertification | None:
+        result = await db.execute(
+            select(AuditCertification).where(
+                AuditCertification.certification_id == certification_id,
+                func.upper(AuditCertification.type_audit) == audit_type.upper(),
+                AuditCertification.date_prevue == due_date,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_certification_renewal(
+        db: AsyncSession,
+        *,
+        certification_id: UUID,
+        due_date: date,
+    ) -> RenouvellementCertification | None:
+        result = await db.execute(
+            select(RenouvellementCertification).where(
+                RenouvellementCertification.certification_id == certification_id,
+                RenouvellementCertification.date_limite == due_date,
+            )
+        )
+        return result.scalar_one_or_none()
 
     # ========================================================
     # DOSSIERS DE VEILLE

@@ -60,3 +60,12 @@
 .company-form-page .form-field>span{
   color:#667970;
 }
+
+.inline-suggestion{align-self:end;min-height:40px;padding:9px 12px;border:1px dashed var(--green-600);border-radius:9px;background:var(--green-50);color:var(--green-700);font-size:10px;font-weight:700}
+.inline-suggestion svg{width:15px;height:15px;margin-right:6px}
+.inline-precreate{grid-column:1/-1;padding:15px;border:1px solid #dce9e3;border-radius:12px;background:#f7fbf9}
+.inline-precreate>div:first-child{display:flex;flex-direction:column;gap:3px;margin-bottom:11px}
+.inline-precreate small{color:var(--muted);font-size:9px}
+.inline-precreate-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:9px}
+.inline-precreate-grid input{min-height:40px;padding:9px 11px;border:1px solid #dce4e0;border-radius:8px}
+@media(max-width:850px){.inline-precreate,.inline-suggestion{grid-column:auto}.inline-precreate-grid{grid-template-columns:1fr}}

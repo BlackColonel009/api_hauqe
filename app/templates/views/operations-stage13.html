@@ -1,0 +1,15 @@
+<div class="page-content container-fluid stage13-page">
+  <section class="page-heading">
+    <div><p class="eyebrow" id="stage13Eyebrow"></p><h1 id="stage13Title"></h1><p id="stage13Description"></p></div>
+    <div class="heading-actions"><button class="btn btn-outline-secondary app-btn" id="stage13Refresh" type="button"><i data-lucide="refresh-cw"></i>Actualiser</button><button class="btn btn-primary app-btn" id="stage13New" type="button"><i data-lucide="plus"></i><span>Nouvelle opération</span></button></div>
+  </section>
+  <section class="dashboard-api-state" id="stage13State" hidden></section>
+  <section class="stage13-kpis" id="stage13Kpis"></section>
+  <section class="panel stage13-panel">
+    <header><div><h2 id="stage13ListTitle"></h2><p id="stage13ListDescription"></p></div></header>
+    <div class="stage13-toolbar"><label><i data-lucide="search"></i><input id="stage13Search" type="search" placeholder="Rechercher…"></label><select id="stage13Status"><option value="">Tous les statuts</option></select></div>
+    <div class="table-responsive"><table class="table stage13-table"><thead id="stage13Head"></thead><tbody id="stage13Rows"></tbody></table></div>
+    <div class="priority-empty" id="stage13Empty" hidden>Aucun élément trouvé.</div>
+  </section>
+  <dialog class="hauqe-dialog stage13-dialog" id="stage13Dialog"><form id="stage13Form"><header><div><p class="eyebrow" id="stage13DialogEyebrow"></p><h2 id="stage13DialogTitle"></h2></div><button type="button" class="dialog-close" data-dialog-close><i data-lucide="x"></i></button></header><div class="dialog-body" data-dialog-scroll><div class="stage13-form-grid" id="stage13Fields"></div></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-dialog-close>Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Enregistrer</button></footer></form></dialog>
+</div>

@@ -16,6 +16,9 @@
   let completenessDraft = null;
   let publishTarget = null;
   let cloneSourceRule = null;
+  let selectedCodificationRule = null;
+  let editingCodificationRule = null;
+  let cloneSourceCodificationRule = null;
   let searchTimer = null;
 
   let fuccsGrids = [];
@@ -44,6 +47,17 @@
 
   function icons() {
     window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+
+  function createClientId(prefix = "item") {
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+    return [
+      prefix,
+      Date.now().toString(36),
+      Math.random().toString(36).slice(2, 10),
+    ].join("-");
   }
 
   function has(code) {
@@ -122,8 +136,26 @@
           : "Aucune grille active publiée"),
     };
 
+    const codificationPublished = (objectType) => rules.find((item) =>
+      String(item.logical_code || "").toUpperCase()
+        === `CODIFICATION_BNEC_${objectType}`
+      && String(item.statut || "").toUpperCase() === "PUBLIE"
+    );
+    const enterpriseCodeModel = codificationPublished("ENTREPRISE");
+    const certificationCodeModel = codificationPublished("CERTIFICATION");
+    const codificationReadiness = {
+      ready: Boolean(enterpriseCodeModel && certificationCodeModel),
+      version: enterpriseCodeModel && certificationCodeModel
+        ? `${enterpriseCodeModel.version} · ${certificationCodeModel.version}`
+        : null,
+      approval_reference: enterpriseCodeModel && certificationCodeModel
+        ? "Entreprise + certification publiées"
+        : "Modèles entreprise et certification requis",
+    };
+
     const cards = [
       ["clipboard-check", "COLLECTE_COMPLETUDE", readiness?.collecte_completude],
+      ["fingerprint", "Codification BNEC", codificationReadiness],
       ["layout-grid", "Grille FUCCS", fuccsReadiness],
       ["building-2", "Classification entreprise", readiness?.classification_entreprise],
       ["badge-cent", "INFC", readiness?.infc],
@@ -407,6 +439,8 @@
     try {
       rules = await api.apiGet("/api/v1/governance/rules");
       renderRuleList();
+      renderCodificationModels();
+      renderReadiness();
     } catch (error) {
       $("#businessRuleList").innerHTML = `<div class="priority-empty">${e(error?.message || "Règles indisponibles.")}</div>`;
     }
@@ -416,6 +450,7 @@
     const search = $("#ruleSearch")?.value.trim().toLowerCase() || "";
     const status = $("#ruleStatusFilter")?.value || "";
     const visible = rules.filter((item) => {
+      if (String(item.logical_code || "").toUpperCase().startsWith("CODIFICATION_BNEC_")) return false;
       if (status && String(item.statut || "").toUpperCase() !== status) return false;
       if (!search) return true;
       return [item.logical_code, item.libelle, item.famille, item.version]
@@ -492,16 +527,90 @@
     icons();
   }
 
+  const rulePresets = {
+    cert_expiration: {
+      code: "CERTIFICATION_EXPIRATION_ALERTS",
+      version: "1.0",
+      family: "CERTIFICATIONS",
+      label: "Alertes avant expiration d’une certification",
+      description: "Génère des échéances et des alertes graduelles avant la date d’expiration d’une certification active.",
+      params: {
+        active: true,
+        date_source: "date_expiration",
+        thresholds_days: [180, 90, 30, 0],
+        create_deadline: true,
+        create_alert: true,
+        notify_responsible: true,
+      },
+    },
+    verification_delay: {
+      code: "VERIFICATION_PROCESSING_DELAY",
+      version: "1.0",
+      family: "VERIFICATIONS",
+      label: "Délai de traitement d’un dossier de vérification",
+      description: "Crée une échéance et une alerte pour le vérificateur lorsque des dates de début et de fin sont renseignées sur l’affectation.",
+      params: {
+        active: true,
+        start_date_field: "date_debut",
+        due_date_field: "date_fin",
+        reminder_days: [7, 3, 1],
+        notify_assignee: true,
+        channels: ["IN_APP", "EMAIL"],
+      },
+    },
+    data_quality: {
+      code: "DATA_COMPLETENESS_CONTROL",
+      version: "1.0",
+      family: "QUALITE_DONNEES",
+      label: "Contrôle de complétude des données essentielles",
+      description: "Signale les dossiers dont les informations obligatoires sont absentes ou incomplètes avant validation.",
+      params: {
+        active: true,
+        minimum_completeness_percent: 80,
+        blocking_fields: ["identifiant_national", "raison_sociale", "statut"],
+        create_quality_issue: true,
+        blocking: false,
+      },
+    },
+    infc_validation: {
+      code: "INFC_VALIDATION_THRESHOLD",
+      version: "1.0",
+      family: "INFC",
+      label: "Seuil de validation d’un résultat INFC",
+      description: "Détermine le seuil minimal indicatif permettant de présenter un calcul INFC à la validation de l’agent habilité.",
+      params: {
+        active: true,
+        minimum_score: 70,
+        maximum_score: 100,
+        require_manual_validation: true,
+        decision_code: "A_VALIDER",
+      },
+    },
+  };
+
+  function applyRulePreset(code) {
+    const preset = rulePresets[code];
+    if (!preset) return;
+    $("#ruleCode").value = preset.code;
+    $("#ruleVersion").value = preset.version;
+    $("#ruleFamily").value = preset.family;
+    $("#ruleLabel").value = preset.label;
+    $("#ruleDescription").value = preset.description;
+    $("#ruleParams").value = JSON.stringify(preset.params, null, 2);
+  }
+
   function openRuleDialog(source = null) {
     cloneSourceRule = source;
     $("#ruleDialogTitle").textContent = source ? "Nouvelle version" : "Nouvelle règle";
     $("#ruleCode").value = source?.logical_code || "";
     $("#ruleCode").disabled = Boolean(source);
-    $("#ruleVersion").value = "";
+    $("#ruleVersion").value = source ? "" : "1.0";
     $("#ruleFamily").value = source?.famille || "";
     $("#ruleLabel").value = source?.libelle || "";
     $("#ruleDescription").value = source?.description || "";
-    $("#ruleParams").value = JSON.stringify(source?.parametres || {}, null, 2);
+    $("#ruleParams").value = JSON.stringify(source?.parametres || { active: true }, null, 2);
+    $("#rulePreset").value = "";
+    $("#rulePresetField").hidden = Boolean(source);
     $("#ruleDialog").showModal();
     icons();
   }
@@ -2133,15 +2242,491 @@ async function prefillFuccsHistorical24(event) {
   }
 }
 
+
+
+  /* ============================================================
+     CODIFICATION BNEC
+     - modèles versionnés dans regles_metier ;
+     - code proposé dans l'intégration ;
+     - séquence réservée par le système au moment de la transaction.
+     ============================================================ */
+  const CODIFICATION_PREFIX = "CODIFICATION_BNEC_";
+  const CODIFICATION_TOKENS = [
+    "HAUQE", "BNEC", "PAYS", "REGION", "ZONE", "ANNEE",
+    "ANNEE2", "ANNEE4", "MOIS", "TYPE_OBJET", "CODE_ENTREPRISE",
+    "ENTREPRISE", "CERTIF", "ORGANISME", "NORME", "SECTEUR",
+    "SEQ3", "SEQ4", "SEQ5", "SEQUENCE",
+  ];
+  const CODIFICATION_SEQUENCE_TOKENS = new Set([
+    "SEQ3", "SEQ4", "SEQ5", "SEQUENCE",
+  ]);
+
+  function codificationRules() {
+    return rules.filter((item) =>
+      String(item.logical_code || "").toUpperCase().startsWith(CODIFICATION_PREFIX)
+    );
+  }
+
+  function codificationObjectFromRule(item) {
+    return String(
+      item?.parametres?.objet
+      || item?.logical_code?.replace(CODIFICATION_PREFIX, "")
+      || ""
+    ).toUpperCase();
+  }
+
+  function codificationObjectLabel(value) {
+    return String(value || "").toUpperCase() === "CERTIFICATION"
+      ? "Certification"
+      : "Entreprise BNEC";
+  }
+
+  function codificationDefaultLabel(objectType) {
+    return objectType === "CERTIFICATION"
+      ? "Modèle de codification des certifications"
+      : "Modèle de codification des entreprises BNEC";
+  }
+
+  function codificationDefaultFormat(objectType) {
+    return objectType === "CERTIFICATION"
+      ? "{HAUQE}-{CERTIF}-{CODE_ENTREPRISE}-{NORME}-{ANNEE4}-{SEQ3}"
+      : "{HAUQE}-{BNEC}-{PAYS}-{REGION}-{ANNEE4}-{SEQ4}";
+  }
+
+  function codificationDefaultScope(objectType) {
+    return objectType === "CERTIFICATION"
+      ? "ANNUELLE_PAR_ENTREPRISE"
+      : "ANNUELLE";
+  }
+
+  function codificationDefaultLength(objectType) {
+    return objectType === "CERTIFICATION" ? 3 : 4;
+  }
+
+  function normalizeCodificationSegment(value, fallback = "") {
+    return String(value || fallback)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "");
+  }
+
+  function extractCodificationTokens(format) {
+    return [...String(format || "").toUpperCase().matchAll(/\{([A-Z0-9_]+)\}/g)]
+      .map((match) => match[1]);
+  }
+
+  function codificationParametersFromForm() {
+    return {
+      objet: $("#codificationObject").value,
+      format: $("#codificationFormat").value.trim().toUpperCase(),
+      separateur: $("#codificationSeparator").value,
+      sequence_longueur: Number($("#codificationSequenceLength").value || 4),
+      sequence_portee: $("#codificationSequenceScope").value,
+      sequence_reinitialisation: $("#codificationSequenceReset").value,
+      constantes: {
+        HAUQE: $("#codificationConstHauqe").value.trim(),
+        BNEC: $("#codificationConstBnec").value.trim(),
+        PAYS: $("#codificationConstCountry").value.trim(),
+        CERTIF: $("#codificationConstCertif").value.trim(),
+      },
+      modele_par_defaut: true,
+      libelle_modele: $("#codificationLabel").value.trim(),
+    };
+  }
+
+  function validateCodificationForm() {
+    const params = codificationParametersFromForm();
+    const errors = [];
+    const warnings = [];
+    const tokens = extractCodificationTokens(params.format);
+    const unknown = [...new Set(tokens.filter((token) =>
+      !CODIFICATION_TOKENS.includes(token)
+    ))];
+    const sequences = tokens.filter((token) =>
+      CODIFICATION_SEQUENCE_TOKENS.has(token)
+    );
+
+    if (!$("#codificationVersion").value.trim()) errors.push("Version obligatoire.");
+    if (!$("#codificationLabel").value.trim()) errors.push("Nom du modèle obligatoire.");
+    if (!params.format) errors.push("Format obligatoire.");
+    if (unknown.length) errors.push(`Variables inconnues : ${unknown.map((x) => `{${x}}`).join(", ")}.`);
+    if (sequences.length !== 1) errors.push("Le format doit contenir exactement une variable de séquence.");
+    if (params.sequence_longueur < 2 || params.sequence_longueur > 12) {
+      errors.push("La longueur de séquence doit être comprise entre 2 et 12.");
+    }
+    if (params.objet === "CERTIFICATION" && !tokens.includes("CODE_ENTREPRISE")) {
+      warnings.push("Ajoutez {CODE_ENTREPRISE} pour rattacher visiblement le certificat à son entreprise.");
+    }
+
+    return { params, errors, warnings, tokens };
+  }
+
+  function codificationPreviewValue(validation) {
+    const params = validation.params;
+    const now = new Date();
+    const length = Math.max(2, Math.min(12, Number(params.sequence_longueur || 4)));
+    const constants = Object.fromEntries(
+      Object.entries(params.constantes || {}).map(([key, value]) => [
+        key,
+        normalizeCodificationSegment(value),
+      ])
+    );
+    const sample = {
+      ...constants,
+      REGION: "MARITIME",
+      ZONE: "LOME",
+      ANNEE: String(now.getFullYear()),
+      ANNEE2: String(now.getFullYear()).slice(-2),
+      ANNEE4: String(now.getFullYear()),
+      MOIS: String(now.getMonth() + 1).padStart(2, "0"),
+      TYPE_OBJET: params.objet,
+      CODE_ENTREPRISE: "HAUQEBNECTGMAR20260001",
+      ENTREPRISE: "AGROTOGO",
+      CERTIF: normalizeCodificationSegment(params.constantes?.CERTIF, "CERT"),
+      ORGANISME: "AFNOR",
+      NORME: "ISO22000",
+      SECTEUR: "AGROALIMENTAIRE",
+      SEQUENCE: "1".padStart(length, "0"),
+      SEQ3: "001",
+      SEQ4: "0001",
+      SEQ5: "00001",
+    };
+
+    let output = params.format || "";
+    for (const token of extractCodificationTokens(output)) {
+      output = output.replaceAll(`{${token}}`, sample[token] || `?${token}?`);
+    }
+    const separator = params.separateur || "-";
+    output = output.replace(/[-/._]+/g, separator);
+    return output.replace(new RegExp(`^[${separator.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}]|[${separator.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}]$`, "g"), "");
+  }
+
+  function updateCodificationPreview() {
+    const validation = validateCodificationForm();
+    const preview = codificationPreviewValue(validation) || "—";
+    $("#codificationPreview").textContent = preview;
+
+    const node = $("#codificationValidation");
+    if (validation.errors.length) {
+      node.className = "codification-validation-card invalid";
+      node.innerHTML = `
+        <span><i data-lucide="circle-x"></i></span>
+        <div><strong>Configuration incomplète</strong><small>${e(validation.errors.join(" "))}</small></div>
+      `;
+    } else if (validation.warnings.length) {
+      node.className = "codification-validation-card";
+      node.innerHTML = `
+        <span><i data-lucide="triangle-alert"></i></span>
+        <div><strong>Configuration valide avec recommandation</strong><small>${e(validation.warnings.join(" "))}</small></div>
+      `;
+    } else {
+      node.className = "codification-validation-card valid";
+      node.innerHTML = `
+        <span><i data-lucide="circle-check-big"></i></span>
+        <div><strong>Configuration prête</strong><small>La validation institutionnelle sera confirmée par le backend lors de la publication.</small></div>
+      `;
+    }
+    icons();
+    return validation;
+  }
+
+  function renderCodificationTokens() {
+    const labels = {
+      HAUQE: "Constante HAUQE", BNEC: "Constante BNEC", PAYS: "Pays",
+      REGION: "Région", ZONE: "Zone", ANNEE: "Année", ANNEE2: "Année 2 chiffres",
+      ANNEE4: "Année 4 chiffres", MOIS: "Mois", TYPE_OBJET: "Type d’objet",
+      CODE_ENTREPRISE: "Code entreprise", ENTREPRISE: "Entreprise", CERTIF: "Constante certificat",
+      ORGANISME: "Organisme", NORME: "Norme", SECTEUR: "Secteur",
+      SEQ3: "Séquence 3", SEQ4: "Séquence 4", SEQ5: "Séquence 5", SEQUENCE: "Séquence paramétrable",
+    };
+    $("#codificationTokens").innerHTML = CODIFICATION_TOKENS.map((token) => `
+      <button class="codification-token" type="button" data-codification-token="${token}" title="${e(labels[token] || token)}">{${token}}</button>
+    `).join("");
+    $$('[data-codification-token]').forEach((button) => {
+      button.onclick = () => {
+        const input = $("#codificationFormat");
+        const token = `{${button.dataset.codificationToken}}`;
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? start;
+        input.value = input.value.slice(0, start) + token + input.value.slice(end);
+        input.focus();
+        input.setSelectionRange(start + token.length, start + token.length);
+        updateCodificationPreview();
+      };
+    });
+  }
+
+  function renderCodificationModels() {
+    const node = $("#codificationModelList");
+    if (!node) return;
+    const objectFilter = $("#codificationObjectFilter")?.value || "";
+    const statusFilter = $("#codificationStatusFilter")?.value || "";
+    const visible = codificationRules().filter((item) => {
+      const objectType = codificationObjectFromRule(item);
+      if (objectFilter && objectType !== objectFilter) return false;
+      if (statusFilter && String(item.statut || "").toUpperCase() !== statusFilter) return false;
+      return true;
+    });
+
+    node.innerHTML = visible.length ? visible.map((item) => {
+      const objectType = codificationObjectFromRule(item);
+      const format = item.parametres?.format || "—";
+      return `
+        <button class="institutional-list-row ${selectedCodificationRule?.id === item.id ? "active" : ""}" type="button" data-codification-rule="${e(item.id)}">
+          <span class="rule-icon"><i data-lucide="fingerprint"></i></span>
+          <div>
+            <strong>${e(codificationObjectLabel(objectType))}</strong>
+            <small>${e(item.libelle || item.logical_code)} · v${e(item.version || "—")}</small>
+          </div>
+          <div class="codification-list-meta">
+            <span>${e(format)}</span>
+            <b class="inst-status ${String(item.statut || "").toLowerCase()}">${e(item.statut || "—")}</b>
+          </div>
+          <i data-lucide="chevron-right"></i>
+        </button>
+      `;
+    }).join("") : `<div class="priority-empty">Aucun modèle de codification.</div>`;
+
+    $$('[data-codification-rule]').forEach((button) => {
+      button.onclick = () => {
+        selectedCodificationRule = rules.find((item) =>
+          String(item.id) === String(button.dataset.codificationRule)
+        ) || null;
+        renderCodificationModels();
+        renderCodificationSummary();
+      };
+    });
+    icons();
+  }
+
+  function renderCodificationSummary() {
+    const node = $("#codificationEditor");
+    if (!node) return;
+    const item = selectedCodificationRule;
+    if (!item) {
+      node.innerHTML = `<div class="priority-empty">Sélectionnez un modèle ou créez-en un nouveau.</div>`;
+      return;
+    }
+    const params = item.parametres || {};
+    const draft = String(item.statut || "").toUpperCase() === "BROUILLON";
+    const published = String(item.statut || "").toUpperCase() === "PUBLIE";
+    node.innerHTML = `
+      <header>
+        <div>
+          <p class="eyebrow">${e(codificationObjectLabel(codificationObjectFromRule(item)))}</p>
+          <h2>${e(item.libelle || item.logical_code)}</h2>
+          <p>Version ${e(item.version || "—")}</p>
+        </div>
+        <span class="inst-status ${String(item.statut || "").toLowerCase()}">${e(item.statut || "—")}</span>
+      </header>
+      <div class="codification-summary">
+        <div class="codification-summary-code">
+          <small>Format institutionnel</small>
+          <strong>${e(params.format || "—")}</strong>
+        </div>
+        <div class="codification-summary-grid">
+          <article><small>Portée</small><strong>${e(params.sequence_portee || "—")}</strong></article>
+          <article><small>Réinitialisation</small><strong>${e(params.sequence_reinitialisation || "—")}</strong></article>
+          <article><small>Début d’effet</small><strong>${e(item.date_debut_effet || "—")}</strong></article>
+          <article><small>Approbation</small><strong>${e(item.reference_approbation || "—")}</strong></article>
+        </div>
+        <div class="institutional-actions no-pad-actions">
+          ${draft && has("GOUVERNANCE.ADMINISTRER_REGLES") ? `<button class="btn btn-outline-secondary app-btn" id="editCodificationModel" type="button"><i data-lucide="pencil"></i>Modifier</button><button class="btn btn-primary app-btn" id="publishSelectedCodification" type="button"><i data-lucide="rocket"></i>Publier</button>` : ""}
+          ${published && has("GOUVERNANCE.ADMINISTRER_REGLES") ? `<button class="btn btn-outline-secondary app-btn" id="newCodificationVersion" type="button"><i data-lucide="copy-plus"></i>Nouvelle version</button>` : ""}
+        </div>
+      </div>
+    `;
+    $("#editCodificationModel")?.addEventListener("click", () => openCodificationBuilder(item));
+    $("#publishSelectedCodification")?.addEventListener("click", () => openPublish("rule", item));
+    $("#newCodificationVersion")?.addEventListener("click", () => openCodificationBuilder(item, true));
+    icons();
+  }
+
+  function fillCodificationForm(objectType, source = null) {
+    const params = source?.parametres || {};
+    const objectValue = String(params.objet || objectType || "ENTREPRISE").toUpperCase();
+    $("#codificationObject").value = objectValue;
+    $("#codificationObject").dataset.previousObject = objectValue;
+    $("#codificationVersion").value = cloneSourceCodificationRule ? "" : (source?.version || "1.0");
+    $("#codificationLabel").value = source?.libelle || codificationDefaultLabel(objectValue);
+    $("#codificationDescription").value = source?.description || "";
+    $("#codificationFormat").value = params.format || codificationDefaultFormat(objectValue);
+    $("#codificationSeparator").value = params.separateur || "-";
+    $("#codificationSequenceLength").value = params.sequence_longueur || codificationDefaultLength(objectValue);
+    $("#codificationSequenceScope").value = params.sequence_portee || codificationDefaultScope(objectValue);
+    $("#codificationSequenceReset").value = params.sequence_reinitialisation || "JAMAIS";
+    $("#codificationConstHauqe").value = params.constantes?.HAUQE || "HAUQE";
+    $("#codificationConstBnec").value = params.constantes?.BNEC || "BNEC";
+    $("#codificationConstCountry").value = params.constantes?.PAYS || "TG";
+    $("#codificationConstCertif").value = params.constantes?.CERTIF || "CERT";
+  }
+
+  function openCodificationBuilder(source = null, clone = false) {
+    editingCodificationRule = clone ? null : source;
+    cloneSourceCodificationRule = clone ? source : null;
+    const objectType = codificationObjectFromRule(source)
+      || $("#codificationObjectFilter")?.value
+      || "ENTREPRISE";
+    fillCodificationForm(objectType, source);
+    $("#codificationObject").disabled = Boolean(source);
+    $("#codificationVersion").disabled = Boolean(source && !clone);
+    $("#codificationBuilder").hidden = false;
+    $("#codificationBuilderEyebrow").textContent = clone
+      ? "Nouvelle version"
+      : source
+        ? "Modification du brouillon"
+        : "Nouveau brouillon";
+    $("#codificationBuilderTitle").textContent = clone
+      ? `Nouvelle version — ${codificationObjectLabel(objectType)}`
+      : source
+        ? source.libelle
+        : "Construire le modèle";
+    $("#codificationBuilderStatus").textContent = clone ? "À CRÉER" : (source?.statut || "BROUILLON");
+    $("#codificationBuilderStatus").className = `inst-status ${String(source?.statut || "").toLowerCase()}`;
+    $("#cloneCodificationModel").hidden = true;
+    $("#publishCodificationModel").hidden = !(source && String(source.statut).toUpperCase() === "BROUILLON");
+    $("#saveCodificationModel").hidden = !has("GOUVERNANCE.ADMINISTRER_REGLES");
+    renderCodificationTokens();
+    updateCodificationPreview();
+    $("#codificationBuilder").scrollIntoView({ behavior: "smooth", block: "start" });
+    icons();
+  }
+
+  function closeCodificationBuilder() {
+    editingCodificationRule = null;
+    cloneSourceCodificationRule = null;
+    $("#codificationBuilder").hidden = true;
+    $("#codificationObject").disabled = false;
+    $("#codificationVersion").disabled = false;
+  }
+
+  async function saveCodificationModel() {
+    const validation = updateCodificationPreview();
+    if (validation.errors.length) {
+      state(validation.errors.join(" "), true);
+      return;
+    }
+    const objectType = validation.params.objet;
+    const logicalCode = `${CODIFICATION_PREFIX}${objectType}`;
+    const payload = {
+      famille: "CODIFICATION",
+      libelle: $("#codificationLabel").value.trim(),
+      description: $("#codificationDescription").value.trim() || null,
+      parametres: validation.params,
+    };
+
+    try {
+      let saved;
+      if (cloneSourceCodificationRule) {
+        saved = await api.apiPost(
+          `/api/v1/governance/rules/${cloneSourceCodificationRule.id}/clone`,
+          {
+            version: $("#codificationVersion").value.trim(),
+            libelle: payload.libelle,
+            date_debut_effet: null,
+          }
+        );
+        saved = await api.apiPatch(`/api/v1/governance/rules/${saved.id}`, payload);
+      } else if (editingCodificationRule) {
+        saved = await api.apiPatch(
+          `/api/v1/governance/rules/${editingCodificationRule.id}`,
+          payload
+        );
+      } else {
+        saved = await api.apiPost("/api/v1/governance/rules", {
+          logical_code: logicalCode,
+          famille: payload.famille,
+          libelle: payload.libelle,
+          description: payload.description,
+          version: $("#codificationVersion").value.trim(),
+          parametres: payload.parametres,
+          date_debut_effet: null,
+        });
+      }
+
+      selectedCodificationRule = saved;
+      editingCodificationRule = saved;
+      cloneSourceCodificationRule = null;
+      await loadRules();
+      renderCodificationSummary();
+      openCodificationBuilder(saved);
+      state("Brouillon de codification enregistré.");
+    } catch (error) {
+      state(error?.message || "Enregistrement du modèle impossible.", true);
+    }
+  }
+
+  async function copyCodificationPreview() {
+    const value = $("#codificationPreview").textContent || "";
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = value;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      state("Aperçu copié.");
+    } catch (error) {
+      state("Copie automatique indisponible. Sélectionnez le code manuellement.", true);
+    }
+  }
+
+  async function savePublicationDataRule() {
+    const selected = $$("[data-public-field]:checked").map((node) => node.value);
+    const nominal = $$("[data-public-field][data-nominal]:checked").map((node) => node.value);
+    const reason = $("#publicationNominalReason").value.trim();
+    if (!selected.length) return state("Sélectionnez au moins un champ à publier.", true);
+    if (nominal.length && !reason) return state("Justifiez les données nominatives sélectionnées.", true);
+    if (!$("#publicationPeriodStart").value || !$("#publicationPeriodEnd").value) return state("Renseignez la période couverte par la publication.", true);
+    try {
+      const item = await run(
+        () => api.apiPost("/api/v1/governance/rules", {
+          logical_code: "PUBLIC_DASHBOARD_INDICATORS",
+          famille: "PUBLICATION",
+          libelle: $("#publicationDataLabel").value.trim(),
+          description: "Configuration contrôlée des données proposées au tableau de bord public.",
+          version: $("#publicationDataVersion").value.trim(),
+          parametres: {
+            allowed_indicators: selected.filter((key) => !nominal.includes(key)),
+            nominal_fields: nominal,
+            nominal_justification: reason || null,
+            minimum_aggregation: $("#publicationAggregation").value,
+            period_start: $("#publicationPeriodStart").value,
+            period_end: $("#publicationPeriodEnd").value,
+            disclaimer: "Données publiées après approbation institutionnelle de la HAUQE.",
+            direct_publication_forbidden: true,
+          },
+          date_debut_effet: null,
+        }),
+        { button: $("#savePublicationDataRule"), title: "Données à publier", message: "Création du brouillon contrôlé" }
+      );
+      state(`Brouillon ${item.code} créé. Publiez-le ensuite dans l’onglet Règles métier avant toute demande.`);
+      await loadRules();
+    } catch (error) { state(error?.message || "Création impossible.", true); }
+  }
+
   function switchTab(tab) {
     $$("[data-inst-tab]").forEach((button) => {
       button.classList.toggle("active", button.dataset.instTab === tab);
     });
     $("#completenessTab").hidden = tab !== "completeness";
+    $("#codificationTab").hidden = tab !== "codification";
     $("#rulesTab").hidden = tab !== "rules";
+    $("#publicationDataTab").hidden = tab !== "publication-data";
     $("#scoringTab").hidden = tab !== "scoring";
     $("#fuccsTab").hidden = tab !== "fuccs";
 
+    if (tab === "codification") {
+      renderCodificationModels();
+      renderCodificationSummary();
+    }
     if (tab === "fuccs") {
       loadFuccsGrids();
     }
@@ -2149,12 +2734,12 @@ async function prefillFuccsHistorical24(event) {
 
   function bind() {
     $("#addFieldRequirement").onclick = () => {
-      fieldReqs.push({ id: crypto.randomUUID(), label: "", fields: [], match: "ALL" });
+      fieldReqs.push({ id: createClientId("field"), label: "", fields: [], match: "ALL" });
       renderRequirements();
     };
     $("#addCountRequirement").onclick = () => {
       countReqs.push({
-        id: crypto.randomUUID(),
+        id: createClientId("count"),
         label: "",
         resource: catalog.count_resources?.[0]?.code || "DOCUMENTS",
         minimum: 1,
@@ -2169,8 +2754,41 @@ async function prefillFuccsHistorical24(event) {
     };
 
     $("#newGenericRule").onclick = () => openRuleDialog();
+    $("#savePublicationDataRule").onclick = savePublicationDataRule;
     $("#ruleForm").onsubmit = saveRuleDialog;
     $("#publishForm").onsubmit = publish;
+
+    $("#newCodificationModel").onclick = () => openCodificationBuilder();
+    $("#codificationObjectFilter").onchange = renderCodificationModels;
+    $("#codificationStatusFilter").onchange = renderCodificationModels;
+    $("#cancelCodificationEdit").onclick = closeCodificationBuilder;
+    $("#saveCodificationModel").onclick = saveCodificationModel;
+    $("#publishCodificationModel").onclick = () => {
+      if (editingCodificationRule) openPublish("rule", editingCodificationRule);
+    };
+    $("#copyCodificationPreview").onclick = copyCodificationPreview;
+    [
+      "#codificationVersion", "#codificationLabel", "#codificationFormat",
+      "#codificationSeparator", "#codificationSequenceLength",
+      "#codificationSequenceScope", "#codificationSequenceReset",
+      "#codificationConstHauqe", "#codificationConstBnec",
+      "#codificationConstCountry", "#codificationConstCertif",
+    ].forEach((selector) => {
+      $(selector).addEventListener("input", updateCodificationPreview);
+      $(selector).addEventListener("change", updateCodificationPreview);
+    });
+    $("#codificationObject").onchange = (event) => {
+      const objectType = event.target.value;
+      $("#codificationFormat").value = codificationDefaultFormat(objectType);
+      $("#codificationSequenceLength").value = codificationDefaultLength(objectType);
+      $("#codificationSequenceScope").value = codificationDefaultScope(objectType);
+      if (!$("#codificationLabel").value.trim()) {
+        $("#codificationLabel").value = objectType === "CERTIFICATION"
+          ? "Modèle de codification des certifications"
+          : "Modèle de codification des entreprises BNEC";
+      }
+      updateCodificationPreview();
+    };
 
     $("#newScoringModel").onclick = () => openModelDialog(false);
     $("#prefillClassificationReference").onclick = () => openModelDialog(true);
@@ -2227,6 +2845,7 @@ async function prefillFuccsHistorical24(event) {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(renderRuleList, 200);
     };
+    $("#rulePreset").onchange = (event) => applyRulePreset(event.target.value);
 
     $("#refreshInstitutional").onclick = async (event) => {
       try {
@@ -2262,11 +2881,19 @@ async function prefillFuccsHistorical24(event) {
 
     bind();
 
+    const requestedTab = sessionStorage.getItem("hauqe-institutional-tab");
+    if (requestedTab) {
+      sessionStorage.removeItem("hauqe-institutional-tab");
+      switchTab(requestedTab);
+    }
+
     const canGovernRules = has("GOUVERNANCE.ADMINISTRER_REGLES");
     const canAdminScoring = has("SCORING.ADMINISTRER_MODELE");
     const canAdminFuccs = has("FUCCS.ADMINISTRER_GRILLE");
 
     $("#newGenericRule").hidden = !canGovernRules;
+    $("#newCodificationModel").hidden = !canGovernRules;
+    $("#saveCodificationModel").hidden = !canGovernRules;
     $("#validateCompleteness").hidden = !canGovernRules;
     $("#saveCompletenessDraft").hidden = !canGovernRules;
     $("#addFieldRequirement").hidden = !canGovernRules;

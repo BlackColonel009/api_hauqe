@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,6 +53,43 @@ class ElementIntegration(
 
     code_genere: Mapped[str | None] = mapped_column(
         String(255),
+        nullable=True,
+    )
+
+    # Snapshot immuable du modèle de codification appliqué.
+    codification_regle_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("regles_metier.id"),
+        nullable=True,
+    )
+
+    codification_logical_code: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    codification_version: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    codification_format: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    codification_scope_key: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    codification_sequence: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+
+    codification_segments: Mapped[dict | None] = mapped_column(
+        JSONB,
         nullable=True,
     )
 
