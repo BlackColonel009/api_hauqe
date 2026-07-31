@@ -1205,3 +1205,72 @@
 [data-theme=dark] .deadline-description-panel>p,[data-theme=dark] .deadline-resource-line{color:#adc1b8}
 [data-theme=dark] .deadline-section-title,[data-theme=dark] .deadline-meta-row{border-color:#29443a}
 [data-theme=dark] .deadline-detail-footer{border-color:#29443a;background:#14291f}
+
+/* Registre consolidé et cartographie des liaisons */
+.deadline-links-button{position:relative;overflow:visible}
+.deadline-links-button>span{position:absolute;top:-8px;right:-8px;display:grid;width:22px;height:22px;place-items:center;border:2px solid #fff;border-radius:50%;background:#16845f;color:#fff;box-shadow:0 5px 12px rgba(17,105,76,.28)}
+.deadline-links-button>span svg{width:11px;height:11px}
+.deadline-registry-panel{margin-top:16px;overflow:hidden}
+.deadline-registry-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 24px;border-bottom:1px solid #e3ece7;background:linear-gradient(135deg,#fff 45%,#edf8f3)}
+.deadline-registry-header .eyebrow{margin:0 0 5px;color:#16845f;font-size:9px;letter-spacing:.14em}
+.deadline-registry-header h2{margin:0;color:#173d2f;font-size:18px}
+.deadline-registry-header p:last-child{margin:5px 0 0;color:#71837b;font-size:10px}
+.deadline-registry-total{display:flex;min-width:105px;align-items:baseline;justify-content:center;gap:5px;padding:11px 14px;border:1px solid #cce6da;border-radius:15px;background:#fff;color:#176a4d;box-shadow:0 8px 20px rgba(19,91,66,.07)}
+.deadline-registry-total strong{font-size:22px}.deadline-registry-total small{font-size:9px}
+.deadline-registry-filters{display:grid;grid-template-columns:minmax(260px,1fr) 220px 190px;gap:10px;padding:14px 18px;border-bottom:1px solid #e6eee9;background:#fbfdfc}
+.deadline-registry-filters select,.deadline-registry-search{min-height:42px;border:1px solid #d7e5de;border-radius:12px;background:#fff;color:#29483b;font-size:10px}
+.deadline-registry-filters select{padding:0 12px}
+.deadline-registry-search{display:flex;align-items:center;gap:9px;padding:0 12px}
+.deadline-registry-search svg{width:15px;color:#25805f}
+.deadline-registry-search input{width:100%;border:0;outline:0;background:transparent;color:inherit;font:inherit}
+.deadline-registry-table-wrap{max-height:430px;overflow:auto}
+.deadline-registry-table{width:100%;min-width:870px;border-collapse:separate;border-spacing:0}
+.deadline-registry-table th{position:sticky;top:0;z-index:2;padding:11px 14px;border-bottom:1px solid #dce8e2;background:#f2f8f5;color:#71837b;font-size:8px;letter-spacing:.08em;text-align:left;text-transform:uppercase}
+.deadline-registry-table td{padding:13px 14px;border-bottom:1px solid #edf2ef;color:#50655c;font-size:9.5px;vertical-align:middle}
+.deadline-registry-table tbody tr{transition:.18s ease}.deadline-registry-table tbody tr:hover{background:#f7fbf9}
+.deadline-registry-table td strong,.deadline-registry-table td small{display:block}.deadline-registry-table td strong{color:#26483a;font-size:10px}.deadline-registry-table td small{margin-top:3px;color:#819088;font-size:8px}
+.registry-date,.registry-source,.registry-status{display:inline-flex;align-items:center;gap:6px}
+.registry-date svg,.registry-source svg{width:14px;height:14px;color:#20805d}
+.registry-date.expired,.registry-date.critical{color:#b2433f}.registry-date.warning{color:#a46618}
+.registry-status{padding:6px 9px;border-radius:999px;background:#e9f5ef;color:#176b4d;font-size:8px;font-weight:800;text-transform:capitalize}
+.registry-open{display:grid;width:31px;height:31px;place-items:center;border:1px solid #d8e7df;border-radius:10px;background:#fff;color:#177153;transition:.18s ease}
+.registry-open:hover{transform:translateX(3px);border-color:#73b99f;background:#eaf7f1}
+.registry-open svg{width:15px}.deadline-registry-empty{padding:35px;text-align:center;color:#75877f}.deadline-registry-empty svg{width:27px;height:27px;margin-bottom:8px}.deadline-registry-empty strong{display:block;font-size:11px}
+
+.deadline-connections-dialog{width:min(1020px,calc(100vw - 28px));max-width:1020px;padding:0;border:0;border-radius:28px;background:transparent;box-shadow:0 40px 110px rgba(4,32,23,.38)}
+.deadline-connections-dialog::backdrop{background:rgba(6,28,21,.72);backdrop-filter:blur(8px)}
+.deadline-connections-dialog>form{max-height:calc(100dvh - 30px);overflow:hidden;border:1px solid rgba(255,255,255,.18);border-radius:28px;background:#f6faf8}
+.deadline-connections-header{display:flex;align-items:center;justify-content:space-between;padding:22px 26px;background:linear-gradient(120deg,#0a3d2c,#116449 62%,#208361);color:#fff}
+.deadline-connections-header>div{display:flex;align-items:center;gap:15px}.deadline-connections-header>div>span{display:grid;width:51px;height:51px;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:16px;background:rgba(255,255,255,.13)}
+.deadline-connections-header h2{margin:3px 0;color:#fff;font-size:21px}.deadline-connections-header .eyebrow{margin:0;color:#f0cf69;font-size:9px;letter-spacing:.15em}.deadline-connections-header small{color:rgba(255,255,255,.7);font-size:10px}
+.deadline-connections-header .dialog-close{display:grid;width:38px;height:38px;place-items:center;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.12);color:#fff}
+.deadline-connections-body{max-height:calc(100dvh - 130px);overflow:auto;padding:18px 22px 22px}
+.deadline-map-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;margin-bottom:13px;color:#677a71;font-size:9px}
+.deadline-map-legend span{display:flex;align-items:center;gap:6px}.deadline-map-legend i{width:9px;height:9px;border-radius:50%}.deadline-map-legend .automatic{background:#1ca878}.deadline-map-legend .transactional{background:#e3a329}.deadline-map-legend .manual{background:#6685c9}
+.deadline-link-map{position:relative;height:590px;overflow:hidden;border:1px solid #dce9e3;border-radius:23px;background:radial-gradient(circle at 50% 50%,rgba(26,143,101,.12),transparent 25%),linear-gradient(#fff,#f2f8f5)}
+.deadline-link-map::before{content:"";position:absolute;inset:0;background-image:radial-gradient(#b7d4c7 1px,transparent 1px);background-size:22px 22px;opacity:.27}
+.deadline-map-core{position:absolute;z-index:3;left:50%;top:50%;display:flex;width:138px;height:138px;align-items:center;justify-content:center;flex-direction:column;transform:translate(-50%,-50%);border:1px solid #54a787;border-radius:42px;background:linear-gradient(145deg,#0c684c,#158b66);color:#fff;box-shadow:0 22px 45px rgba(12,104,76,.28),0 0 0 12px rgba(25,143,103,.08)}
+.deadline-map-core>span{display:grid;width:38px;height:38px;place-items:center;border-radius:12px;background:rgba(255,255,255,.15)}.deadline-map-core strong{margin-top:7px;font-size:15px}.deadline-map-core small{margin-top:2px;color:rgba(255,255,255,.72);font-size:8px}
+.deadline-map-node{position:absolute;z-index:3;display:grid;width:270px;min-height:82px;grid-template-columns:43px minmax(0,1fr) 30px;align-items:center;gap:10px;padding:13px;border:1px solid #d8e7df;border-radius:17px;background:rgba(255,255,255,.96);color:#24463a;text-align:left;text-decoration:none;box-shadow:0 10px 25px rgba(17,70,51,.08);transition:.2s ease}
+.deadline-map-node:hover{z-index:4;transform:translateY(-4px);border-color:#79bda3;box-shadow:0 17px 35px rgba(17,90,64,.16)}
+.deadline-map-node>span{display:grid;width:42px;height:42px;place-items:center;border-radius:13px;background:#eaf6f0;color:#16805b}.deadline-map-node>span svg{width:19px}.deadline-map-node strong,.deadline-map-node small{display:block}.deadline-map-node strong{font-size:11px}.deadline-map-node small{margin-top:3px;color:#76877f;font-size:8px;line-height:1.35}.deadline-map-node>b{display:grid;width:28px;height:28px;place-items:center;border-radius:9px;background:#edf6f2;color:#176d50;font-size:9px}
+.node-certifications{left:4%;top:7%}.node-integrations{right:4%;top:7%}.node-organismes{left:2%;top:43%}.node-verifications{right:2%;top:43%}.node-veille{left:4%;bottom:7%}.node-manual{right:4%;bottom:7%;font:inherit;cursor:pointer}
+.deadline-map-lines{position:absolute;z-index:1;inset:0;width:100%;height:100%;overflow:visible}.deadline-map-lines path{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:8 11;animation:deadline-link-flow 1.6s linear infinite}.deadline-map-lines path.automatic{stroke:#24a77b}.deadline-map-lines path.transactional{stroke:#dea239}.deadline-map-lines path.manual{stroke:#6d88ca}
+@keyframes deadline-link-flow{to{stroke-dashoffset:-38}}
+.deadline-map-note{display:flex;align-items:flex-start;gap:12px;margin-top:13px;padding:14px 16px;border:1px solid #cfe5da;border-radius:16px;background:#edf8f3;color:#426056}.deadline-map-note>svg{width:18px;color:#16805b}.deadline-map-note p{margin:0}.deadline-map-note strong,.deadline-map-note span{display:block}.deadline-map-note strong{font-size:10px}.deadline-map-note span{margin-top:3px;font-size:9px;line-height:1.5}
+
+[data-theme=dark] .deadline-registry-header{border-color:#29463a;background:linear-gradient(135deg,#172e25,#13281f)}
+[data-theme=dark] .deadline-registry-header h2,[data-theme=dark] .deadline-registry-table td strong{color:#e8f2ed}
+[data-theme=dark] .deadline-registry-header p:last-child,[data-theme=dark] .deadline-registry-table td{color:#a6b7af}
+[data-theme=dark] .deadline-registry-total,[data-theme=dark] .deadline-registry-filters,[data-theme=dark] .deadline-registry-filters select,[data-theme=dark] .deadline-registry-search,[data-theme=dark] .registry-open{border-color:#2c4b3e;background:#162d24;color:#dbe9e2}
+[data-theme=dark] .deadline-registry-table th{border-color:#2b483c;background:#183126;color:#9eb0a7}
+[data-theme=dark] .deadline-registry-table td{border-color:#263f35}[data-theme=dark] .deadline-registry-table tbody tr:hover{background:#193329}
+[data-theme=dark] .deadline-connections-dialog>form{background:#10231c}[data-theme=dark] .deadline-link-map{border-color:#29493b;background:radial-gradient(circle at 50% 50%,rgba(34,157,112,.15),transparent 25%),linear-gradient(#152c23,#10231c)}
+[data-theme=dark] .deadline-map-node{border-color:#315143;background:rgba(24,50,40,.97);color:#e8f1ed}[data-theme=dark] .deadline-map-node small{color:#9db0a7}[data-theme=dark] .deadline-map-node>span,[data-theme=dark] .deadline-map-node>b{background:#203e32}
+[data-theme=dark] .deadline-map-note{border-color:#315043;background:#193329;color:#b4c6bd}
+
+@media(max-width:760px){
+  .deadline-registry-filters{grid-template-columns:1fr}.deadline-registry-header{align-items:flex-start}.deadline-registry-total{min-width:85px}
+  .deadline-connections-body{padding:12px}.deadline-link-map{height:auto;display:grid;gap:10px;padding:150px 12px 14px}.deadline-map-core{top:74px}.deadline-map-node{position:relative;inset:auto!important;width:100%}.deadline-map-lines{display:none}
+  .deadline-connections-header{padding:18px}.deadline-connections-header>div>span{display:none}.deadline-connections-header h2{font-size:17px}.deadline-connections-header small{display:none}
+}

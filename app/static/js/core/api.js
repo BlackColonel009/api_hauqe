@@ -13,7 +13,7 @@
  * aucune page métier ne doit appeler fetch() directement pour une API privée.
  */
 
-import { APP_CONFIG } from "./config.js";
+import { APP_CONFIG } from "./config.js?v=20260731-1";
 
 const SESSION_TOKEN_KEY = "hauqe-access-token";
 const PERSISTENT_TOKEN_KEY = "hauqe-access-token-persistent";

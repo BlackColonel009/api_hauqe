@@ -8,6 +8,7 @@
   let user = null;
   let options = null;
   let items = [];
+  let allItems = [];
   let selected = null;
   let action = null;
   let view = "calendar";
@@ -20,6 +21,11 @@
     type_echeance: "",
     statut: "",
     range: "month",
+  };
+  const globalFilters = {
+    search: "",
+    source: "",
+    status: "",
   };
 
   function e(v) {
@@ -289,6 +295,130 @@
     icons();
   }
 
+  function sourceGroup(item) {
+    const resource = String(item.ressource_type || "").toUpperCase();
+    if (["CERTIFICATION", "AUDIT_CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"].includes(resource)) {
+      return "certifications";
+    }
+    if (resource === "ACCREDITATION") return "organismes";
+    if (resource === "CONFIRMATION_EXTERNE") return "verifications";
+    if (["DOSSIER_VEILLE", "RELANCE_VEILLE"].includes(resource)) return "veille";
+    return "manual";
+  }
+
+  function sourceLabel(item) {
+    return {
+      certifications: "Certifications",
+      organismes: "Organismes / accréditations",
+      verifications: "Vérifications",
+      veille: "Cellule de veille",
+      manual: "Planification directe",
+    }[sourceGroup(item)] || "Autre source";
+  }
+
+  function renderConnectionCounts() {
+    const counts = {
+      certifications: 0,
+      integrations: 0,
+      organismes: 0,
+      verifications: 0,
+      veille: 0,
+      manual: 0,
+    };
+    allItems.forEach((item) => {
+      const group = sourceGroup(item);
+      counts[group] = (counts[group] || 0) + 1;
+      if (group === "certifications") counts.integrations += 1;
+    });
+    Object.entries(counts).forEach(([group, count]) => {
+      document.querySelectorAll(`[data-source-count="${group}"]`).forEach((node) => {
+        node.textContent = count;
+      });
+    });
+    $("#deadlineMapTotal").textContent = `${allItems.length} élément${allItems.length > 1 ? "s" : ""}`;
+  }
+
+  function renderGlobalFilters() {
+    const sourceSelect = $("#globalDeadlineSourceFilter");
+    const statusSelect = $("#globalDeadlineStatusFilter");
+    const currentSource = sourceSelect.value;
+    const currentStatus = statusSelect.value;
+    const sources = [...new Set(allItems.map(sourceLabel))].sort((a, b) => a.localeCompare(b, "fr"));
+    const statuses = [...new Set(allItems.map((item) => String(item.statut || "NON RENSEIGNÉ").toUpperCase()))]
+      .sort((a, b) => a.localeCompare(b, "fr"));
+
+    sourceSelect.innerHTML = `<option value="">Toutes les sources</option>`
+      + sources.map((value) => `<option value="${e(value)}">${e(value)}</option>`).join("");
+    statusSelect.innerHTML = `<option value="">Tous les statuts</option>`
+      + statuses.map((value) => `<option value="${e(value)}">${e(value.replaceAll("_", " "))}</option>`).join("");
+    sourceSelect.value = currentSource;
+    statusSelect.value = currentStatus;
+  }
+
+  function renderGlobalRegistry() {
+    const query = globalFilters.search.trim().toLocaleLowerCase("fr");
+    const visible = allItems
+      .filter((item) => !globalFilters.source || sourceLabel(item) === globalFilters.source)
+      .filter((item) => !globalFilters.status || String(item.statut || "").toUpperCase() === globalFilters.status)
+      .filter((item) => {
+        if (!query) return true;
+        return [
+          item.titre,
+          item.type_echeance,
+          item.resource_label,
+          item.ressource_type,
+          item.responsable_name,
+          item.statut,
+        ].some((value) => String(value || "").toLocaleLowerCase("fr").includes(query));
+      })
+      .sort((a, b) => String(a.date_echeance || "").localeCompare(String(b.date_echeance || "")));
+
+    $("#globalDeadlineTotal").textContent = allItems.length;
+    $("#globalDeadlineRows").innerHTML = visible.map((item) => `
+      <tr>
+        <td><span class="registry-date ${urgency(item)}"><i data-lucide="calendar-days"></i>${e(dateLabel(item.date_echeance))}</span></td>
+        <td><strong>${e(item.titre || "Échéance")}</strong><small>${e(item.type_echeance || "Type non renseigné")}</small></td>
+        <td><span class="registry-source"><i data-lucide="link-2"></i>${e(sourceLabel(item))}</span><small>${e(item.resource_label || item.ressource_type || "Ressource")}</small></td>
+        <td>${e(item.responsable_name || "Non affectée")}</td>
+        <td><span class="registry-status">${e(String(item.statut || "—").replaceAll("_", " "))}</span></td>
+        <td><button class="registry-open" type="button" data-global-deadline="${e(item.id)}" aria-label="Ouvrir les détails"><i data-lucide="chevron-right"></i></button></td>
+      </tr>
+    `).join("");
+    $("#globalDeadlineEmpty").hidden = visible.length > 0;
+
+    $$("[data-global-deadline]").forEach((button) => {
+      button.onclick = () => {
+        selected = allItems.find((item) => String(item.id) === String(button.dataset.globalDeadline));
+        showDetail();
+      };
+    });
+    icons();
+  }
+
+  async function loadGlobalDeadlines() {
+    const firstPage = await api.apiGet(
+      "/api/v1/veille/workspace/deadlines?limit=500&offset=0"
+    );
+    const pages = [firstPage.items || []];
+    const total = Number(firstPage.total || pages[0].length);
+    const offsets = [];
+    for (let offset = 500; offset < total; offset += 500) {
+      offsets.push(offset);
+    }
+    if (offsets.length) {
+      const remainingPages = await Promise.all(
+        offsets.map((offset) => api.apiGet(
+          `/api/v1/veille/workspace/deadlines?limit=500&offset=${offset}`
+        ))
+      );
+      remainingPages.forEach((page) => pages.push(page.items || []));
+    }
+    allItems = pages.flat();
+    renderGlobalFilters();
+    renderGlobalRegistry();
+    renderConnectionCounts();
+  }
+
   function renderSecondary() {
     const active = items
       .filter((x) => !["TERMINEE","ANNULEE"].includes(String(x.statut || "").toUpperCase()))
@@ -426,7 +556,7 @@
       });
 
       $("#deadlineDialog").close();
-      await load();
+      await Promise.all([load(), loadGlobalDeadlines()]);
       state("Échéance créée et auditée.");
     } catch (error) {
       state(error?.message || "Création impossible.", true);
@@ -533,7 +663,7 @@
       $("#deadlineActionDialog").close();
       selected = null;
       action = null;
-      await load();
+      await Promise.all([load(), loadGlobalDeadlines()]);
       state("Échéance mise à jour.");
     } catch (error) {
       state(error?.message || "Action impossible.", true);
@@ -543,7 +673,7 @@
   async function scan() {
     try {
       const result = await api.apiPost("/api/v1/veille/scans/daily", {});
-      await load();
+      await Promise.all([load(), loadGlobalDeadlines()]);
       state(`Scan ${result.scan_date} : ${result.deadlines_created} échéance(s), ${result.alerts_created} alerte(s) créées.`);
     } catch (error) {
       state(error?.message || "Scan impossible.", true);
@@ -556,6 +686,11 @@
 
     $("#newDeadline").onclick = openCreate;
     $("#runWatchScanFromDeadlines").onclick = scan;
+    $("#showDeadlineConnections").onclick = () => {
+      renderConnectionCounts();
+      $("#deadlineConnectionsDialog").showModal();
+      icons();
+    };
     $("#deadlineForm").onsubmit = create;
     $("#deadlineActionForm").onsubmit = submitAction;
 
@@ -578,6 +713,19 @@
       $("#deadlineRangeFilter").value = "month";
       cursor = new Date(); cursor.setDate(1);
       await load();
+    };
+
+    $("#globalDeadlineSearch").oninput = (event) => {
+      globalFilters.search = event.target.value;
+      renderGlobalRegistry();
+    };
+    $("#globalDeadlineSourceFilter").onchange = (event) => {
+      globalFilters.source = event.target.value;
+      renderGlobalRegistry();
+    };
+    $("#globalDeadlineStatusFilter").onchange = (event) => {
+      globalFilters.status = event.target.value;
+      renderGlobalRegistry();
     };
 
     $("#prevMonth").onclick = async () => {
@@ -634,6 +782,17 @@
     $$("[data-close-deadline-action]").forEach((b) => {
       b.onclick = () => $("#deadlineActionDialog").close();
     });
+    $$("[data-close-deadline-connections]").forEach((b) => {
+      b.onclick = () => $("#deadlineConnectionsDialog").close();
+    });
+    $("#mapPlanDeadline").onclick = () => {
+      $("#deadlineConnectionsDialog").close();
+      if (perm("ECHEANCES.GERER")) openCreate();
+      else state("Votre profil peut consulter les liaisons, mais ne peut pas planifier une échéance.");
+    };
+    $$("#deadlineConnectionsDialog a").forEach((link) => {
+      link.onclick = () => $("#deadlineConnectionsDialog").close();
+    });
     document.addEventListener("click", (event) => {
       if (event.target.closest("[data-close-deadline-detail]")) {
         $("#deadlineDetailDialog").close();
@@ -645,7 +804,7 @@
     user = await api.apiGet("/api/v1/me");
     bind();
     await loadFilters();
-    await load();
+    await Promise.all([load(), loadGlobalDeadlines()]);
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);
   }

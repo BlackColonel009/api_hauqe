@@ -6,7 +6,7 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 31 juillet 2026 à 00:11 UTC  
+**Dernière mise à jour :** 31 juillet 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
 
 ## 1. État synthétique
@@ -30,6 +30,7 @@
 | Worker courriels et sauvegardes | Intégré au service | Tâche démarrée par le cycle de vie FastAPI |
 | Répertoires d’exécution privés | Terminée | `logs`, `backups` et `uploads` accessibles à `sngsc` |
 | Reverse proxy Nginx | Terminée pour le test HTTP | Application accessible sous `/sngsc/` |
+| Adresse API du frontend | Corrigée | Même origine que l’interface, sans `localhost` codé en dur |
 | DNS du sous-domaine | Prochaine étape | Résolution vers `31.220.87.142` |
 | Certificat HTTPS | À faire | Certificat Let’s Encrypt valide |
 | Durcissement Nginx et application | À faire | En-têtes, limites, permissions |
@@ -145,6 +146,49 @@ systemctl reload nginx
 curl -I http://DOMAINE_SNGSC
 ```
 
+### B.3 Adresse de l’API utilisée par le navigateur
+
+Le port `8014` est un port interne réservé à Nginx et ne doit pas être appelé
+directement par le navigateur. Le frontend doit utiliser la même origine que
+l’interface :
+
+```javascript
+export const APP_CONFIG = Object.freeze({
+  apiBaseUrl: window.location.origin,
+  apiPrefix: "/api/v1",
+  defaultRoute: "dashboard",
+  appName: "HAUQE Certif",
+  requestTimeoutMs: 15000,
+});
+```
+
+Nginx reçoit ainsi les requêtes publiques telles que :
+
+```text
+https://DOMAINE_SNGSC/api/v1/auth/login
+```
+
+et les transmet au service FastAPI sur :
+
+```text
+http://127.0.0.1:8014/api/v1/auth/login
+```
+
+Ne jamais utiliser `http://localhost:8001` dans la configuration frontend de
+production. Dans le navigateur d’un agent, `localhost` désigne son propre
+ordinateur et provoque `ERR_CONNECTION_REFUSED`.
+
+Après une mise à jour de cette configuration :
+
+```bash
+sudo systemctl restart sngsc
+```
+
+Effectuer ensuite un rechargement forcé du navigateur avec `Ctrl + Shift + R`
+ou vider le cache du site. Dans l’onglet Réseau des outils de développement,
+l’URL de connexion doit utiliser l’adresse publique du SNGSC et ne doit plus
+contenir `localhost:8001`.
+
 ## 5. Phase C — DNS et HTTPS
 
 ### C.1 DNS
@@ -199,6 +243,66 @@ PermissionError: [Errno 13] Permission denied: '/var/www/api_hauqe/logs'
 
 Éviter un `chown -R` sur tout le dépôt. Seuls les répertoires dans lesquels
 l’application écrit doivent appartenir à `sngsc`.
+
+### D.2 Configuration et conservation de la clé MFA
+
+Le MFA TOTP chiffre les secrets des comptes avec `MFA_FERNET_KEY`. Cette
+variable est déclarée dans `app.config.settings` et doit contenir une clé
+Fernet URL-safe de 32 octets encodée en Base64, soit normalement 44
+caractères.
+
+Génération pour l’environnement local Windows, depuis PowerShell :
+
+```powershell
+Set-Location "C:\Users\hp\Documents\APK WEB Projets R.1.3.5 et R1.4.3"
+$mfaKey = & ".\.venv\Scripts\python.exe" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+$mfaKey
+```
+
+Reporter une seule fois la valeur obtenue dans le fichier `.env` :
+
+```env
+MFA_FERNET_KEY=VALEUR_GENEREE
+```
+
+Puis lancer l’application locale :
+
+```powershell
+& ".\.venv\Scripts\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+```
+
+Génération sur le serveur Linux :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Après ajout de la valeur dans `/var/www/api_hauqe/.env` :
+
+```bash
+sudo systemctl restart sngsc
+sudo journalctl -u sngsc -n 50 --no-pager
+```
+
+Règles impératives :
+
+- ne jamais enregistrer cette clé dans Git ;
+- conserver la même clé entre les redémarrages et les déploiements ;
+- sauvegarder la clé dans le gestionnaire de secrets de l’exploitation ;
+- ne pas recopier la clé Windows sur Linux si les deux bases doivent rester
+  cryptographiquement séparées ;
+- ne jamais régénérer la clé d’un environnement contenant déjà des comptes
+  MFA actifs, car leurs secrets deviendraient indéchiffrables.
+
+Contrôle réalisé le 31 juillet 2026 : le raccordement de
+`MFA_FERNET_KEY` aux settings Python a été corrigé. Le chiffrement Fernet,
+le déchiffrement, la génération et la vérification TOTP, l’URI
+d’enrôlement et la génération des codes de récupération ont été validés
+avec une clé temporaire conforme. La valeur locale de 12 caractères
+détectée pendant l’audit doit être remplacée avant le test utilisateur du
+MFA.
 
 ## 7. Phase E — Sauvegardes
 
@@ -329,6 +433,8 @@ Parcours prioritaires :
 | 31/07/2026 | Mise à jour Git | Validée après remplacement des modifications locales | `git pull --ff-only origin main` | Une sauvegarde `.patch` a été recommandée avant remplacement |
 | 31/07/2026 | Worker intégré | Chargé avec FastAPI | `app.tasks.run_background_services` lancé par le lifespan | Courriels et sauvegardes utilisent le service `sngsc` |
 | 31/07/2026 | Permissions des journaux | Corrigées | Création de `/var/www/api_hauqe/logs` pour `sngsc:sngsc` | L’absence du répertoire empêchait le démarrage |
+| 31/07/2026 | Connexion frontend à l’API | Corrigée | `apiBaseUrl: window.location.origin` | L’ancienne valeur `localhost:8001` provoquait `ERR_CONNECTION_REFUSED` depuis les postes utilisateurs |
+| 31/07/2026 | Profil et MFA | Raccordement corrigé, configuration locale à finaliser | `mfa_fernet_key` déclaré et cycle cryptographique TOTP contrôlé | Remplacer la clé locale invalide avant l’enrôlement ; conserver ensuite la clé définitivement |
 
 ## 11. Prochaine action immédiate
 

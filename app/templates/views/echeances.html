@@ -9,6 +9,11 @@
     </div>
 
     <div class="heading-actions">
+      <button class="btn btn-outline-secondary app-btn deadline-links-button" id="showDeadlineConnections" type="button">
+        <i data-lucide="network"></i>Voir les liaisons
+        <span aria-hidden="true"><i data-lucide="link-2"></i></span>
+      </button>
+
       <button class="btn btn-outline-secondary app-btn" id="runWatchScanFromDeadlines" type="button" hidden>
         <i data-lucide="radar"></i>Recalculer la veille
       </button>
@@ -92,6 +97,50 @@
 
     <div id="listView" hidden>
       <div class="deadline-list" id="deadlineList"></div>
+    </div>
+  </section>
+
+  <section class="panel deadline-registry-panel">
+    <header class="deadline-registry-header">
+      <div>
+        <p class="eyebrow">Registre consolidé</p>
+        <h2>Toutes les échéances enregistrées</h2>
+        <p>Vue globale indépendante de la période affichée dans le calendrier.</p>
+      </div>
+      <span class="deadline-registry-total"><strong id="globalDeadlineTotal">0</strong><small>échéance(s)</small></span>
+    </header>
+
+    <div class="deadline-registry-filters">
+      <label class="deadline-registry-search">
+        <i data-lucide="search"></i>
+        <input id="globalDeadlineSearch" type="search" placeholder="Rechercher un titre, une ressource ou un responsable…">
+      </label>
+      <select id="globalDeadlineSourceFilter" aria-label="Filtrer par source">
+        <option value="">Toutes les sources</option>
+      </select>
+      <select id="globalDeadlineStatusFilter" aria-label="Filtrer par statut">
+        <option value="">Tous les statuts</option>
+      </select>
+    </div>
+
+    <div class="deadline-registry-table-wrap">
+      <table class="deadline-registry-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Échéance</th>
+            <th>Source liée</th>
+            <th>Responsable</th>
+            <th>Statut</th>
+            <th><span class="visually-hidden">Détails</span></th>
+          </tr>
+        </thead>
+        <tbody id="globalDeadlineRows"></tbody>
+      </table>
+      <div class="deadline-registry-empty" id="globalDeadlineEmpty" hidden>
+        <i data-lucide="calendar-x-2"></i>
+        <strong>Aucune échéance ne correspond aux filtres.</strong>
+      </div>
     </div>
   </section>
 
@@ -356,6 +405,83 @@
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-action>Annuler</button>
         <button class="btn btn-primary app-btn" type="submit">Confirmer</button>
       </footer>
+    </form>
+  </dialog>
+
+  <dialog id="deadlineConnectionsDialog" class="hauqe-dialog deadline-connections-dialog">
+    <form method="dialog">
+      <header class="deadline-connections-header">
+        <div>
+          <span><i data-lucide="network"></i></span>
+          <div>
+            <p class="eyebrow">Cartographie fonctionnelle</p>
+            <h2>Les pages reliées aux échéances</h2>
+            <small>Les branches lumineuses représentent les alimentations automatiques ou métier.</small>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" data-close-deadline-connections aria-label="Fermer"><i data-lucide="x"></i></button>
+      </header>
+
+      <div class="deadline-connections-body">
+        <div class="deadline-map-legend">
+          <span><i class="automatic"></i>Mise à jour automatique</span>
+          <span><i class="transactional"></i>Mise à jour lors d’une action</span>
+          <span><i class="manual"></i>Planification manuelle</span>
+        </div>
+
+        <div class="deadline-link-map">
+          <div class="deadline-map-core">
+            <span><i data-lucide="calendar-range"></i></span>
+            <strong>Échéances</strong>
+            <small id="deadlineMapTotal">0 élément</small>
+          </div>
+
+          <a class="deadline-map-node node-certifications automatic" href="#/certifications" data-map-group="certifications">
+            <span><i data-lucide="badge-check"></i></span>
+            <div><strong>Certifications</strong><small>Expiration, audits et renouvellement</small></div>
+            <b data-source-count="certifications">0</b>
+          </a>
+          <a class="deadline-map-node node-integrations transactional" href="#/integrations" data-map-group="integrations">
+            <span><i data-lucide="database-zap"></i></span>
+            <div><strong>Intégration BNEC</strong><small>Synchronisation après validation</small></div>
+            <b data-source-count="integrations">0</b>
+          </a>
+          <a class="deadline-map-node node-organismes automatic" href="#/organismes" data-map-group="organismes">
+            <span><i data-lucide="landmark"></i></span>
+            <div><strong>Organismes</strong><small>Expiration des accréditations</small></div>
+            <b data-source-count="organismes">0</b>
+          </a>
+          <a class="deadline-map-node node-verifications transactional" href="#/verifications" data-map-group="verifications">
+            <span><i data-lucide="clipboard-check"></i></span>
+            <div><strong>Vérifications</strong><small>Réponses externes attendues</small></div>
+            <b data-source-count="verifications">0</b>
+          </a>
+          <a class="deadline-map-node node-veille automatic" href="#/veille" data-map-group="veille">
+            <span><i data-lucide="radar"></i></span>
+            <div><strong>Cellule de veille</strong><small>Actions et relances programmées</small></div>
+            <b data-source-count="veille">0</b>
+          </a>
+          <button class="deadline-map-node node-manual manual" id="mapPlanDeadline" type="button" data-map-group="manual">
+            <span><i data-lucide="calendar-plus-2"></i></span>
+            <div><strong>Planification directe</strong><small>Création contrôlée par un agent</small></div>
+            <b data-source-count="manual">0</b>
+          </button>
+
+          <svg class="deadline-map-lines" viewBox="0 0 1000 590" preserveAspectRatio="none" aria-hidden="true">
+            <path class="automatic" d="M500 295 C390 295 340 108 235 108"/>
+            <path class="transactional" d="M500 295 C610 295 660 108 765 108"/>
+            <path class="automatic" d="M500 295 C360 295 325 295 190 295"/>
+            <path class="transactional" d="M500 295 C640 295 675 295 810 295"/>
+            <path class="automatic" d="M500 295 C390 295 340 482 235 482"/>
+            <path class="manual" d="M500 295 C610 295 660 482 765 482"/>
+          </svg>
+        </div>
+
+        <div class="deadline-map-note">
+          <i data-lucide="refresh-cw"></i>
+          <p><strong>Principe de synchronisation</strong><span>Une modification de date met à jour l’échéance active correspondante. Le moteur évite de créer un doublon pour la même ressource et le même type de suivi.</span></p>
+        </div>
+      </div>
     </form>
   </dialog>
 </div>

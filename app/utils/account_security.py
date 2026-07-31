@@ -52,14 +52,20 @@ def generate_opaque_token(bytes_length: int = 32) -> str:
 
 
 def _fernet() -> Fernet:
-    key = getattr(settings, "MFA_FERNET_KEY", None)
+    key = settings.mfa_fernet_key
     if not key:
         raise RuntimeError(
             "MFA_FERNET_KEY non configurée dans les settings."
         )
     if isinstance(key, str):
         key = key.encode("ascii")
-    return Fernet(key)
+    try:
+        return Fernet(key)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(
+            "MFA_FERNET_KEY invalide : une clé Fernet URL-safe "
+            "de 32 octets encodée en Base64 est requise."
+        ) from exc
 
 
 def encrypt_mfa_secret(secret: str) -> str:
