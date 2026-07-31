@@ -102,3 +102,15 @@ La synchronisation est idempotente : relancer la même intégration avec les
 mêmes données ne doit pas dupliquer les audits, échéances, renouvellements ou
 alertes. Les dates d'audit calculées restent modifiables et doivent être
 confirmées par un agent.
+## Correction authentification — Mot de passe oublié (31/07/2026)
+
+- le formulaire appelle désormais réellement
+  `POST /api/v1/auth/password/forgot` ;
+- affichage neutre conservé afin de ne pas révéler l’existence d’un compte ;
+- le lien reçu ouvre le formulaire de choix du nouveau mot de passe ;
+- le routeur accepte `#/mot-de-passe-oublie?token=...` ;
+- le nouveau mot de passe est transmis à
+  `POST /api/v1/auth/password/reset` ;
+- états de chargement, erreurs API, renvoi du lien et confirmation finale
+  ajoutés ;
+- cache des scripts et styles actualisé.

@@ -1004,3 +1004,20 @@ Avant toute nouvelle étape :
 - permissions existantes réutilisées, aucune nouvelle permission ;
 - runtime PostgreSQL à valider après migration.
 
+## Mise à jour sécurité du compte — MFA TOTP (31/07/2026)
+
+- raccordement de `MFA_FERNET_KEY` aux settings Python corrigé ;
+- clé Fernet URL-safe valide obligatoire dans le `.env` Windows et Linux ;
+- conservation impérative de la clé pour toute base contenant des comptes
+  MFA actifs ;
+- procédure de copie sécurisée et de contrôle sans affichage de la clé
+  documentée dans `FEUILLE_DE_ROUTE_HEBERGEMENT_SNGSC.md`, section D.2.1 ;
+- cycle cryptographique MFA contrôlé avec succès.
+
+## Correction du parcours « Mot de passe oublié » (31/07/2026)
+
+- variable `PASSWORD_RESET_URL_TEMPLATE` raccordée aux settings ;
+- création et consommation du jeton de réinitialisation reliées au frontend ;
+- envoi traité par la file SMTP intégrée au service applicatif ;
+- lien à usage unique, expiration 30 minutes et révocation des sessions
+  conservés.

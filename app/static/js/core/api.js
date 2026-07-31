@@ -138,7 +138,7 @@ export function extractApiMessage(payload, fallback = "Une erreur est survenue."
 }
 
 function isAuthRoute() {
-  const route = location.hash.replace(/^#\/?/, "").split("/")[0];
+  const route = location.hash.replace(/^#\/?/, "").split("/")[0].split("?")[0];
   return ["connexion", "mot-de-passe-oublie"].includes(route);
 }
 

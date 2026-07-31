@@ -326,11 +326,7 @@ class PasswordService:
         db.add(item)
         await db.flush()
 
-        template = getattr(
-            settings,
-            "PASSWORD_RESET_URL_TEMPLATE",
-            None,
-        )
+        template = settings.password_reset_url_template
         if template:
             link = str(template).replace("{token}", raw_token)
             await AccountRepository.create_notification(

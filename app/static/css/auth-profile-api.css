@@ -409,6 +409,20 @@ body.auth-route-active {
   transform: translateY(-1px);
 }
 
+.auth-inline-error{
+  margin:10px 0 0!important;
+  padding:10px 12px;
+  border:1px solid #efc4c1;
+  border-radius:10px;
+  background:#fff1f0;
+  color:#a33d37!important;
+  font-size:10px!important;
+  line-height:1.45;
+}
+.password-reset-card .eyebrow{margin-bottom:6px;color:var(--green-700);font-size:9px;letter-spacing:.13em}
+.password-reset-card label+label{margin-top:12px}
+[data-theme=dark] .auth-inline-error{border-color:#75443f;background:#3a2421;color:#ffc2bd!important}
+
 /* Connexion — animation machine à écrire */
 .auth-typewriter {
   min-height: 2.35em;

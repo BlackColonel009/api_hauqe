@@ -31,6 +31,8 @@
 | Répertoires d’exécution privés | Terminée | `logs`, `backups` et `uploads` accessibles à `sngsc` |
 | Reverse proxy Nginx | Terminée pour le test HTTP | Application accessible sous `/sngsc/` |
 | Adresse API du frontend | Corrigée | Même origine que l’interface, sans `localhost` codé en dur |
+| Clé MFA du serveur | À configurer et valider | Clé Fernet présente dans `.env`, service redémarré et enrôlement MFA testé |
+| Réinitialisation du mot de passe | Corrigée, recette à faire | Modèle d’URL chargé, courriel reçu et lien consommé une seule fois |
 | DNS du sous-domaine | Prochaine étape | Résolution vers `31.220.87.142` |
 | Certificat HTTPS | À faire | Certificat Let’s Encrypt valide |
 | Durcissement Nginx et application | À faire | En-têtes, limites, permissions |
@@ -285,6 +287,60 @@ Après ajout de la valeur dans `/var/www/api_hauqe/.env` :
 sudo systemctl restart sngsc
 sudo journalctl -u sngsc -n 50 --no-pager
 ```
+
+#### D.2.1 Copier une clé Windows existante vers le serveur
+
+Cette méthode est utile lorsque la base Windows doit être restaurée ou
+reproduite sur Linux avec des comptes MFA déjà enrôlés. Si les bases sont
+indépendantes et qu’aucun compte MFA n’est encore actif, il est préférable de
+générer une clé différente directement sur le serveur.
+
+Sous PowerShell, placer la clé déjà chargée dans `$mfaKey` dans le
+presse-papiers :
+
+```powershell
+$mfaKey | Set-Clipboard
+```
+
+Ouvrir ensuite une session SSH :
+
+```powershell
+ssh UTILISATEUR_SERVEUR@31.220.87.142
+```
+
+Sur le serveur, ouvrir le fichier avec un éditeur privilégié :
+
+```bash
+sudoedit /var/www/api_hauqe/.env
+```
+
+Ajouter ou remplacer une seule ligne, sans chevrons ni guillemets :
+
+```env
+MFA_FERNET_KEY=COLLER_ICI_LA_CLE_DE_44_CARACTERES
+```
+
+Ne pas écrire la clé dans une commande `echo`, dans un message ou dans Git :
+elle pourrait rester dans l’historique du terminal. Après enregistrement,
+protéger le fichier et vérifier uniquement le format de la clé, sans
+l’afficher :
+
+```bash
+sudo chown root:sngsc /var/www/api_hauqe/.env
+sudo chmod 640 /var/www/api_hauqe/.env
+sudo grep -qE '^MFA_FERNET_KEY=[A-Za-z0-9_-]{43}=$' /var/www/api_hauqe/.env \
+  && echo "Clé MFA présente et format valide" \
+  || echo "Clé MFA absente ou format invalide"
+sudo systemctl restart sngsc
+systemctl is-active sngsc
+curl -fsS http://127.0.0.1:8014/api/v1/health
+sudo journalctl -u sngsc -n 50 --no-pager
+```
+
+La clé ne doit jamais apparaître dans les sorties de contrôle. La validation
+fonctionnelle finale consiste à activer le MFA sur un compte de recette, à se
+déconnecter, puis à vérifier qu’une nouvelle connexion exige bien le code
+TOTP.
 
 Règles impératives :
 

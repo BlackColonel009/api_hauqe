@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     secret_key: str
     access_token_expire_minutes: int = 30
     mfa_fernet_key: str | None = None
+    password_reset_url_template: str | None = None
 
     timezone: str = "Africa/Lome"
 

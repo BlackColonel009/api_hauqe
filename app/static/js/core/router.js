@@ -28,7 +28,7 @@ const routes = Object.freeze({
   "regles-codification": { view: "/views/regles-codification", script: "/static/js/regles-codification.js?v=20260730-3", title: "Règles et codification" },
   "journal-audit": { view: "/views/journal-audit", script: "/static/js/journal-audit.js?v=20260730-2", title: "Journal d’audit" },
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },
-  "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js", title: "Mot de passe oublié" },
+  "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js?v=20260731-1", title: "Mot de passe oublié" },
   profil: { view: "/views/profil", script: "/static/js/profil.js", title: "Mon profil" },
   verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
   "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
@@ -57,6 +57,7 @@ let currentRoute = null;
 
 function routeName() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
+  parts[0] = parts[0].split("?")[0];
   const name = parts[0] === "entreprises" && ["nouveau", "modifier"].includes(parts[1]) ? "entreprise-form" : parts[0] === "entreprises" && parts[1] ? "entreprise-detail" : parts[0] === "certifications" && ["nouveau", "modifier"].includes(parts[1]) ? "certification-form" : parts[0] === "certifications" && parts[1] ? "certification-detail" : parts[0] === "organismes" && ["nouveau", "modifier"].includes(parts[1]) ? "organisme-form" : parts[0] === "organismes" && parts[1] ? "organisme-detail" : parts[0] === "collectes" && ["nouveau", "modifier"].includes(parts[1]) ? "collecte-form" : parts[0] === "verifications" && parts[1] ? "verification-detail" : parts[0] === "validations" && parts[1] ? "validation-detail" : parts[0] === "integrations" && parts[1] ? "integration-detail" : parts[0] === "controle" && parts[1] ? "controle-detail" : parts[0] === "tableaux-de-bord" && parts[1] ? `tableau-${parts[1]}` : parts[0];
   return routes[name] ? name : APP_CONFIG.defaultRoute;
 }

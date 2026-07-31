@@ -6026,6 +6026,35 @@ Aucune nouvelle table.
 Aucune migration.
 Aucune nouvelle permission.
 
+## Mise à jour sécurité du compte — MFA TOTP (31/07/2026)
+
+- `MFA_FERNET_KEY` est maintenant déclarée dans `app.config.settings` ;
+- le service refuse explicitement une clé absente ou non conforme ;
+- une clé Fernet URL-safe de 44 caractères est obligatoire dans chaque
+  fichier `.env` d’exécution ;
+- la clé ne doit jamais être versionnée, affichée dans les journaux ou placée
+  dans l’historique du terminal ;
+- la même clé doit être conservée lors d’une restauration de base contenant
+  des comptes MFA actifs ;
+- la procédure Windows → Linux, les permissions `root:sngsc` et les contrôles
+  sans divulgation sont documentés dans
+  `FEUILLE_DE_ROUTE_HEBERGEMENT_SNGSC.md`, section D.2.1 ;
+- chiffrement/déchiffrement Fernet, TOTP, URI d’enrôlement et codes de
+  récupération contrôlés avec succès.
+
+## Correction du parcours « Mot de passe oublié » (31/07/2026)
+
+- `PASSWORD_RESET_URL_TEMPLATE` est désormais déclaré dans les settings
+  Python et chargé depuis `.env` ;
+- `POST /api/v1/auth/password/forgot` crée un jeton à usage unique valable
+  30 minutes et met le courriel en file sans révéler si le compte existe ;
+- `POST /api/v1/auth/password/reset` applique le nouveau mot de passe et
+  révoque les anciennes sessions ;
+- le modèle d’URL doit contenir `{token}` ;
+- SMTP et modèle d’URL détectés dans l’environnement Windows ;
+- avant correction, aucun jeton `PASSWORD_RESET` n’avait été créé, confirmant
+  que l’ancien formulaire n’appelait pas l’API.
+
 ## ÉTAPE 08 — VALIDATION + CORRECTIONS
 
 Statut : 🟡 **raccordement produit — recette runtime à confirmer**

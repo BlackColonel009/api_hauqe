@@ -1,6 +1,6 @@
 import { installActionLoader } from "./action-loader.js?v=20260730-1";
 import { installDialogManager } from "./dialog-manager.js?v=20260729-3";
-import { initRouter } from "./router.js?v=20260730-2";
+import { initRouter } from "./router.js?v=20260731-2";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
