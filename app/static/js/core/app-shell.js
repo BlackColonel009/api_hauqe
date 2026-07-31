@@ -17,6 +17,59 @@ import {
 installActionLoader();
 installDialogManager();
 
+const SYNCHRONIZATION_STORAGE_KEY = "hauqe:last-synchronization";
+
+function formatSynchronizationTime(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return "en attente";
+
+  const time = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Africa/Lome",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  const dateKeyFormatter = new Intl.DateTimeFormat("fr-CA", {
+    timeZone: "Africa/Lome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  if (dateKeyFormatter.format(date) === dateKeyFormatter.format(new Date())) {
+    return `aujourd’hui à ${time}`;
+  }
+
+  const day = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Africa/Lome",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+  return `${day} à ${time}`;
+}
+
+function renderLastSynchronization(value) {
+  const formatted = formatSynchronizationTime(value);
+  const topbarLabel = document.getElementById("lastSynchronizationLabel");
+  const referenceLabel = document.getElementById("referenceSynchronizationLabel");
+
+  if (topbarLabel) {
+    topbarLabel.textContent = `Dernière synchronisation : ${formatted}`;
+  }
+  if (referenceLabel) {
+    referenceLabel.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+}
+
+function markLastSynchronization() {
+  const synchronizedAt = new Date().toISOString();
+  localStorage.setItem(SYNCHRONIZATION_STORAGE_KEY, synchronizedAt);
+  renderLastSynchronization(synchronizedAt);
+}
+
+renderLastSynchronization(localStorage.getItem(SYNCHRONIZATION_STORAGE_KEY));
+window.addEventListener("hauqe:page-ready", markLastSynchronization);
+
 const SIDEBAR_BADGE_REFRESH_MS = 60_000;
 let sidebarBadgeTimer = null;
 

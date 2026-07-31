@@ -6,7 +6,7 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 29 juillet 2026 à 13:22 UTC  
+**Dernière mise à jour :** 31 juillet 2026 à 00:11 UTC  
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
 
 ## 1. État synthétique
@@ -26,6 +26,9 @@
 | Initialisation rôles et permissions | Terminée | Scripts de seed exécutés |
 | Test FastAPI local | Terminée | `/api/v1/health` retourne `status=ok` |
 | Service systemd `sngsc` | Terminée | Service déclaré opérationnel par l’utilisateur |
+| Mise à jour applicative du 31/07/2026 | Terminée | Pull Git et redémarrage du service effectués |
+| Worker courriels et sauvegardes | Intégré au service | Tâche démarrée par le cycle de vie FastAPI |
+| Répertoires d’exécution privés | Terminée | `logs`, `backups` et `uploads` accessibles à `sngsc` |
 | Reverse proxy Nginx | Terminée pour le test HTTP | Application accessible sous `/sngsc/` |
 | DNS du sous-domaine | Prochaine étape | Résolution vers `31.220.87.142` |
 | Certificat HTTPS | À faire | Certificat Let’s Encrypt valide |
@@ -72,6 +75,7 @@ Port interne   : 8014
 Journaux       : systemd-journald
 Démarrage      : automatique
 Redémarrage    : automatique en cas d’arrêt anormal
+Tâches internes : courriels toutes les 10 s, sauvegardes planifiées chaque heure
 ```
 
 ### A.1 Objectifs
@@ -101,6 +105,27 @@ Résultats attendus :
 **Validation enregistrée :** le service permanent du SNGSC est considéré opérationnel sur le serveur. Les sorties détaillées de `systemctl`, `curl` et `ss` pourront être annexées lors de la recette technique finale.
 
 **Validation complémentaire :** l’application répond désormais via Nginx sous `http://31.220.87.142/sngsc/`, et la connexion applicative à PostgreSQL fonctionne.
+
+### A.3 Services d’arrière-plan intégrés
+
+Le worker n’est pas exploité comme un second service systemd. Il est lancé par
+le `lifespan` FastAPI dans `app.main` lorsque `sngsc.service` démarre.
+
+Il prend en charge :
+
+- la file de notifications et les envois SMTP ;
+- les sauvegardes planifiées ;
+- l’arrêt propre de la tâche lorsque le service applicatif s’arrête.
+
+Le redémarrage de `sngsc.service` redémarre donc également ces traitements :
+
+```bash
+sudo systemctl restart sngsc
+sudo journalctl -u sngsc -n 100 --no-pager
+```
+
+Il ne faut pas lancer simultanément `python -m app.tasks.run_background_services`
+sur le même serveur, afin d’éviter deux workers concurrents.
 
 ## 4. Phase B — Nginx
 
@@ -142,6 +167,7 @@ curl -I https://DOMAINE_SNGSC
 ## 6. Phase D — Sécurité minimale du MVP
 
 - garder `.env` hors Git ;
+- conserver les secrets SMTP uniquement dans `.env` ;
 - interdire l’accès public à PostgreSQL ;
 - exécuter FastAPI sans privilèges root ;
 - limiter les permissions sur `.env` et les fichiers privés ;
@@ -150,6 +176,29 @@ curl -I https://DOMAINE_SNGSC
 - vérifier les cookies et en-têtes de sécurité ;
 - ne pas activer `/docs` publiquement sans décision explicite ;
 - conserver les opérations sensibles dans le journal d’audit.
+
+### D.1 Permissions des répertoires d’exécution
+
+Le service fonctionne avec l’utilisateur et le groupe `sngsc`. Le code source
+reste en lecture seule pour ce compte, mais les répertoires utilisés à
+l’exécution doivent lui appartenir :
+
+```bash
+sudo install -d -o sngsc -g sngsc -m 0750 /var/www/api_hauqe/logs
+sudo install -d -o sngsc -g sngsc -m 0750 /var/www/api_hauqe/backups
+sudo install -d -o sngsc -g sngsc -m 0750 /var/www/api_hauqe/uploads
+sudo install -d -o sngsc -g sngsc -m 0750 /var/www/api_hauqe/uploads/private
+sudo install -d -o sngsc -g sngsc -m 0750 /var/www/api_hauqe/app/uploads/avatars
+```
+
+Cette configuration corrige l’erreur observée au démarrage :
+
+```text
+PermissionError: [Errno 13] Permission denied: '/var/www/api_hauqe/logs'
+```
+
+Éviter un `chown -R` sur tout le dépôt. Seuls les répertoires dans lesquels
+l’application écrit doivent appartenir à `sngsc`.
 
 ## 7. Phase E — Sauvegardes
 
@@ -189,6 +238,67 @@ git pull
 
 Chaque mise à jour doit prévoir un point de retour et une sauvegarde préalable de la base lorsque la migration est sensible.
 
+### F.1 Procédure de mise à jour validée pour le serveur
+
+```bash
+cd /var/www/api_hauqe
+git status
+git branch --show-current
+git pull --ff-only origin main
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m alembic upgrade head
+sudo systemctl restart sngsc
+systemctl is-active sngsc
+curl -fsS http://127.0.0.1:8014/api/v1/health
+sudo journalctl -u sngsc -n 100 --no-pager
+```
+
+Révision Alembic attendue après la mise à jour du 31 juillet 2026 :
+
+```text
+a2b3c4d5e6f7
+```
+
+Contrôle :
+
+```bash
+python -m alembic current
+```
+
+### F.2 Cas des modifications locales sur le serveur
+
+Un pull a été bloqué parce que les fichiers suivants avaient été modifiés
+directement sur le serveur :
+
+```text
+app/static/css/collecte-form.css
+app/static/js/collecte-form.js
+app/static/js/core/config.js
+app/static/js/regles-codification.js
+```
+
+Avant remplacement, conserver une copie récupérable :
+
+```bash
+git diff > ~/sngsc-modifications-serveur-avant-remplacement.patch
+```
+
+Si la décision est de remplacer ces modifications par la version Git :
+
+```bash
+git restore -- \
+  app/static/css/collecte-form.css \
+  app/static/js/collecte-form.js \
+  app/static/js/core/config.js \
+  app/static/js/regles-codification.js
+
+git pull --ff-only origin main
+```
+
+Cette opération ne réalise aucun push. Le fichier `.env` et les documents
+téléversés ne doivent jamais être inclus dans ces remplacements.
+
 ## 9. Phase G — Recette MVP publique
 
 Parcours prioritaires :
@@ -216,6 +326,9 @@ Parcours prioritaires :
 | 29/07/2026 | Service systemd `sngsc` | Validé par l’utilisateur | Service permanent créé et lancement confirmé | FastAPI exploité localement sur `127.0.0.1:8014` |
 | 29/07/2026 | Reverse proxy Nginx | Validé pour HTTP | Accès opérationnel sous `/sngsc/` | La page Nginx par défaut reste disponible sur `/` |
 | 29/07/2026 | Connexion application ↔ PostgreSQL | Validée par l’utilisateur | Authentification fonctionnelle après stabilisation | Surveiller les journaux lors de la recette |
+| 31/07/2026 | Mise à jour Git | Validée après remplacement des modifications locales | `git pull --ff-only origin main` | Une sauvegarde `.patch` a été recommandée avant remplacement |
+| 31/07/2026 | Worker intégré | Chargé avec FastAPI | `app.tasks.run_background_services` lancé par le lifespan | Courriels et sauvegardes utilisent le service `sngsc` |
+| 31/07/2026 | Permissions des journaux | Corrigées | Création de `/var/www/api_hauqe/logs` pour `sngsc:sngsc` | L’absence du répertoire empêchait le démarrage |
 
 ## 11. Prochaine action immédiate
 
