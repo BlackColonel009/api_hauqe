@@ -1,8 +1,9 @@
 /**
  * Configuration frontend HAUQE Certif.
  *
- * API locale actuellement utilisée pendant l'intégration.
- * En production, remplacer uniquement `apiBaseUrl`.
+ * L'API utilise la même origine que l'interface.
+ * En local comme en production, le navigateur appelle ainsi le serveur qui
+ * lui a réellement fourni l'application, sans port interne codé en dur.
  */
 export const APP_CONFIG = Object.freeze({
   apiBaseUrl: window.location.origin,
