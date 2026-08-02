@@ -903,6 +903,40 @@
 .modal-role-list::-webkit-scrollbar-thumb{border:2px solid #f2f6f4;border-radius:999px;background:#a9bdb4}
 .modal-role-list::-webkit-scrollbar-thumb:hover{background:#77998a}
 
+/* Le premier bloc reste utilisable au zoom sans agrandir tout le modal. */
+#userDialog .dialog-body>.admin-form-section:first-child{
+  max-height:min(44dvh,430px);
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  -webkit-overflow-scrolling:touch;
+}
+
+#userDialog .dialog-body>.admin-form-section:first-child
+  .admin-form-section-heading{
+  position:sticky;
+  z-index:2;
+  top:0;
+}
+
+#userDialog .dialog-body>.admin-form-section:first-child::-webkit-scrollbar{
+  width:8px;
+}
+
+#userDialog .dialog-body>.admin-form-section:first-child::-webkit-scrollbar-track{
+  margin:5px 0;
+  border-radius:999px;
+  background:#f2f6f4;
+}
+
+#userDialog .dialog-body>.admin-form-section:first-child::-webkit-scrollbar-thumb{
+  border:2px solid #f2f6f4;
+  border-radius:999px;
+  background:#8eaa9e;
+}
+
 .status-dialog{
   max-width:560px;
 }
@@ -1092,4 +1126,167 @@
 [data-theme=dark] .drawer-role-option strong,
 [data-theme=dark] .modal-role-option strong{
   color:#e7f1ed;
+}
+
+/* Nouvel utilisateur — les trois cartes suivent entièrement le mode nuit. */
+html[data-theme="dark"] #userDialog .admin-form-section{
+  border-color:#315248;
+  background:#173329;
+}
+
+html[data-theme="dark"] #userDialog .admin-form-section-heading{
+  border-color:#315248;
+  background:#1d3a31;
+}
+
+html[data-theme="dark"] #userDialog .admin-form-section-heading>span{
+  background:#29453a;
+  color:#68c59f;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .user-form-grid,
+  .password-builder,
+  .modal-role-list
+){
+  background:#173329;
+}
+
+html[data-theme="dark"] #userDialog .credential-mail-choice{
+  border-color:#36584f;
+  background:#1c2722;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .admin-form-section-heading strong,
+  .credential-mail-choice strong,
+  .modal-role-option strong
+){
+  color:#e4ede8;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .admin-form-section-heading small,
+  .credential-mail-choice small,
+  .modal-role-option small,
+  .user-form-grid label>span,
+  .password-builder label>span
+){
+  color:#97a59e;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .user-form-grid input,
+  .user-form-grid select,
+  .password-builder input
+){
+  border-color:#36584f;
+  background:#1c2722;
+  color:#e4ede8;
+}
+
+html[data-theme="dark"] #userDialog .password-input-group button{
+  border-color:#36584f;
+  background:#29453a;
+  color:#68c59f;
+}
+
+html[data-theme="dark"] #userDialog .password-guidance span{
+  background:#1c2722;
+  color:#97a59e;
+}
+
+html[data-theme="dark"] #userDialog .password-guidance span.valid{
+  background:#29453a;
+  color:#68c59f;
+}
+
+html[data-theme="dark"] #userDialog .modal-role-option{
+  border-color:#36584f;
+  background:#1c2722;
+  color:#e4ede8;
+}
+
+html[data-theme="dark"] #userDialog .modal-role-option:has(input:checked){
+  border-color:#42a77d;
+  background:#29453a;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .modal-role-list,
+  .dialog-body>.admin-form-section:first-child
+)::-webkit-scrollbar-track{
+  background:#1c2b25;
+}
+
+html[data-theme="dark"] #userDialog :is(
+  .modal-role-list,
+  .dialog-body>.admin-form-section:first-child
+)::-webkit-scrollbar-thumb{
+  border-color:#1c2b25;
+  background:#527d6c;
+}
+
+@media(max-height:680px){
+  #userDialog .dialog-body>.admin-form-section:first-child{
+    max-height:48dvh;
+  }
+}
+
+/* Administration — catalogue actif en mode nuit. */
+html[data-theme="dark"] .users-page .users-role-catalog{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .users-page .users-role-catalog>header{
+  border-color:var(--night-line)!important;
+  background:linear-gradient(
+    180deg,
+    var(--night-surface),
+    var(--night-surface-soft)
+  )!important;
+}
+
+html[data-theme="dark"] .users-page .users-role-catalog :is(h2,strong){
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .users-page .users-role-catalog :is(p,small){
+  color:var(--night-muted)!important;
+}
+
+html[data-theme="dark"] .users-page .users-role-catalog>header>span{
+  background:#29453a!important;
+  color:#68c59f!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-list{
+  background:var(--night-surface)!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-card{
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-card:hover{
+  border-color:#45685f!important;
+  background:var(--night-hover)!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-card>span{
+  background:#29453a!important;
+  color:#68c59f!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-card code{
+  color:#68c59f!important;
+}
+
+html[data-theme="dark"] .users-page .role-catalog-card>b{
+  background:#29453a!important;
+  color:#c5d7cf!important;
 }

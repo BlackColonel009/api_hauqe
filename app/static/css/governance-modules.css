@@ -963,6 +963,218 @@
   box-shadow:0 1px 0 #315248;
 }
 
+/* Cellule de veille — rapports */
+html[data-theme="dark"] .watch-page #watchReportsTab,
+html[data-theme="dark"] .watch-page #watchReportsTab > .gov-panel,
+html[data-theme="dark"] .watch-page #watchReportsTab > .gov-panel > header,
+html[data-theme="dark"] .watch-page #watchReportList{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+html[data-theme="dark"] .watch-page #watchReportsTab .priority-empty{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface-soft)!important;
+  color:var(--night-muted)!important;
+}
+
+/* Cellule de veille — couverture complète du thème sombre. */
+html[data-theme="dark"] .watch-page .watch-kpi,
+html[data-theme="dark"] .watch-page .watch-case-row,
+html[data-theme="dark"] .watch-page .watch-case-detail>header,
+html[data-theme="dark"] .watch-page .watch-followup-row,
+html[data-theme="dark"] .watch-page .watch-report-row{
+  border-color:var(--night-line);
+  background:var(--night-surface);
+  color:var(--night-text);
+}
+
+html[data-theme="dark"] .watch-page .watch-case-row.active{
+  background:#29453a;
+  box-shadow:inset 3px 0 #42a77d;
+}
+
+html[data-theme="dark"] .watch-page :is(
+  .watch-case-row,
+  .watch-followup-row,
+  .watch-report-row
+):hover{
+  background:var(--night-hover);
+}
+
+html[data-theme="dark"] .watch-page :is(
+  .watch-case-row,
+  .watch-followup-row,
+  .watch-report-row,
+  .watch-case-detail
+) strong,
+html[data-theme="dark"] .watch-page .watch-followup-row p,
+html[data-theme="dark"] .watch-page .watch-report-metrics b{
+  color:var(--night-text);
+}
+
+html[data-theme="dark"] .watch-page :is(
+  .watch-case-row,
+  .watch-followup-row,
+  .watch-report-row,
+  .watch-followup-head,
+  .watch-report-metrics
+) small,
+html[data-theme="dark"] .watch-page .watch-report-metrics span{
+  color:var(--night-muted);
+}
+
+html[data-theme="dark"] .watch-page :is(
+  .watch-case-icon,
+  .watch-followup-row>span,
+  .watch-report-row>span:first-child
+){
+  background:#29453a;
+  color:#68c59f;
+}
+
+html[data-theme="dark"] :is(
+  #followupDialog,
+  #closeWatchCaseDialog,
+  #watchReportDialog,
+  #validateWatchReportDialog
+).hauqe-dialog-managed,
+html[data-theme="dark"] :is(
+  #followupDialog,
+  #closeWatchCaseDialog,
+  #watchReportDialog,
+  #validateWatchReportDialog
+)>form{
+  border-color:#315248;
+  background:#10271f;
+  color:var(--night-text);
+}
+
+html[data-theme="dark"] #followupDialog header,
+html[data-theme="dark"] #closeWatchCaseDialog header,
+html[data-theme="dark"] :is(#watchReportDialog,#validateWatchReportDialog)>form>header{
+  border-color:#315248;
+  background:linear-gradient(145deg,#173d33,#10271f);
+}
+
+html[data-theme="dark"] #followupDialog .dialog-body,
+html[data-theme="dark"] #closeWatchCaseDialog .dialog-body,
+html[data-theme="dark"] :is(#watchReportDialog,#validateWatchReportDialog) .dialog-body{
+  background:#10271f;
+}
+
+html[data-theme="dark"] :is(
+  .followup-dialog-notice,
+  .followup-dialog-fields,
+  .watch-close-warning,
+  .watch-close-fields
+){
+  border-color:#315248;
+  background:#173329;
+}
+
+html[data-theme="dark"] :is(
+  .followup-dialog-notice>span,
+  .watch-close-warning>span
+){
+  background:#29453a;
+  color:#68c59f;
+}
+
+html[data-theme="dark"] :is(
+  #followupDialog,
+  #closeWatchCaseDialog,
+  #watchReportDialog,
+  #validateWatchReportDialog
+) :is(h2,strong,label>span){
+  color:var(--night-text);
+}
+
+html[data-theme="dark"] :is(
+  #followupDialog,
+  #closeWatchCaseDialog,
+  #watchReportDialog,
+  #validateWatchReportDialog
+) :is(small,.eyebrow){
+  color:var(--night-muted);
+}
+
+html[data-theme="dark"] :is(
+  .followup-dialog-fields,
+  .watch-close-fields,
+  #watchReportDialog,
+  #validateWatchReportDialog
+) :is(input,select,textarea){
+  border-color:#36584f!important;
+  background:#1c2722!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] #followupDialog footer,
+html[data-theme="dark"] #closeWatchCaseDialog footer,
+html[data-theme="dark"] :is(#watchReportDialog,#validateWatchReportDialog)>form>footer{
+  border-color:#315248;
+  background:#10271f;
+}
+
+html[data-theme="dark"] #followupDialog .dialog-body::-webkit-scrollbar-track,
+html[data-theme="dark"] .followup-response-body::-webkit-scrollbar-track,
+html[data-theme="dark"] .followup-response-card::-webkit-scrollbar-track{
+  background:#1c2b25;
+}
+
+/*
+ * Veille : les informations du dossier réutilisent `.cert-info`, également
+ * défini par les pages BNEC. Ces sélecteurs locaux et prioritaires empêchent
+ * donc les surfaces claires de reprendre le dessus après le rendu dynamique.
+ */
+html[data-theme="dark"] .watch-page .watch-layout>.gov-panel,
+html[data-theme="dark"] .watch-page .watch-case-detail,
+html[data-theme="dark"] .watch-page .watch-case-detail-body,
+html[data-theme="dark"] .watch-page .watch-case-list{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .watch-page .watch-layout>.gov-panel>header,
+html[data-theme="dark"] .watch-page .watch-case-detail>header{
+  border-color:var(--night-line)!important;
+  background:linear-gradient(
+    180deg,
+    var(--night-surface),
+    var(--night-surface-soft)
+  )!important;
+}
+
+html[data-theme="dark"] .watch-page .cert-info-grid{
+  background:var(--night-surface)!important;
+}
+
+html[data-theme="dark"] .watch-page .cert-info{
+  border-color:var(--night-line)!important;
+  background:var(--night-field)!important;
+  color:var(--night-text)!important;
+  box-shadow:none!important;
+}
+
+html[data-theme="dark"] .watch-page .cert-info small{
+  color:var(--night-muted)!important;
+}
+
+html[data-theme="dark"] .watch-page .cert-info strong{
+  color:var(--night-text)!important;
+}
+
+html[data-theme="dark"] .watch-page .watch-case-row{
+  border-color:var(--night-line)!important;
+  background:var(--night-surface)!important;
+}
+
+html[data-theme="dark"] .watch-page .watch-case-row.active{
+  background:#29453a!important;
+}
+
 /* Veille — réponse à une relance */
 #followupResponseDialog.hauqe-dialog-managed{width:min(720px,calc(100vw - 28px));border:0;border-radius:24px;background:transparent;box-shadow:0 30px 85px rgba(10,46,34,.28)}
 #followupResponseDialog::backdrop{background:rgba(8,35,27,.62);backdrop-filter:blur(6px)}

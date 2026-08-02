@@ -172,6 +172,28 @@
 @media(max-width:900px){.sncc-legend-grid{grid-template-columns:1fr}}
 @media(max-width:600px){#infcDialog.hauqe-dialog-managed header,#snccDialog.hauqe-dialog-managed header,#snccCloseDialog.hauqe-dialog-managed header,#classificationDialog.hauqe-dialog-managed header{padding:17px 16px}#infcDialog .dialog-body,#snccDialog .dialog-body,#snccCloseDialog .dialog-body,#classificationDialog .dialog-body{padding:17px 16px 21px!important}#infcDialog footer,#snccDialog footer,#snccCloseDialog footer,#classificationDialog footer{padding:13px 16px 16px!important}#infcDialog #infcScoreInputs,#snccDialog .sncc-form-grid,.sncc-close-fields,#classificationDialog #classificationScoreInputs{padding:13px}}
 
+/* Modèle de scoring — quatre indicateurs */
+html[data-theme="dark"] .scoring-workspace-page .classification-kpis .score-stat{
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.14)!important;
+}
+html[data-theme="dark"] .scoring-workspace-page .classification-kpis .score-stat::after{
+  background:rgba(85,184,142,.07)!important;
+}
+html[data-theme="dark"] .scoring-workspace-page .classification-kpis .score-stat>span{
+  background:#29453a!important;
+  color:#7dd3ad!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] .scoring-workspace-page .classification-kpis .score-stat strong{
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .scoring-workspace-page .classification-kpis .score-stat :is(small,em){
+  color:#9fb5ad!important;
+}
+
 .sncc-ineligible{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border-radius:9px;background:#fff3df;color:#8a5b1b;font-size:7px;font-weight:800}.sncc-ineligible svg{width:12px}.sncc-source-chain{display:block;margin-top:3px;color:#75867d;font-size:6.7px;font-style:normal}
 .score-history-row{cursor:pointer}.score-history-row:hover td{background:#f1f8f5!important}
 .score-history-dialog{width:min(650px,calc(100vw - 28px));max-width:650px;border:0;border-radius:22px;padding:0;box-shadow:0 28px 80px rgba(20,54,42,.24)}

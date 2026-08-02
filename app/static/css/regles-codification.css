@@ -1586,3 +1586,125 @@
   .institutional-dialog>form>footer::before{justify-content:center;margin:0}
   .institutional-dialog>form>footer .app-btn{width:100%;justify-content:center}
 }
+
+/* Règles et codification — contrôle et chaîne de publication */
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) .institutional-layout,
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) :is(.institutional-panel,.institutional-side){
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) :is(.institutional-panel,.institutional-side) > header{
+  border-color:#294a41!important;
+  background:linear-gradient(180deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) :is(h2,h3,strong){
+  color:#e8f2ee!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) :is(p,small,label>span){
+  color:#9fb5ad!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) :is(.requirement-builder,.validation-summary,.priority-empty){
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#dce9e4!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) .institutional-reference{
+  border-color:#315248!important;
+  background:#14372f!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #completenessTab,
+  #publicationDataTab
+) .institutional-reference.warning{
+  border-color:#6d5931!important;
+  background:#352f20!important;
+}
+html[data-theme="dark"] .institutional-page #publicationDataTab .publication-field-grid label{
+  border-color:#315248!important;
+  background:#173329!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .institutional-page #publicationDataTab .publication-field-grid label.sensitive{
+  border-color:#735d31!important;
+  background:#352f20!important;
+}
+
+/* Fiches sélectionnées — métadonnées Publication et Modèles de scoring */
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+){
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) > header{
+  border-color:#294a41!important;
+  background:linear-gradient(180deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) .rule-detail-body{
+  background:#102d27!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) .cert-info-grid{
+  border-color:#294a41!important;
+  background:#102d27!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) .cert-info{
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) .cert-info small{
+  color:#91aaa2!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) .cert-info strong{
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .institutional-page :is(
+  #businessRuleDetail,
+  #scoringModelDetail
+) > .priority-empty{
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#9fb5ad!important;
+}

@@ -157,3 +157,95 @@
 .validation-decision-dialog{width:min(680px,calc(100vw - 24px))!important}.validation-detail-page dialog .dialog-body{display:grid;gap:14px;padding:18px 20px}.validation-detail-page dialog label>span{display:block;margin-bottom:6px;color:#53665c;font-size:8.5px;font-weight:800}.validation-detail-page dialog select,.validation-detail-page dialog input,.validation-detail-page dialog textarea{width:100%;padding:11px 12px;border:1px solid #dbe5e0;border-radius:11px;outline:none;background:#fff;color:#2e4339;font-size:10px}.validation-detail-page dialog select:focus,.validation-detail-page dialog input:focus,.validation-detail-page dialog textarea:focus{border-color:#68ad91;box-shadow:0 0 0 3px rgba(38,132,95,.09)}
 @media(max-width:900px){.validation-overview-grid{grid-template-columns:1fr}.validation-detail-header{align-items:flex-start;flex-direction:column}.validation-detail-header .profile-actions{display:flex;width:100%}.validation-detail-header .profile-actions .btn{flex:1}}
 @media(max-width:680px){.validation-levels-grid{grid-template-columns:1fr}.validation-detail-header h1{font-size:17px}.validation-level-body dl,.validation-level-body .validation-level-info{grid-template-columns:1fr}.validation-level-body .full{grid-column:auto}.validation-history-row{grid-template-columns:auto 1fr}.validation-history-row>:last-child{grid-column:2}.validation-source-list>div,.validation-source-list>article{grid-template-columns:1fr}}
+
+/* Dossier sélectionné — couverture complète du mode sombre */
+html[data-theme="dark"] .validation-detail-page{
+  --vd-line:#294a41;
+  --vd-muted:#9fb5ad;
+  --vd-green:#7dd3ad;
+  color:#e5f0ec;
+}
+html[data-theme="dark"] .validation-detail-page :is(
+  .validation-detail-header,
+  .validation-level-card,
+  .detail-tabs,
+  #validationTabContent>.panel,
+  .validation-overview-grid>.panel,
+  .validation-history-list,
+  .validation-corrections-list
+){
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.15)!important;
+}
+html[data-theme="dark"] .validation-detail-page .validation-detail-header{
+  background:
+    radial-gradient(circle at 94% 8%,rgba(63,173,130,.12),transparent 28%),
+    linear-gradient(135deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .validation-detail-page :is(
+  .validation-level-card>header,
+  .validation-overview-grid .panel-heading,
+  #validationTabContent>.panel>.panel-heading
+){
+  border-color:#294a41!important;
+  background:linear-gradient(180deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .validation-detail-page .validation-level-body{
+  background:#102d27!important;
+}
+html[data-theme="dark"] .validation-detail-page .validation-level-body>div,
+html[data-theme="dark"] .validation-detail-page .validation-level-body dl>div,
+html[data-theme="dark"] .validation-detail-page .validation-level-body .validation-level-info>div,
+html[data-theme="dark"] .validation-detail-page .validation-source-list>div,
+html[data-theme="dark"] .validation-detail-page .validation-source-list>article,
+html[data-theme="dark"] .validation-detail-page .validation-rules-list li,
+html[data-theme="dark"] .validation-detail-page :is(
+  .validation-history-row,
+  .validation-correction-card
+){
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#dce9e4!important;
+}
+html[data-theme="dark"] .validation-detail-page :is(
+  h1,h2,h3,strong,
+  .validation-level-card>header strong,
+  .validation-level-body strong,
+  .validation-history-row strong
+){
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .validation-detail-page :is(
+  p,small,dt,
+  .validation-level-body small,
+  .validation-source-list small,
+  .validation-history-row small,
+  .validation-correction-card p
+){
+  color:#9fb5ad!important;
+}
+html[data-theme="dark"] .validation-detail-page .detail-tabs button{
+  background:transparent!important;
+  color:#9fb5ad!important;
+}
+html[data-theme="dark"] .validation-detail-page .detail-tabs button:is(:hover,.active){
+  background:#21453a!important;
+  color:#eef7f3!important;
+}
+html[data-theme="dark"] .validation-detail-page .detail-tabs b{
+  background:#29453a!important;
+  color:#b9c9c1!important;
+}
+html[data-theme="dark"] .validation-detail-page .validation-next-step,
+html[data-theme="dark"] .validation-detail-page .correction-response{
+  border-color:#3a6256!important;
+  background:#173b31!important;
+  color:#cde3da!important;
+}
+html[data-theme="dark"] .validation-detail-page .priority-empty{
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#9fb5ad!important;
+}
