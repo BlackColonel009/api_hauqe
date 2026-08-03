@@ -40,6 +40,8 @@ Les exigences sont classées selon quatre niveaux afin d'éviter de transformer 
   « Audit initial » ;
 - les justificatifs sélectionnés sont visibles avant envoi avec leur nom,
   leur taille et une action de retrait ;
+- l'écran de verrouillage reprend la photo de profil chargée dans la navbar
+  et revient automatiquement aux initiales si l'image est absente ou invalide ;
 - la configuration de production doit utiliser
   `apiBaseUrl: window.location.origin` et ne contenir aucune URL locale ;
 - après déploiement d'une nouvelle version statique, effectuer un

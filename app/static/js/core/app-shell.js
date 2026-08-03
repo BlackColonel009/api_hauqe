@@ -525,6 +525,41 @@ function clearShellAvatarObjectUrl() {
   }
 }
 
+function applySessionLockAvatar(url = null, initialsText = "U") {
+  const container = document.querySelector(
+    "#sessionLock .session-lock-avatar"
+  );
+  const image = container?.querySelector("img");
+  const fallback = container?.querySelector(
+    "[data-session-lock-initials]"
+  );
+
+  if (!container || !image || !fallback) return;
+
+  fallback.textContent = initialsText;
+
+  if (!url) {
+    image.hidden = true;
+    image.removeAttribute("src");
+    fallback.hidden = false;
+    container.classList.remove("has-image");
+    return;
+  }
+
+  image.onload = () => {
+    image.hidden = false;
+    fallback.hidden = true;
+    container.classList.add("has-image");
+  };
+  image.onerror = () => {
+    image.hidden = true;
+    image.removeAttribute("src");
+    fallback.hidden = false;
+    container.classList.remove("has-image");
+  };
+  image.src = url;
+}
+
 function applyShellAvatar(url = null, initialsText = "U") {
   document
     .querySelectorAll("#userMenuToggle .avatar, #accountDropdown .avatar")
@@ -539,6 +574,8 @@ function applyShellAvatar(url = null, initialsText = "U") {
         element.textContent = initialsText;
       }
     });
+
+  applySessionLockAvatar(url, initialsText);
 }
 
 async function hydrateShellAvatar(profile) {
@@ -630,18 +667,14 @@ function applyProfileToShell(profile) {
   if (dropdownRole) dropdownRole.textContent = role;
 
   const lockTitle = document.querySelector("#sessionLockTitle");
-  const lockAvatar = document.querySelector(
-    "#sessionLock .session-lock-avatar"
+  const lockInitials = document.querySelector(
+    "#sessionLock [data-session-lock-initials]"
   );
 
   if (lockTitle) {
     lockTitle.textContent = `Bienvenue, ${profile.prenoms || profile.nom || "Utilisateur"}`;
   }
-  if (lockAvatar) {
-    const lockIcon = lockAvatar.querySelector("span");
-    lockAvatar.childNodes[0].textContent = initialsText;
-    if (lockIcon) lockAvatar.appendChild(lockIcon);
-  }
+  if (lockInitials) lockInitials.textContent = initialsText;
 }
 
 async function hydrateAuthenticatedShell() {

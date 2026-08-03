@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="/static/css/topbar-dropdowns.css?v=20260802-2">
   <link rel="stylesheet" href="/static/css/assign-alert-premium.css?v=20260717-1">
   <link rel="stylesheet" href="/static/css/assign-alert-fix.css?v=20260717-1">
-  <link rel="stylesheet" href="/static/css/session-lock.css?v=20260717-1">
+  <link rel="stylesheet" href="/static/css/session-lock.css?v=20260803-1">
   <link rel="stylesheet" href="/static/css/alert-email-rules.css?v=20260717-1">
   <link rel="stylesheet" href="/static/css/theme.css?v=20260730-6">
 </head>
@@ -199,7 +199,11 @@
     <div class="session-lock-backdrop"></div>
     <section class="session-lock-card">
       <div class="session-lock-brand"><span>HQ</span><div><strong>HAUQE Certif</strong><small>Session sécurisée</small></div></div>
-      <div class="session-lock-avatar">AD<span><i data-lucide="lock-keyhole"></i></span></div>
+      <div class="session-lock-avatar">
+        <img alt="" hidden>
+        <b data-session-lock-initials>AD</b>
+        <span><i data-lucide="lock-keyhole"></i></span>
+      </div>
       <p class="eyebrow">Session verrouillée</p>
       <h2 id="sessionLockTitle">Bienvenue, Amévi</h2>
       <p class="session-lock-copy">Votre session a été verrouillée après une période d’inactivité. Saisissez votre code privé pour reprendre votre travail.</p>
@@ -217,6 +221,6 @@
   <script src="/static/js/mock-data.js"></script>
   <script src="/static/js/code-model.js"></script>
   <script src="/static/js/core/business-rules-ui.js?v=20260723-1"></script>
-  <script type="module" src="/static/js/core/app-shell.js?v=20260802-3"></script>
+  <script type="module" src="/static/js/core/app-shell.js?v=20260803-1"></script>
 </body>
 </html>
