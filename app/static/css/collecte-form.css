@@ -13,6 +13,8 @@
   box-shadow:0 10px 28px rgba(24,60,45,.045);
 }
 
+.uploaded-file.pending-upload{border-color:#92c8b2;background:#eef9f4}.uploaded-file.pending-upload>svg{color:var(--green-700)}.uploaded-file.pending-upload small{color:#287155;font-weight:700}.pending-file-remove{display:grid;place-items:center;width:28px;height:28px;margin-left:auto;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}.pending-file-remove:hover{background:#dcefe6;color:#9e3935}.pending-file-remove svg{width:15px;height:15px}
+
 
 .company-form-page .form-field input,
 .company-form-page .form-field select,

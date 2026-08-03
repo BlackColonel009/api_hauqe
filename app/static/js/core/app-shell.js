@@ -1,6 +1,10 @@
-import { installActionLoader } from "./action-loader.js?v=20260730-1";
+import { installActionLoader } from "./action-loader.js?v=20260802-1";
 import { installDialogManager } from "./dialog-manager.js?v=20260729-3";
-import { initRouter } from "./router.js?v=20260731-2";
+import {
+  getCurrentRoute,
+  initRouter,
+  refreshCurrentRoute,
+} from "./router.js?v=20260802-1";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
@@ -151,6 +155,215 @@ function stopSidebarBadgeRuntime() {
 }
 
 window.addEventListener("hauqe:page-ready", refreshSidebarBadges);
+
+/* Actualisation collaborative : 30 s + commande manuelle par page. */
+const PAGE_REFRESH_STORAGE_KEY = "hauqe:page-refresh-preferences";
+const PAGE_REFRESH_DEFAULTS = Object.freeze({
+  enabled: true,
+  intervalSeconds: 30,
+  refreshOnReturn: true,
+});
+const PAGE_REFRESH_INTERVALS = new Set([15, 30, 60, 120, 300]);
+let pageRefreshTimer = null;
+let pageRefreshRunning = false;
+let pageFormDirty = false;
+let pageRefreshPreferences = { ...PAGE_REFRESH_DEFAULTS };
+
+function normalizePageRefreshPreferences(value = {}) {
+  const seconds = Number(
+    value.actualisation_intervalle_secondes
+    ?? value.intervalSeconds
+    ?? PAGE_REFRESH_DEFAULTS.intervalSeconds
+  );
+  return {
+    enabled: (
+      value.actualisation_automatique_active
+      ?? value.enabled
+      ?? PAGE_REFRESH_DEFAULTS.enabled
+    ) !== false,
+    intervalSeconds: PAGE_REFRESH_INTERVALS.has(seconds)
+      ? seconds
+      : PAGE_REFRESH_DEFAULTS.intervalSeconds,
+    refreshOnReturn: (
+      value.actualisation_au_retour
+      ?? value.refreshOnReturn
+      ?? PAGE_REFRESH_DEFAULTS.refreshOnReturn
+    ) !== false,
+  };
+}
+
+function readStoredPageRefreshPreferences() {
+  try {
+    return normalizePageRefreshPreferences(
+      JSON.parse(localStorage.getItem(PAGE_REFRESH_STORAGE_KEY) || "{}")
+    );
+  } catch {
+    return { ...PAGE_REFRESH_DEFAULTS };
+  }
+}
+
+function applyPageRefreshPreferences(value, { persist = true } = {}) {
+  pageRefreshPreferences = normalizePageRefreshPreferences(value);
+  if (persist) {
+    localStorage.setItem(
+      PAGE_REFRESH_STORAGE_KEY,
+      JSON.stringify(pageRefreshPreferences)
+    );
+  }
+  startPageRefreshRuntime();
+}
+
+async function loadPageRefreshPreferences() {
+  if (!hasAccessToken()) return;
+  try {
+    const preferences = await apiGet("/api/v1/me/notification-preferences");
+    applyPageRefreshPreferences(preferences);
+  } catch {
+    applyPageRefreshPreferences(readStoredPageRefreshPreferences(), {
+      persist: false,
+    });
+  }
+}
+
+function pageHasOpenDialog() {
+  return Boolean(document.querySelector(
+    "#pageContent dialog[open],"
+    + "#pageContent .modal.show,"
+    + "#pageContent [aria-modal='true']:not([hidden])"
+  ));
+}
+
+function pageHasActiveInput() {
+  const active = document.activeElement;
+  return Boolean(
+    active
+    && active.closest?.("#pageContent")
+    && active.matches?.("input,select,textarea,[contenteditable='true']")
+  );
+}
+
+function pageRefreshIsSafe() {
+  return (
+    hasAccessToken()
+    && pageRefreshPreferences.enabled
+    && !document.hidden
+    && !pageRefreshRunning
+    && !pageFormDirty
+    && !pageHasOpenDialog()
+    && !pageHasActiveInput()
+    && !document.body.classList.contains("hauqe-action-loading")
+    && !["connexion", "mot-de-passe-oublie"].includes(getCurrentRoute())
+  );
+}
+
+async function refreshCollaborativePage({ force = false } = {}) {
+  if (!force && !pageRefreshIsSafe()) return false;
+  if (pageRefreshRunning || pageHasOpenDialog()) return false;
+
+  pageRefreshRunning = true;
+  const button = document.querySelector("[data-global-page-refresh]");
+  button?.classList.add("is-refreshing");
+  button?.setAttribute("aria-busy", "true");
+
+  try {
+    await refreshCurrentRoute();
+    pageFormDirty = false;
+    return true;
+  } finally {
+    pageRefreshRunning = false;
+    const currentButton = document.querySelector("[data-global-page-refresh]");
+    currentButton?.classList.remove("is-refreshing");
+    currentButton?.removeAttribute("aria-busy");
+  }
+}
+
+function installPageRefreshButton() {
+  const heading = document.querySelector("#pageContent .page-heading");
+  if (!heading || heading.querySelector("[data-global-page-refresh]")) return;
+  const existingRefresh = [...heading.querySelectorAll("button")].find(
+    (item) => item.textContent.trim().toLowerCase().startsWith("actualiser")
+  );
+  if (existingRefresh) return;
+
+  let actions = heading.querySelector(".heading-actions");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.className = "heading-actions";
+    heading.appendChild(actions);
+  }
+
+  const button = document.createElement("button");
+  button.className = "btn btn-outline-secondary app-btn collaborative-refresh";
+  button.type = "button";
+  button.dataset.globalPageRefresh = "true";
+  button.dataset.noActionLoader = "true";
+  button.title = "Charger immédiatement les dernières données";
+  button.innerHTML = '<i data-lucide="refresh-cw"></i><span>Actualiser</span>';
+  button.addEventListener("click", () => {
+    if (
+      pageFormDirty
+      && !window.confirm(
+        "Des informations sont en cours de saisie. "
+        + "Actualiser maintenant supprimera les modifications non enregistrées. Continuer ?"
+      )
+    ) {
+      return;
+    }
+    refreshCollaborativePage({ force: true });
+  });
+  actions.prepend(button);
+
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+  }
+}
+
+function startPageRefreshRuntime() {
+  clearInterval(pageRefreshTimer);
+  pageRefreshTimer = null;
+  if (!pageRefreshPreferences.enabled) return;
+  pageRefreshTimer = setInterval(
+    () => refreshCollaborativePage(),
+    pageRefreshPreferences.intervalSeconds * 1000
+  );
+}
+
+document.addEventListener("input", (event) => {
+  const form = event.target.closest?.("#pageContent form");
+  if (form && !event.target.matches("input[type='search']")) {
+    pageFormDirty = true;
+  }
+}, true);
+
+document.addEventListener("change", (event) => {
+  if (event.target.closest?.("#pageContent form")) {
+    pageFormDirty = true;
+  }
+}, true);
+
+window.addEventListener("hauqe:page-ready", () => {
+  pageFormDirty = false;
+  installPageRefreshButton();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && pageRefreshPreferences.refreshOnReturn) {
+    refreshCollaborativePage();
+  }
+});
+
+window.addEventListener("hauqe:refresh-preferences-updated", (event) => {
+  applyPageRefreshPreferences(event.detail || {});
+});
+window.addEventListener("hauqe:auth-state", (event) => {
+  if (event.detail?.authenticated) {
+    loadPageRefreshPreferences();
+  }
+});
+
+pageRefreshPreferences = readStoredPageRefreshPreferences();
+startPageRefreshRuntime();
+loadPageRefreshPreferences();
 
 /* ============================================================
    SIDEBAR MOBILE ROBUSTE

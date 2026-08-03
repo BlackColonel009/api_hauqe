@@ -29,7 +29,7 @@ const routes = Object.freeze({
   "journal-audit": { view: "/views/journal-audit", script: "/static/js/journal-audit.js?v=20260730-2", title: "Journal d’audit" },
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },
   "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js?v=20260731-1", title: "Mot de passe oublié" },
-  profil: { view: "/views/profil", script: "/static/js/profil.js", title: "Mon profil" },
+  profil: { view: "/views/profil", script: "/static/js/profil.js?v=20260802-1", title: "Mon profil" },
   verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
   "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
   integrations: { view: "/views/integrations", script: "/static/js/integrations.js", title: "Intégration BNEC" },
@@ -114,7 +114,11 @@ function applyAuthRouteClass(name) {
   );
 }
 
-export async function navigate() {
+export async function navigate(options = {}) {
+  const {
+    silent = false,
+    preserveScroll = false,
+  } = options && !options.type ? options : {};
   const loadingStartedAt = performance.now();
   const name = routeName();
 
@@ -128,28 +132,47 @@ export async function navigate() {
   const content = document.querySelector("#pageContent");
   const loading = document.querySelector("#routeLoading");
   const error = document.querySelector("#routeError");
-  loading.hidden = false; error.hidden = true;
+  const previousScroll = window.scrollY;
+  if (!silent) loading.hidden = false;
+  error.hidden = true;
   try {
     const response = await fetch(route.view, { headers: { "X-Requested-With": "HAUQE-SPA" } });
     if (!response.ok) throw new Error(`Erreur ${response.status}`);
     content.innerHTML = extractContent(await response.text());
     await executePageScript(route.script);
-    window.dispatchEvent(new CustomEvent("hauqe:page-ready", { detail: { route: name } }));
+    window.dispatchEvent(new CustomEvent("hauqe:page-ready", {
+      detail: { route: name, refresh: silent },
+    }));
     currentRoute = name;
     setActiveRoute(name);
     document.title = `${APP_CONFIG.appName} — ${route.title}`;
     document.querySelector("#sidebar").classList.remove("open");
-    window.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({
+      top: preserveScroll ? previousScroll : 0,
+      behavior: "instant",
+    });
     if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
   } catch (err) {
     console.error(err); content.innerHTML = ""; error.hidden = false;
-  } finally { const remaining=420-(performance.now()-loadingStartedAt);if(remaining>0)await new Promise(resolve=>setTimeout(resolve,remaining));loading.hidden=true; }
+  } finally {
+    if (!silent) {
+      const remaining = 420 - (performance.now() - loadingStartedAt);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+      loading.hidden = true;
+    }
+  }
 }
 
 export function initRouter() {
-  window.addEventListener("hashchange", navigate);
-  document.querySelector("#retryRoute").addEventListener("click", navigate);
+  window.addEventListener("hashchange", () => navigate());
+  document.querySelector("#retryRoute").addEventListener("click", () => navigate());
   if (!location.hash) location.replace(`#/${APP_CONFIG.defaultRoute}`); else navigate();
 }
 
 export function getCurrentRoute() { return currentRoute; }
+
+export function refreshCurrentRoute() {
+  return navigate({ silent: true, preserveScroll: true });
+}

@@ -1329,6 +1329,8 @@ class WatchService:
             "AUDIT_SURVEILLANCE_2": 3,
             "AUDIT_SURVEILLANCE_3": 4,
             "RENOUVELLEMENT": 4,
+            "EXPIREE": 4,
+            "AUDIT_INITIAL": 1,
         }.get(situation, 1)
         if obtained:
             for number in range(next_number, 4):

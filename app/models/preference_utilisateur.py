@@ -20,7 +20,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -79,6 +79,21 @@ class PreferenceUtilisateur(Base):
         server_default=text("false"),
     )
     notifications_resume_hebdomadaire: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    actualisation_automatique_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    actualisation_intervalle_secondes: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("30"),
+    )
+    actualisation_au_retour: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         server_default=text("true"),

@@ -560,3 +560,79 @@ body.auth-route-active {
   border-radius:14px;
   background:linear-gradient(180deg,#fff,#fbfcfb);
 }
+.profile-refresh-settings{
+  margin-top:18px;
+  overflow:hidden;
+  border:1px solid #dce8e2;
+  border-radius:16px;
+  background:#fbfdfc;
+}
+.profile-refresh-settings>header{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  padding:14px 16px;
+  border-bottom:1px solid #e4ece8;
+  background:linear-gradient(135deg,#edf8f3,#f9fcfa);
+}
+.profile-refresh-settings>header>span{
+  display:grid;
+  width:38px;
+  height:38px;
+  place-items:center;
+  border-radius:11px;
+  background:#fff;
+  color:#24795a;
+}
+.profile-refresh-settings>header svg{width:17px}
+.profile-refresh-settings>header strong,
+.profile-refresh-settings>header small{display:block}
+.profile-refresh-settings>header small{
+  margin-top:3px;
+  color:#71847b;
+}
+.profile-refresh-interval{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:13px 16px;
+  border-bottom:1px solid #e8eeeb;
+}
+.profile-refresh-interval span strong,
+.profile-refresh-interval span small{display:block}
+.profile-refresh-interval span small{
+  margin-top:3px;
+  color:var(--muted);
+}
+.profile-refresh-interval select{
+  width:min(230px,100%);
+  min-height:40px;
+  border:1px solid #d8e3de;
+  border-radius:11px;
+  padding:0 11px;
+}
+html[data-theme="dark"] .profile-refresh-settings{
+  border-color:#294a41!important;
+  background:#102d27!important;
+}
+html[data-theme="dark"] .profile-refresh-settings>header{
+  border-color:#294a41!important;
+  background:linear-gradient(135deg,#173b31,#102d27)!important;
+}
+html[data-theme="dark"] .profile-refresh-settings>header>span{
+  background:#29453a!important;
+  color:#7dd3ad!important;
+}
+html[data-theme="dark"] .profile-refresh-interval{
+  border-color:#294a41!important;
+  background:#102d27!important;
+}
+@media(max-width:620px){
+  .profile-refresh-interval{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .profile-refresh-interval select{width:100%}
+}

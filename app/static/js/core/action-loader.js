@@ -6,9 +6,10 @@
  * Deux modes coexistent :
  * 1. mode explicite : HAUQE_ACTION_LOADER.run(...)
  * 2. mode automatique : tout fetch /api/* déclenché immédiatement
- *    après une action utilisateur est enveloppé par le loader.
+ *    après une action utilisateur met uniquement son bouton en attente.
  *
- * Les appels périodiques ou de fond ne déclenchent pas le modal,
+ * Le modal plein écran est réservé au mode explicite. Les appels
+ * périodiques ou de fond ne déclenchent aucun indicateur,
  * car ils ne sont pas précédés d'une interaction utilisateur.
  */
 
@@ -405,11 +406,13 @@ function beginAutomaticRequest(input, init = {}) {
       ? recentAction.button
       : null;
 
-    autoToken = showActionLoader({
-      ...recentAction.copy,
-      button: autoButton,
-      messageVariants: DEFAULT_MESSAGE_VARIANTS,
-    });
+    /*
+     * Une requête automatique ne doit jamais neutraliser toute l'interface.
+     * Le bouton déclencheur porte seul l'état d'attente. Les opérations qui
+     * exigent réellement un verrouillage utilisent runWithActionLoader().
+     */
+    autoToken = null;
+    setButtonBusy(autoButton, true);
   }
 
   return { token: autoToken };
@@ -432,7 +435,7 @@ function endAutomaticRequest(handle) {
     autoHideTimer = null;
     recentAction = null;
 
-    await hideActionLoader({ token, button });
+    setButtonBusy(button, false);
   }, AUTO_SETTLE_MS);
 }
 
@@ -619,6 +622,7 @@ export function installActionLoader() {
     recentAction = null;
     autoPending = 0;
     autoToken = null;
+    setButtonBusy(autoButton, false);
     autoButton = null;
 
     if (autoHideTimer) {

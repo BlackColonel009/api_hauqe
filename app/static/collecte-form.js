@@ -27,7 +27,7 @@
   let offers = [];
   let declaredCertifications = [];
   let documents = [];
-  let history = [];
+  let ficheHistory = [];
   let selectedEnterprise = null;
   let pendingFiles = [];
 
@@ -104,6 +104,13 @@
       dateStyle: "medium",
       timeStyle: "short",
     }).format(date);
+  }
+
+  function formatFileSize(bytes) {
+    const size = Number(bytes || 0);
+    if (size < 1024) return `${size} o`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} Ko`;
+    return `${(size / (1024 * 1024)).toFixed(1)} Mo`;
   }
 
   function hasPermission(code) {
@@ -843,6 +850,8 @@
             ["AUDIT_SURVEILLANCE_2", "4 — Audit de surveillance 2"],
             ["AUDIT_SURVEILLANCE_3", "5 — Audit de surveillance 3"],
             ["RENOUVELLEMENT", "6 — Renouvellement"],
+            ["EXPIREE", "7 — Expirée"],
+            ["AUDIT_INITIAL", "8 — Audit initial"],
           ],
           {
             current: item.situation_declaree || "",
@@ -932,8 +941,7 @@
   }
 
   function renderStep5() {
-    const documentList = documents.length
-      ? documents.map((item) => `
+    const savedDocuments = documents.map((item) => `
           <div class="uploaded-file">
             ${icon("file-check")}
             <span>
@@ -945,10 +953,25 @@
               </small>
             </span>
           </div>
-        `).join("")
+        `).join("");
+    const selectedDocuments = pendingFiles.map((file, index) => `
+          <div class="uploaded-file pending-upload">
+            ${icon("file-up")}
+            <span>
+              <strong>${escapeHtml(file.name)}</strong>
+              <small>Sélectionné - ${escapeHtml(formatFileSize(file.size))}</small>
+            </span>
+            <button type="button" class="pending-file-remove"
+              data-remove-pending-file="${index}"
+              aria-label="Retirer ${escapeHtml(file.name)}"
+              title="Retirer ce fichier">${icon("x")}</button>
+          </div>
+        `).join("");
+    const documentList = savedDocuments || selectedDocuments
+      ? `${savedDocuments}${selectedDocuments}`
       : `
         <div class="document-placeholder">
-          Aucun document enregistré.
+          Aucun document enregistré ou sélectionné.
         </div>
       `;
 
@@ -1247,7 +1270,15 @@
       "change",
       (event) => {
         pendingFiles = Array.from(event.target.files || []);
+        render();
       }
+    );
+
+    document.querySelectorAll("[data-remove-pending-file]").forEach(
+      (button) => button.addEventListener("click", () => {
+        pendingFiles.splice(Number(button.dataset.removePendingFile), 1);
+        render();
+      })
     );
 
     applyReadOnlyState();
@@ -1623,7 +1654,7 @@ async function saveQuickEnterprise(event) {
         fichePayload()
       );
 
-      history.replaceState(
+      window.history.replaceState(
         null,
         "",
         `#/collectes/modifier/${missionId}`
@@ -2064,7 +2095,7 @@ async function saveQuickEnterprise(event) {
       offers = [];
       declaredCertifications = [];
       documents = [];
-      history = [];
+      ficheHistory = [];
       return;
     }
 
@@ -2093,7 +2124,7 @@ async function saveQuickEnterprise(event) {
       : [];
 
     documents = documentData.items || [];
-    history = Array.isArray(historyData)
+    ficheHistory = Array.isArray(historyData)
       ? historyData
       : [];
   }

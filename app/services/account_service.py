@@ -215,6 +215,13 @@ class AccountService:
             corrections=prefs.notifications_corrections,
             rapports_planifies=prefs.notifications_rapports_planifies,
             resume_hebdomadaire=prefs.notifications_resume_hebdomadaire,
+            actualisation_automatique_active=(
+                prefs.actualisation_automatique_active
+            ),
+            actualisation_intervalle_secondes=(
+                prefs.actualisation_intervalle_secondes
+            ),
+            actualisation_au_retour=prefs.actualisation_au_retour,
         )
 
     @staticmethod
@@ -236,6 +243,13 @@ class AccountService:
             "corrections": "notifications_corrections",
             "rapports_planifies": "notifications_rapports_planifies",
             "resume_hebdomadaire": "notifications_resume_hebdomadaire",
+            "actualisation_automatique_active": (
+                "actualisation_automatique_active"
+            ),
+            "actualisation_intervalle_secondes": (
+                "actualisation_intervalle_secondes"
+            ),
+            "actualisation_au_retour": "actualisation_au_retour",
         }
 
         for key, value in payload.model_dump(exclude_unset=True).items():

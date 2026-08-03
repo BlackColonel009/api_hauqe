@@ -172,6 +172,9 @@ class NotificationPreferencesUpdateRequest(BaseModel):
     corrections: bool | None = None
     rapports_planifies: bool | None = None
     resume_hebdomadaire: bool | None = None
+    actualisation_automatique_active: bool | None = None
+    actualisation_intervalle_secondes: Literal[15, 30, 60, 120, 300] | None = None
+    actualisation_au_retour: bool | None = None
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -180,6 +183,9 @@ class NotificationPreferencesResponse(BaseModel):
     corrections: bool
     rapports_planifies: bool
     resume_hebdomadaire: bool
+    actualisation_automatique_active: bool
+    actualisation_intervalle_secondes: int
+    actualisation_au_retour: bool
 
 
 # ============================================================

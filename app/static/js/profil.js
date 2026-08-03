@@ -668,6 +668,64 @@ function securityLockFieldsChanged() {
             >
           </div>
         `).join("")}
+
+        <section class="profile-refresh-settings">
+          <header>
+            <span><i data-lucide="refresh-cw"></i></span>
+            <div>
+              <strong>Actualisation automatique des données</strong>
+              <small>
+                Charge les modifications réalisées par les autres agents
+                sans interrompre votre saisie.
+              </small>
+            </div>
+          </header>
+
+          <div class="setting-row">
+            <div>
+              <strong>Activer l’actualisation automatique</strong>
+              <small>Vous pourrez continuer à utiliser le bouton Actualiser.</small>
+            </div>
+            <input
+              id="profileAutoRefreshEnabled"
+              type="checkbox"
+              ${notificationPreferences.actualisation_automatique_active !== false ? "checked" : ""}
+            >
+          </div>
+
+          <label class="profile-refresh-interval">
+            <span>
+              <strong>Fréquence</strong>
+              <small>Délai entre deux vérifications automatiques.</small>
+            </span>
+            <select id="profileAutoRefreshInterval">
+              ${[
+                [15, "15 secondes"],
+                [30, "30 secondes — recommandé"],
+                [60, "1 minute"],
+                [120, "2 minutes"],
+                [300, "5 minutes"],
+              ].map(([value, label]) => `
+                <option
+                  value="${value}"
+                  ${Number(notificationPreferences.actualisation_intervalle_secondes || 30) === value ? "selected" : ""}
+                >${label}</option>
+              `).join("")}
+            </select>
+          </label>
+
+          <div class="setting-row">
+            <div>
+              <strong>Actualiser au retour dans l’application</strong>
+              <small>Vérifie les données après avoir quitté puis rouvert l’onglet.</small>
+            </div>
+            <input
+              id="profileRefreshOnReturn"
+              type="checkbox"
+              ${notificationPreferences.actualisation_au_retour !== false ? "checked" : ""}
+            >
+          </div>
+        </section>
       </div>
     `;
   }
@@ -927,6 +985,12 @@ function securityLockFieldsChanged() {
     $$("[data-notification-pref]").forEach((input) => {
       payload[input.dataset.notificationPref] = input.checked;
     });
+    payload.actualisation_automatique_active =
+      $("#profileAutoRefreshEnabled")?.checked ?? true;
+    payload.actualisation_intervalle_secondes =
+      Number($("#profileAutoRefreshInterval")?.value || 30);
+    payload.actualisation_au_retour =
+      $("#profileRefreshOnReturn")?.checked ?? true;
 
     try {
       notificationPreferences = await api.apiPatch(
@@ -934,6 +998,10 @@ function securityLockFieldsChanged() {
         payload
       );
       toast("Préférences enregistrées");
+      window.dispatchEvent(new CustomEvent(
+        "hauqe:refresh-preferences-updated",
+        { detail: notificationPreferences }
+      ));
       render();
     } catch (error) {
       toast(api.describeApiError(error).message, true);

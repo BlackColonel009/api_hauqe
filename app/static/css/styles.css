@@ -403,3 +403,19 @@ svg { width: 19px; height: 19px; }
     animation:none!important;
   }
 }
+
+/* Actualisation collaborative des pages */
+.collaborative-refresh svg{
+  width:15px;
+  height:15px;
+}
+.collaborative-refresh.is-refreshing{
+  pointer-events:none;
+  opacity:.78;
+}
+.collaborative-refresh.is-refreshing svg{
+  animation:collaborative-refresh-spin .8s linear infinite;
+}
+@keyframes collaborative-refresh-spin{
+  to{transform:rotate(360deg)}
+}

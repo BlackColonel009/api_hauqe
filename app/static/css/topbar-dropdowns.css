@@ -334,3 +334,147 @@
   background:#f7fbf9;
   transform:translateX(2px);
 }
+
+/* Barre supérieure — utilisateur actif et notifications */
+html[data-theme="dark"] .topbar #notificationToggle,
+html[data-theme="dark"] .topbar #userMenuToggle{
+  border-color:#315248!important;
+  background:#102d27!important;
+  color:#dfece7!important;
+}
+html[data-theme="dark"] .topbar #notificationToggle:hover,
+html[data-theme="dark"] .topbar #notificationToggle[aria-expanded="true"],
+html[data-theme="dark"] .topbar #userMenuToggle:hover,
+html[data-theme="dark"] .topbar #userMenuToggle[aria-expanded="true"]{
+  border-color:#3f6a5e!important;
+  background:#173b31!important;
+}
+html[data-theme="dark"] .topbar #notificationToggle span{
+  border-color:#102d27!important;
+}
+html[data-theme="dark"] .topbar #userMenuToggle .user-copy strong{
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .topbar #userMenuToggle .user-copy small{
+  color:#91aaa2!important;
+}
+html[data-theme="dark"] .topbar :is(
+  #notificationDropdown,
+  #accountDropdown
+){
+  border-color:#315248!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+  box-shadow:0 22px 55px rgba(0,0,0,.34)!important;
+}
+html[data-theme="dark"] .topbar :is(
+  #notificationDropdown,
+  #accountDropdown
+) > header,
+html[data-theme="dark"] .topbar :is(
+  #notificationDropdown,
+  #accountDropdown
+) > footer{
+  border-color:#294a41!important;
+  background:linear-gradient(180deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .topbar .quick-notification{
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .topbar .quick-notification:hover{
+  background:#173a31!important;
+}
+html[data-theme="dark"] .topbar .quick-notification p,
+html[data-theme="dark"] .topbar .quick-notification small,
+html[data-theme="dark"] .topbar #accountDropdown nav small{
+  color:#91aaa2!important;
+}
+html[data-theme="dark"] .topbar #accountDropdown nav>a{
+  color:#e5f0ec!important;
+  background:transparent!important;
+}
+html[data-theme="dark"] .topbar #accountDropdown nav>a:hover{
+  background:#173a31!important;
+}
+html[data-theme="dark"] .topbar #accountDropdown header em{
+  background:#21453a!important;
+  color:#8cdbba!important;
+}
+
+/* Barre supérieure — présence et utilisateurs actifs */
+html[data-theme="dark"] .topbar #presenceToggle{
+  border-color:#315248!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .topbar #presenceToggle:hover,
+html[data-theme="dark"] .topbar #presenceToggle[aria-expanded="true"]{
+  border-color:#3f6a5e!important;
+  background:#173b31!important;
+}
+html[data-theme="dark"] .topbar #presenceToggle .presence-toggle-icon{
+  background:#29453a!important;
+  color:#7dd3ad!important;
+}
+html[data-theme="dark"] .topbar #presenceToggle .presence-toggle-copy strong{
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .topbar #presenceCount{
+  border:1px solid #65c7a2!important;
+  background:#238461!important;
+  color:#fff!important;
+  box-shadow:0 0 0 3px rgba(55,173,128,.10);
+}
+html[data-theme="dark"] .topbar #presenceDropdown{
+  border-color:#315248!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+  box-shadow:0 22px 55px rgba(0,0,0,.34)!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown>header,
+html[data-theme="dark"] .topbar #presenceDropdown>footer{
+  border-color:#294a41!important;
+  background:linear-gradient(180deg,#14372f,#102d27)!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-content,
+html[data-theme="dark"] .topbar #presenceDropdown .presence-users{
+  background:#102d27!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-user{
+  border-color:#294a41!important;
+  background:#102d27!important;
+  color:#e5f0ec!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-user:hover{
+  background:#173a31!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-user-copy strong{
+  color:#edf5f1!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-user-copy em,
+html[data-theme="dark"] .topbar #presenceDropdown .presence-user-copy small,
+html[data-theme="dark"] .topbar #presenceSummary,
+html[data-theme="dark"] .topbar #presenceState{
+  color:#91aaa2!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-avatar{
+  background:linear-gradient(145deg,#294a41,#173b31)!important;
+  color:#9de1c4!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-dot{
+  border-color:#102d27!important;
+}
+html[data-theme="dark"] .topbar #presenceDropdown .presence-you{
+  background:#21453a!important;
+  color:#8cdbba!important;
+}
+html[data-theme="dark"] .topbar #presenceRefresh{
+  border-color:#315248!important;
+  background:#14372f!important;
+  color:#7dd3ad!important;
+}
+html[data-theme="dark"] .topbar #presenceRefresh:hover{
+  background:#21453a!important;
+}

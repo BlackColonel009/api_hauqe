@@ -16,6 +16,11 @@
   padding:20px;
 }
 
+/* La couche ne capture les clics que pendant son état réellement visible. */
+.hauqe-action-loader:not(.is-visible){
+  pointer-events:none;
+}
+
 .hauqe-action-loader-backdrop{
   position:absolute;
   inset:0;
