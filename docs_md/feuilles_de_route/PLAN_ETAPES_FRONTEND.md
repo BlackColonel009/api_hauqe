@@ -1,5 +1,16 @@
 # Plan de raccordement HAUQE Certif
 
+**Dernière consolidation :** 3 août 2026
+
+## Stabilisation récente
+
+- préférences individuelles d'actualisation automatique raccordées au profil ;
+- correction du passage Campagne vers Mission dans le formulaire Collecte ;
+- ajout des situations « Expirée » et « Audit initial » ;
+- retour visuel immédiat des justificatifs sélectionnés ;
+- déploiement conditionné à l'application des migrations jusqu'à la tête
+  Alembic indiquée dans la feuille d'hébergement.
+
 | Étape | Module | État |
 |---:|---|---|
 | 01 | Dashboard opérationnel | 🟡 recette à consolider |

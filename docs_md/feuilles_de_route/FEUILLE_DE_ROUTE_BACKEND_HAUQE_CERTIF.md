@@ -2,7 +2,7 @@
 
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
-**Dernière mise à jour :** 2026-07-26  
+**Dernière mise à jour :** 2026-08-03  
 **Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
@@ -24,6 +24,24 @@ Ce document est la **source de reprise rapide du backend**.
 
 **Ne jamais repartir de zéro dans une nouvelle discussion.**  
 Le travail doit reprendre à partir de la dernière section « Prochaine étape ».
+
+## Mise à jour consolidée du 3 août 2026
+
+- préférences utilisateur de rafraîchissement automatique configurables :
+  activation, intervalle et actualisation au retour sur la page ;
+- migration `b3c4d5e6f7a8` obligatoire pour les trois colonnes
+  `preferences_utilisateur.actualisation_*` ;
+- ajout des situations de certification déclarée `EXPIREE` et
+  `AUDIT_INITIAL` dans la collecte ;
+- migration `c4d5e6f7a8b9` ajoutée pour créer si nécessaire
+  `certifications_declarees.situation_declaree` et synchroniser sa contrainte ;
+- correction du conflit JavaScript entre l'historique de fiche et
+  `window.history.replaceState` lors du premier clic sur « Continuer » ;
+- affichage immédiat des fichiers sélectionnés dans « Preuves &
+  observations », avec nom, taille et retrait avant envoi ;
+- la feuille d'hébergement canonique contient désormais la chaîne complète
+  des migrations et l'ordre de tous les scripts de seed ;
+- tête Alembic attendue : `c4d5e6f7a8b9`.
 
 ---
 

@@ -102,7 +102,7 @@ Dans `app/main.py` :
 
 Fichiers de documentation à conserver et enrichir :
 
-- `FEUILLE_DE_ROUTE_FRONTEND.md` : inventaire fonctionnel détaillé des pages ;
+- `feuilles_de_route/FEUILLE_DE_ROUTE_FRONTEND.md` : inventaire fonctionnel détaillé des pages ;
 - `GUIDE_UTILISATION.md` : futur guide utilisateur, à compléter à chaque ajout ;
 - `PASSATION_PROJET_HAUQE_CERTIF.md` : le présent dossier de continuité.
 
@@ -846,13 +846,13 @@ Priorités :
 - P1 : versions, renouvellements, qualité, décisions, publications et paramètres ;
 - P2 : sauvegardes, restauration, revue annuelle et diffusion publique.
 
-Mettre à jour `FEUILLE_DE_ROUTE_FRONTEND.md`, `GUIDE_UTILISATION.md`, le dictionnaire de données, le catalogue des statuts, la matrice rôles/permissions et le catalogue versionné des règles.
+Mettre à jour `feuilles_de_route/FEUILLE_DE_ROUTE_FRONTEND.md`, `GUIDE_UTILISATION.md`, le dictionnaire de données, le catalogue des statuts, la matrice rôles/permissions et le catalogue versionné des règles.
 
 ## 16. Règle de continuité documentaire
 
 Après chaque modification importante :
 
-- mettre à jour la page concernée dans `FEUILLE_DE_ROUTE_FRONTEND.md` ;
+- mettre à jour la page concernée dans `feuilles_de_route/FEUILLE_DE_ROUTE_FRONTEND.md` ;
 - documenter son utilisation dans `GUIDE_UTILISATION.md` ;
 - modifier ce fichier si l'architecture, la base, les rôles ou le workflow changent ;
 - noter séparément ce qui est **validé par la HAUQE**, **proposé**, **simulé** ou **implémenté**.

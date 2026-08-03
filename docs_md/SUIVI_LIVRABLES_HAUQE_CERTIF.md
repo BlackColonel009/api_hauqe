@@ -115,7 +115,7 @@ Il doit être actualisé après chaque avancée importante. Un livrable ne peut 
 
 Le MCD sera élaboré à partir de la fiche officielle, des 24 pages frontend, du parcours collecte-validation-contrôle et des règles métier. Les entités et cardinalités proposées resteront marquées comme provisoires jusqu'à validation.
 
-Le plan d'exécution détaillé est enregistré dans `PLAN_DEVELOPPEMENT_BACKEND.md`. Il tient compte du parcours complet désormais validé : collecte, vérification, contrôle FUCCS, validation, intégration BNEC, classification entreprise, INFC, SNCC et veille.
+Le plan d'exécution détaillé est enregistré dans `feuilles_de_route/PLAN_DEVELOPPEMENT_BACKEND.md`. Il tient compte du parcours complet désormais validé : collecte, vérification, contrôle FUCCS, validation, intégration BNEC, classification entreprise, INFC, SNCC et veille.
 
 Une première version du MCD est produite dans `MCD_HAUQE_CERTIF.md`. Elle décrit 14 domaines, leurs entités, associations, cardinalités, règles transversales et points d'arbitrage.
 

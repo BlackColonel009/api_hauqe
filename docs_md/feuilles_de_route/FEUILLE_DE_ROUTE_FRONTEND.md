@@ -11,7 +11,7 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 26 juillet 2026 — check-up final avant raccordement API ↔ frontend |
+| Dernière mise à jour | 3 août 2026 — collecte, rafraîchissement utilisateur et stabilisation du déploiement |
 
 ## Architecture d'intégration retenue
 
@@ -29,6 +29,21 @@
 La feuille de route a été rapprochée du guide méthodologique complet, des procédures opérationnelles, des fiches de collecte et de contrôle, de la note de cadrage de la Cellule de Veille des Certifications, des documents INFC et SNCC, des deux tableaux de bord ainsi que du document de validation des règles métiers.
 
 Les exigences sont classées selon quatre niveaux afin d'éviter de transformer une proposition non approuvée en règle définitive :
+
+## Mise à jour frontend du 3 août 2026
+
+- le profil permet d'activer, désactiver et paramétrer l'actualisation
+  automatique, tout en conservant le bouton « Actualiser » ;
+- le formulaire Collecte utilise explicitement
+  `window.history.replaceState`, sans collision avec l'historique métier ;
+- « Situation actuelle déclarée » accepte aussi « Expirée » et
+  « Audit initial » ;
+- les justificatifs sélectionnés sont visibles avant envoi avec leur nom,
+  leur taille et une action de retrait ;
+- la configuration de production doit utiliser
+  `apiBaseUrl: window.location.origin` et ne contenir aucune URL locale ;
+- après déploiement d'une nouvelle version statique, effectuer un
+  rechargement forcé du navigateur afin d'écarter l'ancien cache.
 
 - **Prescrit par les procédures et outils HAUQE** : à intégrer dans la conception fonctionnelle ;
 - **Documenté mais paramétrable** : à implémenter sous forme de référentiel ou de règle versionnée ;

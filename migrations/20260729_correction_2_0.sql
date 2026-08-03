@@ -14,7 +14,8 @@ BEGIN
         CHECK (
             situation_declaree IS NULL OR situation_declaree IN (
                 'PRESENTE','ABSENTE','AUDIT_SURVEILLANCE_1',
-                'AUDIT_SURVEILLANCE_2','AUDIT_SURVEILLANCE_3','RENOUVELLEMENT'
+                'AUDIT_SURVEILLANCE_2','AUDIT_SURVEILLANCE_3','RENOUVELLEMENT',
+                'EXPIREE','AUDIT_INITIAL'
             )
         );
     END IF;
