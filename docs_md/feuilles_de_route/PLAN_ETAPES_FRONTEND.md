@@ -1,6 +1,6 @@
 # Plan de raccordement HAUQE Certif
 
-**Dernière consolidation :** 3 août 2026
+**Dernière consolidation :** 6 août 2026
 
 ## Stabilisation récente
 
@@ -10,6 +10,14 @@
 - retour visuel immédiat des justificatifs sélectionnés ;
 - déploiement conditionné à l'application des migrations jusqu'à la tête
   Alembic indiquée dans la feuille d'hébergement.
+- avatar de profil repris sur l'écran de verrouillage avec repli vers les
+  initiales.
+
+## Prochaine étape hors application
+
+Préparer le squelette Word imprimable du guide global d'utilisation, avec
+page de garde, styles, sommaire, chapitres et emplacements de captures. Le
+plan détaillé se trouve dans `PLAN_GUIDE_UTILISATION_GLOBAL.md`.
 
 | Étape | Module | État |
 |---:|---|---|

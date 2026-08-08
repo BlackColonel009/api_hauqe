@@ -17,6 +17,8 @@ import { APP_CONFIG } from "./config.js?v=20260731-1";
 
 const SESSION_TOKEN_KEY = "hauqe-access-token";
 const PERSISTENT_TOKEN_KEY = "hauqe-access-token-persistent";
+const CURRENT_USER_CACHE_KEY = "hauqe-current-user-cache";
+const CURRENT_PROFILE_CACHE_KEY = "hauqe-current-profile-cache";
 const AUTH_EVENT = "hauqe:auth-state";
 const LOCK_EVENT = "hauqe:session-locked";
 
@@ -74,6 +76,14 @@ export function hasAccessToken() {
 export function clearAccessToken() {
   try { sessionStorage.removeItem(SESSION_TOKEN_KEY); } catch {}
   try { localStorage.removeItem(PERSISTENT_TOKEN_KEY); } catch {}
+
+  /*
+   * Un profil conservé sans jeton valide ne représente jamais une session.
+   * Le supprimer ici évite qu'une page de connexion renvoie en boucle vers
+   * une route privée après expiration, déconnexion distante ou révocation.
+   */
+  try { sessionStorage.removeItem(CURRENT_USER_CACHE_KEY); } catch {}
+  try { sessionStorage.removeItem(CURRENT_PROFILE_CACHE_KEY); } catch {}
 
   window.dispatchEvent(new CustomEvent(AUTH_EVENT, {
     detail: { authenticated: false }

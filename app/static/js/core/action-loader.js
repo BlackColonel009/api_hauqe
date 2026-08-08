@@ -48,6 +48,14 @@ let autoHideTimer = null;
 
 const buttonStates = new WeakMap();
 
+function isAuthenticationInterface() {
+  return (
+    document.body.classList.contains("auth-route-active")
+    || Boolean(document.querySelector("#sessionUnlockForm"))
+      && !document.querySelector("#sessionLock")?.hidden
+  );
+}
+
 function nextPaint() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
@@ -279,6 +287,14 @@ function findInteractiveElement(target) {
 function shouldIgnoreAction(element) {
   if (!(element instanceof Element)) return true;
 
+  /*
+   * Les formulaires de connexion, MFA, mot de passe oublié et déverrouillage
+   * de session gèrent déjà précisément leurs champs et leur bouton. Le
+   * chargeur automatique ne doit jamais restaurer un ancien état `disabled`
+   * après une erreur d'identifiant ou de code privé.
+   */
+  if (isAuthenticationInterface()) return true;
+
   if (element.closest([
     "#menuToggle",
     "#sidebarBackdrop",
@@ -386,6 +402,7 @@ function beginAutomaticRequest(input, init = {}) {
 
   if (
     manualDepth > 0
+    || isAuthenticationInterface()
     || !url.includes("/api/")
     || isBackgroundApi(url, method)
     || !recentAction

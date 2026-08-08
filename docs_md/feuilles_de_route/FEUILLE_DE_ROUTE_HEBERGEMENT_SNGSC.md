@@ -6,8 +6,14 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 3 août 2026  
+**Dernière mise à jour :** 6 août 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
+
+> **Point de reprise du 6 août 2026 :** après un pull incluant les correctifs
+> récents, exécuter `alembic upgrade head`, confirmer
+> `c4d5e6f7a8b9 (head)`, puis redémarrer `sngsc`. Les changements de formulaire
+> Collecte et d'avatar de verrouillage sont frontend ; aucune commande de seed
+> supplémentaire n'est imposée pour eux.
 
 ## 0. Procédure canonique sans oubli
 
@@ -64,6 +70,10 @@ HAUQE_SMTP_USER=ADRESSE_EXPEDITRICE
 HAUQE_SMTP_PASSWORD=MOT_DE_PASSE_APPLICATION
 HAUQE_SMTP_FROM=ADRESSE_EXPEDITRICE
 HAUQE_SMTP_USE_TLS=true
+# Coordonnées affichées dans la signature institutionnelle des courriels
+HAUQE_CONTACT_SERVICE=Cellule_de_veille_HAUQE
+HAUQE_CONTACT_EMAIL=contact@votre-domaine.tg
+HAUQE_CONTACT_PHONE=+228_XX_XX_XX_XX
 AUTH_SESSION_MINUTES=480
 AUTH_IDLE_TIMEOUT_MINUTES=30
 AUTH_MAX_FAILED_ATTEMPTS=5
@@ -74,6 +84,10 @@ AUTH_LOCKOUT_MINUTES=15
 Les noms `MAIL_SERVER`, `MAIL_USERNAME`, `MAIL_PASSWORD` et `MAIL_FROM` ne
 sont pas ceux lus par la configuration actuelle. En production, utiliser les
 variables `HAUQE_SMTP_*` ci-dessus.
+
+Les variables `HAUQE_CONTACT_*` sont facultatives, mais recommandées : elles
+alimentent la signature officielle ajoutée à chaque courriel. Renseigner des
+coordonnées institutionnelles, jamais les coordonnées privées d'un agent.
 
 Génération des clés :
 

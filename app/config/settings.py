@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     hauqe_smtp_from: str | None = None
     hauqe_smtp_use_tls: bool = True
 
+    # Coordonnées institutionnelles ajoutées à la signature des courriels.
+    # Elles restent facultatives afin de ne jamais afficher de valeur fictive.
+    hauqe_contact_service: str | None = None
+    hauqe_contact_email: str | None = None
+    hauqe_contact_phone: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

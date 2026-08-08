@@ -11,7 +11,7 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 3 août 2026 — collecte, rafraîchissement utilisateur et stabilisation du déploiement |
+| Dernière mise à jour | 6 août 2026 — collecte, session verrouillée et préparation du guide utilisateur |
 
 ## Architecture d'intégration retenue
 
@@ -30,7 +30,7 @@ La feuille de route a été rapprochée du guide méthodologique complet, des pr
 
 Les exigences sont classées selon quatre niveaux afin d'éviter de transformer une proposition non approuvée en règle définitive :
 
-## Mise à jour frontend du 3 août 2026
+## Mise à jour frontend du 3 au 6 août 2026
 
 - le profil permet d'activer, désactiver et paramétrer l'actualisation
   automatique, tout en conservant le bouton « Actualiser » ;
@@ -46,6 +46,19 @@ Les exigences sont classées selon quatre niveaux afin d'éviter de transformer 
   `apiBaseUrl: window.location.origin` et ne contenir aucune URL locale ;
 - après déploiement d'une nouvelle version statique, effectuer un
   rechargement forcé du navigateur afin d'écarter l'ancien cache.
+
+### Point de reprise documentaire
+
+La conception fonctionnelle des pages est suffisamment avancée pour démarrer
+le **guide global d'utilisation**. Le guide sera un document Word A4,
+professionnel et imprimable, avec des cadres réservés aux captures d'écran
+que l'équipe HAUQE insérera elle-même. Le plan détaillé, les chapitres et les
+conventions de légende sont consignés dans
+`PLAN_GUIDE_UTILISATION_GLOBAL.md`.
+
+Prochaine action dans une nouvelle discussion : produire le squelette `.docx`
+(page de garde, styles, en-têtes, pieds de page, table des matières, chapitres
+et emplacements de captures), sans intégrer de captures à ce stade.
 
 - **Prescrit par les procédures et outils HAUQE** : à intégrer dans la conception fonctionnelle ;
 - **Documenté mais paramétrable** : à implémenter sous forme de référentiel ou de règle versionnée ;
@@ -3595,3 +3608,36 @@ Correctifs :
 - aucun changement d’API ni de structure HTML requis ;
 - validation `node --check` réussie ;
 - recette navigateur à confirmer.
+
+## Correctif — boucle de connexion après inactivité ou déconnexion
+
+- cause : un `401` ou une révocation supprimait le Bearer token sans supprimer
+  les caches de l'utilisateur et du profil ;
+- la page `#/connexion` redirigeait alors vers le tableau de bord dès qu'un
+  cache existait, même sans token ; le routeur revenait aussitôt à la connexion,
+  provoquant une boucle de navigation et le scintillement des icônes ;
+- correctif : `clearAccessToken()` efface désormais également les caches
+  `hauqe-current-user-cache` et `hauqe-current-profile-cache` ;
+- la redirection automatique depuis la connexion est conditionnée à la
+  présence d'un token, puis à la validation de l'utilisateur côté API ;
+- validation syntaxique JavaScript réussie avec le runtime Node du projet ;
+- recette navigateur à exécuter : laisser expirer/révoquer une session, revenir
+  à la connexion puis vérifier que les champs restent immédiatement utilisables.
+
+## Correctif — formulaire de connexion bloqué après un échec
+
+- cause : le chargeur automatique détectait la requête de connexion alors que
+  le formulaire d'authentification gérait déjà lui-même son état `disabled` ;
+- après une erreur, il restaurait le bouton « Se connecter » dans l'état
+  désactivé mémorisé au départ de la requête ;
+- correctif : les interfaces d'authentification (`connexion`, MFA et mot de
+  passe oublié) sont exclues du chargeur automatique, y compris lorsqu'une
+  action précédente est encore mémorisée ;
+- validation syntaxique JavaScript réussie ;
+- recette navigateur à exécuter : tester un mot de passe erroné, un token
+  expiré et un code MFA erroné, puis vérifier qu'une nouvelle saisie est
+  immédiatement possible sans actualiser la page.
+
+Le même correctif couvre également `#sessionUnlockForm` lorsque le modal de
+session sécurisée est affiché : un code privé erroné ne doit plus laisser le
+bouton de déverrouillage désactivé.

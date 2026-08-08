@@ -324,14 +324,11 @@
     try {
       const auth = await import("/static/js/core/auth.js");
 
-      if (auth.getCachedCurrentUser()) {
-        location.hash = "#/dashboard";
-        return;
-      }
+      const api = await import("/static/js/core/api.js");
 
-      if (
-        (await import("/static/js/core/api.js")).hasAccessToken()
-      ) {
+      // Un cache de profil seul ne constitue pas une session. La redirection
+      // est autorisée uniquement après vérification d'un jeton encore présent.
+      if (api.hasAccessToken()) {
         const user = await auth.getCurrentUser({ force: true });
         if (user) {
           location.hash = "#/dashboard";

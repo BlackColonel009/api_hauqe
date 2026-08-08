@@ -2,7 +2,7 @@
 
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
-**Dernière mise à jour :** 2026-08-03  
+**Dernière mise à jour :** 2026-08-06
 **Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
@@ -25,7 +25,7 @@ Ce document est la **source de reprise rapide du backend**.
 **Ne jamais repartir de zéro dans une nouvelle discussion.**  
 Le travail doit reprendre à partir de la dernière section « Prochaine étape ».
 
-## Mise à jour consolidée du 3 août 2026
+## Mise à jour consolidée du 3 au 6 août 2026
 
 - préférences utilisateur de rafraîchissement automatique configurables :
   activation, intervalle et actualisation au retour sur la page ;
@@ -42,6 +42,18 @@ Le travail doit reprendre à partir de la dernière section « Prochaine étape 
 - la feuille d'hébergement canonique contient désormais la chaîne complète
   des migrations et l'ordre de tous les scripts de seed ;
 - tête Alembic attendue : `c4d5e6f7a8b9`.
+- l'écran de verrouillage de session consomme désormais la même photo de
+  profil que la navbar, avec retour sûr aux initiales en cas d'absence ou
+  d'échec de chargement ; aucune route ni migration supplémentaire n'est
+  nécessaire.
+
+### Point de reprise
+
+Le prochain chantier est documentaire : création du squelette modifiable du
+guide global d'utilisation. Aucun changement backend n'est requis avant cette
+étape. Pour une mise à jour du serveur incluant les correctifs du 3 au 6 août,
+appliquer les migrations jusqu'à `c4d5e6f7a8b9`, puis suivre la procédure
+canonique de la feuille d'hébergement.
 
 ---
 
@@ -4414,6 +4426,9 @@ HAUQE_SMTP_USER
 HAUQE_SMTP_PASSWORD
 HAUQE_SMTP_FROM
 HAUQE_SMTP_USE_TLS
+HAUQE_CONTACT_SERVICE
+HAUQE_CONTACT_EMAIL
+HAUQE_CONTACT_PHONE
 ```
 
 ## `#/veille`
