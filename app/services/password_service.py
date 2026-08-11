@@ -49,7 +49,6 @@ from app.schemas.account import (
     PasswordForgotRequest,
     PasswordResetRequest,
 )
-from app.services.account_service import AccountService
 from app.services.auth_service import AuthContext
 from app.utils.account_security import (
     generate_opaque_token,
@@ -227,20 +226,15 @@ class PasswordService:
             timezone.utc
         )
 
-        # Le compte conserve la session courante mais révoque les autres.
-        current = await AccountService.resolve_current_session(
-            db,
-            request=request,
-            actor=actor,
-        )
+        # Un changement de mot de passe clôture toutes les sessions, y compris
+        # celle qui a déclenché l'action. L'utilisateur doit se reconnecter
+        # avec le nouveau mot de passe.
         now = datetime.now(timezone.utc)
         revoked = 0
         for session in await AccountRepository.active_user_sessions(
             db,
             user.id,
         ):
-            if session.id == current.id:
-                continue
             session.revoquee_at = now
             revoked += 1
 
@@ -251,8 +245,9 @@ class PasswordService:
             subject="Votre mot de passe HAUQE Certif a été modifié",
             body=(
                 "Votre mot de passe a été modifié depuis votre espace "
-                "Mon compte. Si vous n'êtes pas à l'origine de cette action, "
-                "contactez immédiatement l'administrateur HAUQE."
+                "Mon compte. Toutes vos sessions ont été déconnectées par "
+                "mesure de sécurité. Si vous n'êtes pas à l'origine de cette "
+                "action, contactez immédiatement l'administrateur HAUQE."
             ),
         )
 
@@ -265,13 +260,14 @@ class PasswordService:
             ressource_type="utilisateur",
             ressource_id=user.id,
             adresse_ip=client_ip(request),
-            valeurs_apres={"other_sessions_revoked": revoked},
+            valeurs_apres={"sessions_revoked": revoked},
         )
 
         await db.commit()
         return {
-            "detail": "Mot de passe modifié.",
-            "other_sessions_revoked": revoked,
+            "detail": "Mot de passe modifié. Reconnexion requise.",
+            "sessions_revoked": revoked,
+            "reauthentication_required": True,
         }
 
     @staticmethod

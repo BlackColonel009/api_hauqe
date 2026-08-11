@@ -11,7 +11,7 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 6 août 2026 — collecte, session verrouillée et préparation du guide utilisateur |
+| Dernière mise à jour | 11 août 2026 — sécurité de connexion, session verrouillée et changement de mot de passe |
 
 ## Architecture d'intégration retenue
 
@@ -47,18 +47,16 @@ Les exigences sont classées selon quatre niveaux afin d'éviter de transformer 
 - après déploiement d'une nouvelle version statique, effectuer un
   rechargement forcé du navigateur afin d'écarter l'ancien cache.
 
-### Point de reprise documentaire
+### Point de reprise
 
-La conception fonctionnelle des pages est suffisamment avancée pour démarrer
-le **guide global d'utilisation**. Le guide sera un document Word A4,
-professionnel et imprimable, avec des cadres réservés aux captures d'écran
-que l'équipe HAUQE insérera elle-même. Le plan détaillé, les chapitres et les
-conventions de légende sont consignés dans
-`PLAN_GUIDE_UTILISATION_GLOBAL.md`.
-
-Prochaine action dans une nouvelle discussion : produire le squelette `.docx`
-(page de garde, styles, en-têtes, pieds de page, table des matières, chapitres
-et emplacements de captures), sans intégrer de captures à ce stade.
+Le guide opérationnel V2 est disponible dans
+`output/docx/Guide_global_utilisation_SNGSC_HAUQE_v2.docx`, avec des cadres
+de captures à compléter. Les derniers correctifs frontend sécurisent le retour
+à la connexion après expiration, un échec MFA ou un code de session erroné,
+et imposent une reconnexion après changement de mot de passe. La prochaine
+action est de poursuivre les corrections fonctionnelles demandées par la
+recette utilisateur, puis de tester ces parcours après un rechargement forcé
+du navigateur.
 
 - **Prescrit par les procédures et outils HAUQE** : à intégrer dans la conception fonctionnelle ;
 - **Documenté mais paramétrable** : à implémenter sous forme de référentiel ou de règle versionnée ;
@@ -3641,3 +3639,14 @@ Correctifs :
 Le même correctif couvre également `#sessionUnlockForm` lorsque le modal de
 session sécurisée est affiché : un code privé erroné ne doit plus laisser le
 bouton de déverrouillage désactivé.
+
+## Correctif — changement de mot de passe
+
+- après confirmation de `POST /api/v1/me/password/change`, le frontend efface
+  immédiatement le token et les caches locaux ;
+- un message « Mot de passe modifié. Reconnexion requise. » est affiché avant
+  le retour vers `#/connexion` ;
+- les éventuels réglages de verrouillage renseignés en même temps ne sont pas
+  envoyés après le changement, car la session est déjà invalidée ; ils pourront
+  être enregistrés après la nouvelle connexion ;
+- validation syntaxique JavaScript réussie.

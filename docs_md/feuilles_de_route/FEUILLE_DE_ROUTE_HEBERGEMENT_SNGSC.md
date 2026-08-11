@@ -6,14 +6,16 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 6 août 2026
+**Dernière mise à jour :** 11 août 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
 
-> **Point de reprise du 6 août 2026 :** après un pull incluant les correctifs
-> récents, exécuter `alembic upgrade head`, confirmer
-> `c4d5e6f7a8b9 (head)`, puis redémarrer `sngsc`. Les changements de formulaire
-> Collecte et d'avatar de verrouillage sont frontend ; aucune commande de seed
-> supplémentaire n'est imposée pour eux.
+> **Point de reprise du 11 août 2026 :** les correctifs d'authentification,
+> d'affichage du mail HAUQE et de changement de mot de passe ne requièrent
+> aucune migration ni seed. Après le pull, redémarrer `sngsc` afin de charger
+> le backend, puis forcer le rechargement du navigateur pour les scripts
+> frontend. Conserver `alembic upgrade head` dans la procédure standard : la
+> tête connue reste `c4d5e6f7a8b9` sauf migration plus récente présente dans le
+> dépôt au moment du déploiement.
 
 ## 0. Procédure canonique sans oubli
 

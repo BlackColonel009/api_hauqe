@@ -1,6 +1,6 @@
 # Répertoire unique des feuilles de route HAUQE Certif
 
-**Dernière consolidation :** 8 août 2026
+**Dernière consolidation :** 11 août 2026
 
 Ce répertoire constitue le point d'entrée unique de la continuité du projet.
 
@@ -31,7 +31,7 @@ Toute modification qui touche une table, une permission, une variable
 d'environnement, une tâche serveur ou un parcours frontend doit être reportée
 dans les feuilles Backend, Frontend et Hébergement avant mise en production.
 
-## Point de reprise - 8 août 2026
+## Point de reprise - 11 août 2026
 
 Les correctifs Collecte, situations déclarées, préférences de rafraîchissement
 et affichage de l'avatar sur l'écran de verrouillage sont réalisés dans le
@@ -42,7 +42,21 @@ d'écran. La prochaine action documentaire est sa relecture métier et
 l'insertion des captures nettoyées par la HAUQE, selon
 `PLAN_GUIDE_UTILISATION_GLOBAL.md`.
 
-Le correctif de boucle de connexion après expiration ou révocation de session
-est réalisé localement : les caches utilisateur sont purgés avec le token et
-la redirection automatique exige un token valide. Une recette navigateur reste
-à faire avant déploiement.
+Les correctifs de sécurité d'authentification sont réalisés localement et
+documentés dans les feuilles Frontend et Backend :
+
+- purge des caches utilisateur/profil avec le token afin d'éviter la boucle
+  connexion → tableau de bord → connexion après expiration ou révocation ;
+- exclusion des formulaires de connexion, MFA, mot de passe oublié et session
+  sécurisée du chargeur automatique afin qu'un échec ne bloque plus le bouton ;
+- changement de mot de passe : toutes les sessions, y compris la session
+  courante, sont révoquées ; l'utilisateur est renvoyé vers la connexion ;
+- notification interne et courriel de sécurité HAUQE générés sans jamais
+  transmettre le mot de passe en clair ;
+- signature de courriel institutionnelle configurable via `HAUQE_CONTACT_*`
+  dans `.env`.
+
+Recette à exécuter avant déploiement : tester un mot de passe erroné, un code
+MFA erroné, un code de session sécurisée erroné, l'expiration d'un token et un
+changement de mot de passe suivi d'une reconnexion avec le nouveau mot de
+passe.

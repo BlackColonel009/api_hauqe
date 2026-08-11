@@ -2,7 +2,7 @@
 
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
-**Dernière mise à jour :** 2026-08-06
+**Dernière mise à jour :** 2026-08-11
 **Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
@@ -49,11 +49,11 @@ Le travail doit reprendre à partir de la dernière section « Prochaine étape 
 
 ### Point de reprise
 
-Le prochain chantier est documentaire : création du squelette modifiable du
-guide global d'utilisation. Aucun changement backend n'est requis avant cette
-étape. Pour une mise à jour du serveur incluant les correctifs du 3 au 6 août,
-appliquer les migrations jusqu'à `c4d5e6f7a8b9`, puis suivre la procédure
-canonique de la feuille d'hébergement.
+Les derniers correctifs backend concernent la sécurité des sessions et la
+signature institutionnelle des courriels. Aucune migration ni seed n'est
+requis. Pour le déploiement, suivre la feuille d'hébergement, redémarrer le
+worker de notifications et `sngsc`, puis vérifier l'envoi d'un courriel de
+sécurité et la reconnexion après changement de mot de passe.
 
 ---
 
@@ -6058,6 +6058,20 @@ de réécrire l'écran de contrôle.
 Aucune nouvelle table.
 Aucune migration.
 Aucune nouvelle permission.
+
+## Correctif — changement de mot de passe et clôture de session
+
+- le mot de passe est toujours haché avec Argon2 ; il n'est jamais conservé
+  ni envoyé en clair par courriel ;
+- après un changement depuis `POST /api/v1/me/password/change`, toutes les
+  sessions actives sont désormais révoquées, y compris la session courante ;
+- la réponse indique `reauthentication_required: true` et la journalisation
+  enregistre le nombre total de sessions révoquées ;
+- une notification interne et un courriel de sécurité sont mis en file ; le
+  message confirme le changement, signale la déconnexion de sécurité et invite
+  l'utilisateur à contacter l'administrateur s'il n'est pas à l'origine de
+  l'action ;
+- aucune migration et aucune permission supplémentaire ne sont nécessaires.
 
 ## Mise à jour sécurité du compte — MFA TOTP (31/07/2026)
 

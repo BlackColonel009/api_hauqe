@@ -968,9 +968,11 @@ function securityLockFieldsChanged() {
       $("#newPassword").value = "";
       $("#confirmPassword").value = "";
 
-      if (!quiet) {
-        toast("Mot de passe modifié");
-      }
+      api.clearAccessToken();
+      toast("Mot de passe modifié. Reconnexion requise.");
+      window.setTimeout(() => {
+        location.hash = "#/connexion";
+      }, 700);
       return true;
     } catch (error) {
       toast(api.describeApiError(error).message, true);
@@ -1089,6 +1091,9 @@ async function saveSecurityFromTop() {
     if (wantsPasswordChange) {
       const passwordOk = await changePassword({ quiet: true });
       if (!passwordOk) return;
+      // La session vient d'être révoquée : les autres réglages seront
+      // enregistrés après la nouvelle connexion.
+      return;
     }
 
     if (wantsLockChange) {
