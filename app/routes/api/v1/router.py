@@ -57,6 +57,7 @@ from app.routes.api.v1.candidats_doublon import (
 from app.routes.api.v1.organismes_certifications import (
     router as organismes_certifications_router,
 )
+from app.routes.api.v1.hauqe_identifiants import router as hauqe_identifiants_router
 from app.routes.api.v1.documents import router as documents_router
 
 # ============================================================
@@ -261,6 +262,10 @@ api_router.include_router(
 
 api_router.include_router(
     organismes_certifications_router
+)
+
+api_router.include_router(
+    hauqe_identifiants_router
 )
 
 api_router.include_router(

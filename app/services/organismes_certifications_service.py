@@ -80,6 +80,7 @@ from app.schemas.organismes_certifications import (
     RenouvellementUpdateRequest,
 )
 from app.services.auth_service import AuthContext
+from app.services.hauqe_identifier_service import HauqeIdentifierService
 
 
 # ============================================================
@@ -486,8 +487,12 @@ class OrganismeService:
         if payload.zone_id and not await OrganismeRepository.zone_exists(db, payload.zone_id):
             raise HTTPException(status_code=422, detail="Zone administrative introuvable.")
 
+        identifier = await HauqeIdentifierService.ensure_available(
+            db, payload.identifiant_national, exclude_type="ORGANISME"
+        )
+
         item = Organisme(
-            identifiant_national=clean_text(payload.identifiant_national),
+            identifiant_national=identifier,
             nom_officiel=payload.nom_officiel.strip(),
             sigle=clean_text(payload.sigle),
             type_organisme=clean_text(payload.type_organisme),
@@ -526,6 +531,14 @@ class OrganismeService:
     ) -> OrganismeResponse:
         item = await OrganismeService.require(db, organisme_id)
         changes = payload.model_dump(exclude_unset=True)
+
+        if "identifiant_national" in changes:
+            changes["identifiant_national"] = await HauqeIdentifierService.ensure_available(
+                db,
+                changes["identifiant_national"],
+                exclude_type="ORGANISME",
+                exclude_id=item.id,
+            )
 
         if changes.get("zone_id") and not await OrganismeRepository.zone_exists(db, changes["zone_id"]):
             raise HTTPException(status_code=422, detail="Zone administrative introuvable.")
@@ -842,6 +855,10 @@ class CertificationService:
         actor: AuthContext, request: Request,
     ) -> CertificationResponse:
         identifier = payload.identifiant_national.strip().upper()
+
+        await HauqeIdentifierService.ensure_available(
+            db, identifier, exclude_type="CERTIFICATION"
+        )
 
         if await CertificationRepository.get_by_identifiant(db, identifier):
             raise HTTPException(status_code=409, detail="Une certification possède déjà cet identifiant national.")

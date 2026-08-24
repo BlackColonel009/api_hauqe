@@ -90,6 +90,10 @@
     `;
   }
 
+  function identifierInput() {
+    return `<div class="form-field"><label>Identifiant national HAUQE</label><input name="identifiant_national" value="${escapeHtml(state.identifiant_national || "")}"><small class="field-help">Identifiant unique dans les registres HAUQE.</small>${!editMode ? `<button class="inline-suggestion" id="suggestOrganismId" type="button">${icon("sparkles")}Proposer un identifiant HAUQE</button>` : ""}</div><div class="dashboard-api-state" id="organismIdentifierState" hidden></div>`;
+  }
+
   function select(name, label, values, {
     required = false,
     current = state[name] || "",
@@ -150,7 +154,7 @@
         <div class="form-grid">
           ${input("nom_officiel", "Nom officiel", { required: true })}
           ${input("sigle", "Sigle")}
-          ${input("identifiant_national", "Identifiant national HAUQE")}
+          ${identifierInput()}
           ${input("numero_enregistrement", "Numéro d’enregistrement")}
           ${input("type_organisme", "Type d’organisme")}
           ${select(
@@ -387,6 +391,34 @@
   };
 
   function bindStepContent() {
+    async function checkOrganismIdentifier() {
+      const field = document.querySelector('[name="identifiant_national"]');
+      const box = $("#organismIdentifierState");
+      const value = field?.value.trim();
+      if (!value) return true;
+      const result = await apiGet(`/api/v1/identifiants-hauqe/verifier?valeur=${encodeURIComponent(value)}${editMode ? `&exclude_type=ORGANISME&exclude_id=${encodeURIComponent(organismeId)}` : ""}`);
+      box.hidden = false;
+      if (!result.disponible) {
+        box.className = "dashboard-api-state error";
+        box.innerHTML = `${icon("triangle-alert")}<div><strong>Identifiant déjà utilisé</strong><span>Il est déjà attribué à une ${escapeHtml(result.doublon?.libelle || "ressource")}. Modifiez l’identifiant.</span></div>`;
+        refreshIcons();
+        return false;
+      }
+      box.className = "dashboard-api-state";
+      box.innerHTML = `${icon("circle-check")}<div><strong>Identifiant disponible</strong><span>Il peut être utilisé pour cet organisme.</span></div>`;
+      refreshIcons();
+      return true;
+    }
+
+    $("#suggestOrganismId")?.addEventListener("click", async () => {
+      try {
+        const result = await apiGet("/api/v1/identifiants-hauqe/proposer?type=ORGANISME");
+        document.querySelector('[name="identifiant_national"]').value = result.identifiant;
+        state.identifiant_national = result.identifiant;
+        await checkOrganismIdentifier();
+      } catch (error) { showState(error?.message || "Proposition d’identifiant impossible.", { error: true }); }
+    });
+    document.querySelector('[name="identifiant_national"]')?.addEventListener("blur", () => checkOrganismIdentifier().catch((error) => showState(error?.message || "Vérification de l’identifiant impossible.", { error: true })));
     $("#addAcc")?.addEventListener("click", () => {
       capture();
       state.accreditations.push({});

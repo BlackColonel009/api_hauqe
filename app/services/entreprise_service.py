@@ -36,6 +36,7 @@ from app.audit.service import write_audit_event
 from app.services.legal_identifiers_policy_service import (
     legal_identifiers_collection_enabled,
 )
+from app.services.hauqe_identifier_service import HauqeIdentifierService
 from app.models.entreprise import Entreprise
 from app.repositories.entreprise_repository import (
     EntrepriseRepository,
@@ -304,6 +305,10 @@ class EntrepriseService:
             payload.identifiant_national
             .strip()
             .upper()
+        )
+
+        await HauqeIdentifierService.ensure_available(
+            db, identifiant, exclude_type="ENTREPRISE"
         )
 
         validate_minimum_company_data(

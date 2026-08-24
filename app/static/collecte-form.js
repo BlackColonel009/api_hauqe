@@ -1157,16 +1157,64 @@
     });
   }
 
+  function applySelectedCampaign(selectedCampaign, campaignMission = null) {
+    campaign = selectedCampaign;
+    mission = null;
+    missionId = null;
+    fiche = null;
+    campagneId = selectedCampaign.id || state.campaign_id;
+
+    Object.assign(state, {
+      campaign_id: campagneId,
+      mission_code: selectedCampaign.code || "",
+      mission_object: selectedCampaign.objet || selectedCampaign.objectif || campaignMission?.objet || selectedCampaign.nom || "",
+      zone_id: campaignMission?.zone_id || "",
+      planned_start: selectedCampaign.date_debut || "",
+      planned_end: selectedCampaign.date_fin || "",
+      priority: campaignMission?.priorite || "",
+    });
+  }
+
+  async function selectExistingCampaign(campaignId) {
+    const [selectedCampaign, missionsResponse] = await Promise.all([
+      apiGet(`/api/v1/campagnes/${encodeURIComponent(campaignId)}`),
+      apiGet(`/api/v1/campagnes/${encodeURIComponent(campaignId)}/missions?limit=200`),
+    ]);
+    const missions = Array.isArray(missionsResponse) ? missionsResponse : (missionsResponse.items || []);
+    const campaignMission = missions.find((item) => item.zone_id || item.priorite || item.objet) || null;
+    applySelectedCampaign(selectedCampaign, campaignMission);
+    render(false);
+    showState("Informations de la campagne reprises. Complétez ce premier formulaire avant de poursuivre.");
+  }
+
   function bindStepContent() {
     const campaignSelect = document.querySelector(
       '[name="campaign_id"]'
     );
 
     if (campaignSelect && !editMode) {
-      campaignSelect.addEventListener("change", (event) => {
+      campaignSelect.addEventListener("change", async (event) => {
         capture();
         state.campaign_id = event.target.value;
-        render();
+        hideState();
+
+        if (!state.campaign_id || state.campaign_id === "__new__") {
+          mission = null;
+          missionId = null;
+          campagneId = null;
+          render();
+          return;
+        }
+
+        try {
+          await selectExistingCampaign(state.campaign_id);
+        } catch (error) {
+          render();
+          showState(
+            error?.message || "Impossible de charger la mission de cette campagne.",
+            { error: true }
+          );
+        }
       });
     }
 
@@ -1282,8 +1330,8 @@
     refreshIcons();
   }
 
-  function render() {
-    capture();
+  function render(captureCurrent = true) {
+    if (captureCurrent) capture();
 
     $("#collectFormContent").innerHTML =
       renderers[step]();

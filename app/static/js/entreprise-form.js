@@ -118,8 +118,14 @@
     return `<section class="form-field full legal-identifiers-toggle"><div class="legal-identifiers-control"><div><strong>Identifiants juridiques</strong><small>RCCM, NIF et IFU facultatifs.</small></div><label class="legal-identifiers-switch" aria-label="Afficher les identifiants juridiques"><input id="toggleLegalIdentifiers" type="checkbox" ${visible ? "checked" : ""}><i aria-hidden="true"></i><em>${visible ? "Activé" : "Désactivé"}</em></label></div></section>${visible ? `<div class="form-field"><label>Numéro RCCM</label><div class="identifier-wrap"><input name="rccm" id="rccm" value="${escapeHtml(state.company.rccm || "")}"><button type="button" class="btn btn-outline-secondary app-btn" id="checkDuplicate">Vérifier</button></div><small class="field-help">Unicité contrôlée par le serveur lorsqu’il est renseigné.</small></div>${field("nif", "NIF")}${field("ifu", "IFU")}` : ""}`;
   }
 
+  function nationalIdentifierField() {
+    const disabled = state.editing ? "disabled" : "";
+    const action = state.editing ? "" : `<button type="button" class="inline-suggestion" id="suggestCompanyId">${icon("sparkles")}Proposer un identifiant HAUQE</button>`;
+    return `<div class="form-field"><label>Identifiant national${state.editing ? "" : " <b>*</b>"}</label><input name="identifiant_national" value="${escapeHtml(state.company.identifiant_national || "")}" ${disabled} required><small class="field-help">${state.editing ? "L’identifiant national ne peut pas être modifié ici." : "Identifiant métier unique HAUQE/BNEC."}</small>${action}</div><div class="duplicate-result" id="identifierResult" hidden></div>`;
+  }
+
   const views = {
-    1: () => `<article class="panel form-card">${head("Identification de l’entreprise", "L’identifiant national est la référence principale de l’entreprise dans la BNEC.")}<div class="form-grid">${field("identifiant_national", "Identifiant national", { required: !state.editing, disabled: state.editing, help: state.editing ? "L’identifiant national ne peut pas être modifié ici." : "Identifiant métier unique HAUQE/BNEC." })}${field("raison_sociale", "Raison sociale", { required: true })}${field("nom_commercial", "Nom commercial")}${companySelect("forme_juridique", "Forme juridique", ["SARL", "SA", "Entreprise individuelle", "Coopérative", "Association", "Autre"].map((x) => ({ value: x, label: x })))}${legalIdentifiersFields()}${field("date_creation", "Date de création", { type: "date" })}${field("nationalite", "Nationalité")}${field("capital_social", "Capital social", { type: "number", min: 0 })}${field("effectif", "Effectif", { type: "number", min: 0 })}</div><div class="duplicate-result" id="duplicateResult" hidden></div></article>`,
+    1: () => `<article class="panel form-card">${head("Identification de l’entreprise", "L’identifiant national est la référence principale de l’entreprise dans la BNEC.")}<div class="form-grid">${nationalIdentifierField()}${field("raison_sociale", "Raison sociale", { required: true })}${field("nom_commercial", "Nom commercial")}${companySelect("forme_juridique", "Forme juridique", ["SARL", "SA", "Entreprise individuelle", "Coopérative", "Association", "Autre"].map((x) => ({ value: x, label: x })))}${legalIdentifiersFields()}${field("date_creation", "Date de création", { type: "date" })}${field("nationalite", "Nationalité")}${field("capital_social", "Capital social", { type: "number", min: 0 })}${field("effectif", "Effectif", { type: "number", min: 0 })}</div><div class="duplicate-result" id="duplicateResult" hidden></div></article>`,
     2: () => `<article class="panel form-card">${head("Localisation et siège", "Sélectionnez la zone administrative la plus précise disponible.")}<div class="form-grid">${companySelect("zone_siege_id", "Zone administrative du siège", zoneOptions(), { required: true, help: "Région, préfecture, commune ou localité selon le référentiel disponible." })}${field("adresse_siege", "Adresse / localité", { required: true })}${field("site_web", "Site web", { type: "url" })}</div><div class="subresource-head"><div><h3>Sites de l’entreprise</h3><p>Les sites sont enregistrés dans le sous-module Sites entreprise.</p></div></div>${renderSitesEditor()}</article>`,
     3: () => `<article class="panel form-card">${head("Activités, produits et marchés", "L’activité principale alimente les filtres du registre. Les produits/services sont conservés comme offres structurées.")}<div class="form-grid">${companySelect("activite_principale", "Activité principale", sectorOptions(), { required: true })}<div class="form-field full"><label>Secteurs secondaires</label><input name="secteurs_secondaires_text" value="${escapeHtml((state.company.secteurs_secondaires || []).join(", "))}" placeholder="Séparer par des virgules"><small class="field-help">Liste optionnelle.</small></div></div><div class="subresource-head"><div><h3>Produits et services</h3><p>Marchés et destinations sont stockés de manière structurée.</p></div></div>${renderOffersEditor()}</article>`,
     4: () => `<article class="panel form-card">${head("Contacts et coordonnées", "RM-13 : au moins un téléphone ou un courriel est obligatoire pour l’entreprise.")}<div class="form-grid">${field("telephone_principal", "Téléphone principal", { type: "tel" })}${field("email_principal", "Email principal", { type: "email" })}</div><div class="subresource-head"><div><h3>Contacts rattachés</h3><p>Le premier contact peut être marqué principal.</p></div></div>${renderContactsEditor()}</article>`,
@@ -249,8 +255,37 @@
     return task();
   }
 
+  async function checkNationalIdentifier() {
+    const input = document.querySelector('[name="identifiant_national"]');
+    const box = $("#identifierResult");
+    const value = normalizedCode(input?.value);
+    state.company.identifiant_national = input?.value || "";
+    if (!value) return true;
+    const result = await apiGet(`/api/v1/identifiants-hauqe/verifier?valeur=${encodeURIComponent(value)}${state.editing ? `&exclude_type=ENTREPRISE&exclude_id=${encodeURIComponent(state.id)}` : ""}`);
+    box.hidden = false;
+    if (!result.disponible) {
+      box.className = "duplicate-result";
+      box.innerHTML = `${icon("triangle-alert")}<div><strong>Identifiant déjà utilisé</strong><small>Il est déjà attribué à une ${escapeHtml(result.doublon?.libelle || "ressource")}. Modifiez l’identifiant.</small></div>`;
+      refreshIcons();
+      return false;
+    }
+    box.className = "duplicate-result ok";
+    box.innerHTML = `${icon("circle-check")}<div><strong>Identifiant disponible</strong><small>La vérification définitive sera répétée par le serveur.</small></div>`;
+    refreshIcons();
+    return true;
+  }
+
   function bindStep() {
     bindStructured();
+    $("#suggestCompanyId")?.addEventListener("click", async () => {
+      try {
+        const result = await apiGet("/api/v1/identifiants-hauqe/proposer?type=ENTREPRISE");
+        document.querySelector('[name="identifiant_national"]').value = result.identifiant;
+        state.company.identifiant_national = result.identifiant;
+        await checkNationalIdentifier();
+      } catch (error) { showApiState("Proposition impossible", error?.message || "Impossible de proposer un identifiant.", { error: true }); }
+    });
+    document.querySelector('[name="identifiant_national"]')?.addEventListener("blur", () => checkNationalIdentifier().catch((error) => showApiState("Vérification impossible", error?.message || "Impossible de vérifier l’identifiant.", { error: true })));
     $("#checkDuplicate")?.addEventListener("click", (event) => checkDuplicate(event.currentTarget));
     $("#toggleLegalIdentifiers")?.addEventListener("change", (event) => {
       captureCompanyFields();

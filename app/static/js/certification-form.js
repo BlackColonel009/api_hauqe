@@ -33,12 +33,6 @@
     source_donnee: "SAISIE_HAUQE",
   };
 
-  function proposedIdentifier() {
-    const year = new Date().getFullYear();
-    const token = Math.random().toString(36).slice(2, 8).toUpperCase();
-    return `HAUQE-CERT-${year}-${token}`;
-  }
-
   function icon(name) {
     return `<i data-lucide="${name}"></i>`;
   }
@@ -192,6 +186,7 @@
             }
           )}
           ${!editMode ? `<button class="inline-suggestion" id="useSuggestedCertId" type="button" title="Proposition automatique conforme au format HAUQE"><i data-lucide="sparkles"></i>Proposer un identifiant HAUQE</button>` : ""}
+          <div class="dashboard-api-state" id="certIdentifierState" hidden></div>
 
           ${input(
             "numero_certificat",
@@ -535,10 +530,39 @@
       });
     }
 
-    $("#useSuggestedCertId")?.addEventListener("click", () => {
+    async function checkCertificationIdentifier({ announce = true } = {}) {
       const field = document.querySelector('[name="identifiant_national"]');
-      field.value = proposedIdentifier();
-      state.identifiant_national = field.value;
+      const box = $("#certIdentifierState");
+      const value = field?.value.trim();
+      if (!value) return true;
+      const result = await apiGet(`/api/v1/identifiants-hauqe/verifier?valeur=${encodeURIComponent(value)}${editMode ? `&exclude_type=CERTIFICATION&exclude_id=${encodeURIComponent(certificationId)}` : ""}`);
+      box.hidden = false;
+      if (!result.disponible) {
+        box.className = "dashboard-api-state error";
+        box.innerHTML = `${icon("triangle-alert")}<div><strong>Identifiant déjà utilisé</strong><span>Il est déjà attribué à une ${escapeHtml(result.doublon?.libelle || "ressource")}. Modifiez l’identifiant.</span></div>`;
+        refreshIcons();
+        return false;
+      }
+      box.className = "dashboard-api-state";
+      box.innerHTML = `${icon("circle-check")}<div><strong>Identifiant disponible</strong><span>Il peut être utilisé pour cette certification.</span></div>`;
+      refreshIcons();
+      return true;
+    }
+
+    $("#useSuggestedCertId")?.addEventListener("click", async () => {
+      try {
+        const result = await apiGet("/api/v1/identifiants-hauqe/proposer?type=CERTIFICATION");
+        const field = document.querySelector('[name="identifiant_national"]');
+        field.value = result.identifiant;
+        state.identifiant_national = field.value;
+        await checkCertificationIdentifier();
+      } catch (error) {
+        showState(error?.message || "Proposition d’identifiant impossible.", { error: true });
+      }
+    });
+
+    document.querySelector('[name="identifiant_national"]')?.addEventListener("blur", () => {
+      checkCertificationIdentifier().catch((error) => showState(error?.message || "Vérification de l’identifiant impossible.", { error: true }));
     });
 
     $("#precreateNorm")?.addEventListener("click", async () => {
