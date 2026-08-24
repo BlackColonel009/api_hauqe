@@ -303,8 +303,8 @@
         <td>${identity(item)}</td>
         <td>
           <div class="stacked">
-            <strong>${escapeHtml(item.rccm || item.identifiant_national || "—")}</strong>
-            <small>${escapeHtml(item.nif ? `NIF ${item.nif}` : item.identifiant_national || "Identifiant non renseigné")}</small>
+            <strong>${escapeHtml(item.identifiant_national || "—")}</strong>
+            <small>${escapeHtml(item.ifu ? `IFU ${item.ifu}` : "Identifiant national")}</small>
           </div>
         </td>
         <td>

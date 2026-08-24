@@ -33,6 +33,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
+from app.services.legal_identifiers_policy_service import (
+    legal_identifiers_collection_enabled,
+)
 from app.models.entreprise import Entreprise
 from app.repositories.entreprise_repository import (
     EntrepriseRepository,
@@ -424,14 +427,8 @@ class EntrepriseService:
             # Ce statut n'est pas le workflow des fiches de
             # collecte ou des certifications.
             # ------------------------------------------------
-            # RM-12 : absence de RCCM = dossier à régulariser.
-            # Avec RCCM, aucun statut de conformité n'est inventé ici :
-            # la classification dépend des certifications et du scoring.
-            statut=(
-                "EN_ATTENTE_REGULARISATION"
-                if normalized_rccm is None
-                else None
-            ),
+            # La classification dépend des certifications et du scoring.
+            statut=None,
         )
 
         db.add(entreprise)
@@ -563,11 +560,7 @@ class EntrepriseService:
         )
 
         if (entreprise.statut or "").strip().upper() == "INCOMPLET_COLLECTE":
-            changes["statut"] = (
-                "EN_ATTENTE_REGULARISATION"
-                if not normalize_code(changes.get("rccm", entreprise.rccm))
-                else None
-            )
+            changes["statut"] = None
 
         if "rccm" in changes:
             normalized_rccm = normalize_code(changes.get("rccm"))
@@ -667,11 +660,7 @@ class EntrepriseService:
                 value,
             )
 
-        if not entreprise.rccm:
-            entreprise.statut = "EN_ATTENTE_REGULARISATION"
-        elif (entreprise.statut or "").strip().upper() == "EN_ATTENTE_REGULARISATION":
-            # On retire uniquement le statut administratif lié au RCCM.
-            # Le statut de conformité sera calculé par le domaine concerné.
+        if (entreprise.statut or "").strip().upper() == "EN_ATTENTE_REGULARISATION":
             entreprise.statut = None
 
         await write_audit_event(
@@ -855,11 +844,7 @@ class EntrepriseService:
 
         previous_status = entreprise.statut
 
-        entreprise.statut = (
-            "EN_ATTENTE_REGULARISATION"
-            if not entreprise.rccm
-            else None
-        )
+        entreprise.statut = None
 
         # ----------------------------------------------------
         # Traçabilité obligatoire du désarchivage.
@@ -924,6 +909,9 @@ class EntrepriseService:
             ],
             sectors=sectors,
             statuses=statuses,
+            legal_identifiers_collection_enabled=(
+                await legal_identifiers_collection_enabled(db)
+            ),
         )
 
 
@@ -1078,35 +1066,20 @@ class EntrepriseService:
             quoting=csv.QUOTE_MINIMAL,
         )
 
-        writer.writerow(
-            [
-                "Identifiant national",
-                "Raison sociale",
-                "Nom commercial",
-                "RCCM",
-                "NIF",
-                "IFU",
-                "Zone du siège",
-                "Activité principale",
-                "Certifications",
-                "Prochaine expiration",
-                "Score classification",
-                "Classe",
-                "Statut",
-            ]
-        )
+        include_legal_identifiers = await legal_identifiers_collection_enabled(db)
+        headers = ["Identifiant national", "Raison sociale", "Nom commercial"]
+        if include_legal_identifiers:
+            headers.extend(["RCCM", "NIF"])
+        headers.extend(["IFU", "Zone du siège", "Activité principale", "Certifications", "Prochaine expiration", "Score classification", "Classe", "Statut"])
+        writer.writerow(headers)
 
         for row in rows:
             item = row.Entreprise
-            writer.writerow(
-                [
-                    item.identifiant_national,
-                    item.raison_sociale or "",
-                    item.nom_commercial or "",
-                    item.rccm or "",
-                    item.nif or "",
-                    item.ifu or "",
-                    row.zone_nom or "",
+            values = [item.identifiant_national, item.raison_sociale or "", item.nom_commercial or ""]
+            if include_legal_identifiers:
+                values.extend([item.rccm or "", item.nif or ""])
+            values.extend([
+                    item.ifu or "", row.zone_nom or "",
                     item.activite_principale or "",
                     int(row.certifications_count or 0),
                     (
@@ -1121,8 +1094,8 @@ class EntrepriseService:
                     ),
                     row.classification_classe or "",
                     item.statut or "",
-                ]
-            )
+                ])
+            writer.writerow(values)
 
         await write_audit_event(
             db,
@@ -1210,8 +1183,9 @@ class EntrepriseService:
         writer.writerow(["Identifiant national", entreprise.identifiant_national])
         writer.writerow(["Raison sociale", entreprise.raison_sociale or ""])
         writer.writerow(["Nom commercial", entreprise.nom_commercial or ""])
-        writer.writerow(["RCCM", entreprise.rccm or ""])
-        writer.writerow(["NIF", entreprise.nif or ""])
+        if await legal_identifiers_collection_enabled(db):
+            writer.writerow(["RCCM", entreprise.rccm or ""])
+            writer.writerow(["NIF", entreprise.nif or ""])
         writer.writerow(["IFU", entreprise.ifu or ""])
         writer.writerow(["Forme juridique", entreprise.forme_juridique or ""])
         writer.writerow(["Date création", entreprise.date_creation.isoformat() if entreprise.date_creation else ""])
@@ -1291,4 +1265,3 @@ class EntrepriseService:
         await db.commit()
 
         return "\ufeff" + buffer.getvalue()
-

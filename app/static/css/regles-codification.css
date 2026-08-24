@@ -1195,6 +1195,13 @@
   line-height:1.45;
 }
 
+.fuccs-prefill-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:7px;
+}
+
 .historical-template-hero{
   display:grid;
   grid-template-columns:48px minmax(0,1fr);
@@ -1326,6 +1333,11 @@
   }
 
   .fuccs-historical-prefill .app-btn{
+    grid-column:1/-1;
+    justify-self:start;
+  }
+
+  .fuccs-prefill-actions{
     grid-column:1/-1;
     justify-self:start;
   }

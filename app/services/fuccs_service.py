@@ -181,6 +181,24 @@ FUCCS_HISTORICAL_24_TEMPLATE = [
     },
 ]
 
+# Variante destinée à la HAUQE lorsque les identifiants juridiques ne sont
+# pas collectés. Les rubriques et les autres critères restent identiques au
+# préremplissage historique afin de conserver une base comparable.
+FUCCS_HISTORICAL_22_NO_LEGAL_IDENTIFIERS_TEMPLATE = [
+    {
+        **rubric,
+        "criteres": [
+            criterion
+            for criterion in rubric["criteres"]
+            if criterion[0] not in {
+                "RCCM valide et vérifiable",
+                "NIF valide et cohérent",
+            }
+        ],
+    }
+    for rubric in FUCCS_HISTORICAL_24_TEMPLATE
+]
+
 ADMISSIBLE={"verified_compliant","verified_with_reservation"}
 def ip(r): return r.client.host if r.client else None
 def txt(v): return (v.strip() or None) if isinstance(v,str) else v
@@ -280,17 +298,50 @@ class FuccsService:
         actor,
         request,
     ):
-        """
-        Préremplit une grille BROUILLON vide avec le modèle historique
-        de recette composé de 6 rubriques et 24 critères.
+        return await FuccsService._prefill_template(
+            db,
+            grid_id=grid_id,
+            actor=actor,
+            request=request,
+            template=FUCCS_HISTORICAL_24_TEMPLATE,
+            template_code="HISTORIQUE_RECETTE_24",
+            audit_action="FUCCS_GRID_PREFILL_HISTORICAL_24",
+            label="Le préremplissage historique",
+        )
 
-        Sécurités :
-        - grille obligatoirement BROUILLON ;
-        - grille obligatoirement vide ;
-        - une seule transaction ;
-        - aucune publication automatique ;
-        - un événement d'audit global.
-        """
+    @staticmethod
+    async def prefill_historical_22_no_legal_identifiers(
+        db,
+        *,
+        grid_id,
+        actor,
+        request,
+    ):
+        """Préremplit une grille vide sans les critères RCCM et NIF."""
+        return await FuccsService._prefill_template(
+            db,
+            grid_id=grid_id,
+            actor=actor,
+            request=request,
+            template=FUCCS_HISTORICAL_22_NO_LEGAL_IDENTIFIERS_TEMPLATE,
+            template_code="HISTORIQUE_RECETTE_22_SANS_RCCM_NIF",
+            audit_action="FUCCS_GRID_PREFILL_HISTORICAL_22_NO_LEGAL_IDENTIFIERS",
+            label="Le préremplissage 2",
+        )
+
+    @staticmethod
+    async def _prefill_template(
+        db,
+        *,
+        grid_id,
+        actor,
+        request,
+        template,
+        template_code,
+        audit_action,
+        label,
+    ):
+        """Ajoute un modèle FUCCS à une grille brouillon complètement vide."""
         grid = await FuccsService.require_grid(
             db,
             grid_id,
@@ -308,7 +359,7 @@ class FuccsService:
             raise HTTPException(
                 409,
                 (
-                    "Le préremplissage historique exige une grille "
+                    f"{label} exige une grille "
                     "brouillon entièrement vide."
                 ),
             )
@@ -323,7 +374,7 @@ class FuccsService:
         created_criteria = 0
 
         for rubric_index, rubric_data in enumerate(
-            FUCCS_HISTORICAL_24_TEMPLATE,
+            template,
             start=1,
         ):
             rubric_code = (
@@ -371,7 +422,7 @@ class FuccsService:
 
         await write_audit_event(
             db,
-            action="FUCCS_GRID_PREFILL_HISTORICAL_24",
+            action=audit_action,
             categorie="REFERENTIEL",
             resultat="SUCCES",
             utilisateur_id=actor.user.id,
@@ -379,10 +430,10 @@ class FuccsService:
             ressource_id=grid.id,
             adresse_ip=ip(request),
             valeurs_apres={
-                "template_code": "HISTORIQUE_RECETTE_24",
+                "template_code": template_code,
                 "rubriques_count": created_rubrics,
                 "criteres_count": created_criteria,
-                "score_maximal_calcule": "48",
+                "score_maximal_calcule": str(created_criteria * 2),
                 "publication_automatique": False,
             },
         )

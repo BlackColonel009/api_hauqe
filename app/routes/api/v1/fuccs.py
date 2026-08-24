@@ -58,6 +58,24 @@ async def prefill_historical_24(
         request=request,
     )
 
+
+@router.post(
+    "/grilles/{grid_id}/prefill-historical-22-no-legal-identifiers",
+    response_model=FuccsGridResponse,
+)
+async def prefill_historical_22_no_legal_identifiers(
+    grid_id: UUID,
+    request: Request,
+    db=Depends(get_db),
+    actor=Depends(require_permission("FUCCS.ADMINISTRER_GRILLE")),
+):
+    return await FuccsService.prefill_historical_22_no_legal_identifiers(
+        db,
+        grid_id=grid_id,
+        actor=actor,
+        request=request,
+    )
+
 @router.post("/grilles/{grid_id}/publish",response_model=FuccsGridResponse)
 async def publish_grid(grid_id:UUID,payload:FuccsGridPublishRequest,request:Request,db=Depends(get_db),actor=Depends(require_permission("FUCCS.ADMINISTRER_GRILLE"))):
     return await FuccsService.publish_grid(db,grid_id=grid_id,payload=payload,actor=actor,request=request)

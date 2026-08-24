@@ -14,7 +14,8 @@
     step: 1,
     editing: false,
     id: null,
-    filters: { zones: [], sectors: [] },
+    filters: { zones: [], sectors: [], legal_identifiers_collection_enabled: false },
+    showLegalIdentifiers: false,
     company: {
       identifiant_national: "",
       raison_sociale: "",
@@ -112,12 +113,17 @@
     return `<section class="review-section"><h3>${escapeHtml(title)}</h3>${rows.map(([label, value]) => `<div class="review-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "Non renseigné")}</strong></div>`).join("")}</section>`;
   }
 
+  function legalIdentifiersFields() {
+    const visible = state.showLegalIdentifiers;
+    return `<section class="form-field full legal-identifiers-toggle"><div class="legal-identifiers-control"><div><strong>Identifiants juridiques</strong><small>RCCM, NIF et IFU facultatifs.</small></div><label class="legal-identifiers-switch" aria-label="Afficher les identifiants juridiques"><input id="toggleLegalIdentifiers" type="checkbox" ${visible ? "checked" : ""}><i aria-hidden="true"></i><em>${visible ? "Activé" : "Désactivé"}</em></label></div></section>${visible ? `<div class="form-field"><label>Numéro RCCM</label><div class="identifier-wrap"><input name="rccm" id="rccm" value="${escapeHtml(state.company.rccm || "")}"><button type="button" class="btn btn-outline-secondary app-btn" id="checkDuplicate">Vérifier</button></div><small class="field-help">Unicité contrôlée par le serveur lorsqu’il est renseigné.</small></div>${field("nif", "NIF")}${field("ifu", "IFU")}` : ""}`;
+  }
+
   const views = {
-    1: () => `<article class="panel form-card">${head("Identification de l’entreprise", "Données officielles du registre BNEC. Le RCCM reste facultatif pour les structures en attente de régularisation.")}<div class="form-grid">${field("identifiant_national", "Identifiant national", { required: !state.editing, disabled: state.editing, help: state.editing ? "L’identifiant national ne peut pas être modifié ici." : "Identifiant métier unique HAUQE/BNEC." })}${field("raison_sociale", "Raison sociale", { required: true })}${field("nom_commercial", "Nom commercial")}${companySelect("forme_juridique", "Forme juridique", ["SARL", "SA", "Entreprise individuelle", "Coopérative", "Association", "Autre"].map((x) => ({ value: x, label: x })))}<div class="form-field"><label>Numéro RCCM</label><div class="identifier-wrap"><input name="rccm" id="rccm" value="${escapeHtml(state.company.rccm || "")}"><button type="button" class="btn btn-outline-secondary app-btn" id="checkDuplicate">Vérifier</button></div><small class="field-help">RM-11 : unicité contrôlée par le serveur. L’absence de RCCM place le dossier en attente de régularisation.</small></div>${field("nif", "NIF")}${field("ifu", "IFU")}${field("date_creation", "Date de création", { type: "date" })}${field("nationalite", "Nationalité")}${field("capital_social", "Capital social", { type: "number", min: 0 })}${field("effectif", "Effectif", { type: "number", min: 0 })}</div><div class="duplicate-result" id="duplicateResult" hidden></div></article>`,
+    1: () => `<article class="panel form-card">${head("Identification de l’entreprise", "L’identifiant national est la référence principale de l’entreprise dans la BNEC.")}<div class="form-grid">${field("identifiant_national", "Identifiant national", { required: !state.editing, disabled: state.editing, help: state.editing ? "L’identifiant national ne peut pas être modifié ici." : "Identifiant métier unique HAUQE/BNEC." })}${field("raison_sociale", "Raison sociale", { required: true })}${field("nom_commercial", "Nom commercial")}${companySelect("forme_juridique", "Forme juridique", ["SARL", "SA", "Entreprise individuelle", "Coopérative", "Association", "Autre"].map((x) => ({ value: x, label: x })))}${legalIdentifiersFields()}${field("date_creation", "Date de création", { type: "date" })}${field("nationalite", "Nationalité")}${field("capital_social", "Capital social", { type: "number", min: 0 })}${field("effectif", "Effectif", { type: "number", min: 0 })}</div><div class="duplicate-result" id="duplicateResult" hidden></div></article>`,
     2: () => `<article class="panel form-card">${head("Localisation et siège", "Sélectionnez la zone administrative la plus précise disponible.")}<div class="form-grid">${companySelect("zone_siege_id", "Zone administrative du siège", zoneOptions(), { required: true, help: "Région, préfecture, commune ou localité selon le référentiel disponible." })}${field("adresse_siege", "Adresse / localité", { required: true })}${field("site_web", "Site web", { type: "url" })}</div><div class="subresource-head"><div><h3>Sites de l’entreprise</h3><p>Les sites sont enregistrés dans le sous-module Sites entreprise.</p></div></div>${renderSitesEditor()}</article>`,
     3: () => `<article class="panel form-card">${head("Activités, produits et marchés", "L’activité principale alimente les filtres du registre. Les produits/services sont conservés comme offres structurées.")}<div class="form-grid">${companySelect("activite_principale", "Activité principale", sectorOptions(), { required: true })}<div class="form-field full"><label>Secteurs secondaires</label><input name="secteurs_secondaires_text" value="${escapeHtml((state.company.secteurs_secondaires || []).join(", "))}" placeholder="Séparer par des virgules"><small class="field-help">Liste optionnelle.</small></div></div><div class="subresource-head"><div><h3>Produits et services</h3><p>Marchés et destinations sont stockés de manière structurée.</p></div></div>${renderOffersEditor()}</article>`,
     4: () => `<article class="panel form-card">${head("Contacts et coordonnées", "RM-13 : au moins un téléphone ou un courriel est obligatoire pour l’entreprise.")}<div class="form-grid">${field("telephone_principal", "Téléphone principal", { type: "tel" })}${field("email_principal", "Email principal", { type: "email" })}</div><div class="subresource-head"><div><h3>Contacts rattachés</h3><p>Le premier contact peut être marqué principal.</p></div></div>${renderContactsEditor()}</article>`,
-    5: () => `<article class="panel form-card">${head("Vérification avant enregistrement", "Le serveur reste souverain sur les contrôles d’unicité, les permissions et les règles métier.")}<div class="review-layout">${reviewSection("Identification", [["Identifiant national", state.company.identifiant_national], ["Raison sociale", state.company.raison_sociale], ["RCCM", state.company.rccm || "Non renseigné"], ["NIF / IFU", state.company.nif || state.company.ifu]])}${reviewSection("Localisation / activité", [["Zone", (state.filters.zones || []).find((z) => String(z.id) === String(state.company.zone_siege_id))?.nom], ["Adresse", state.company.adresse_siege], ["Activité", state.company.activite_principale], ["Effectif", state.company.effectif]])}${reviewSection("Coordonnées", [["Téléphone", state.company.telephone_principal], ["Email", state.company.email_principal], ["Contacts", String(state.contacts.length)], ["Sites", String(state.sites.length)]])}${reviewSection("Offres", [["Produits / services", String(state.offers.length)], ["Secteurs secondaires", (state.company.secteurs_secondaires || []).join(", ")]])}<div class="review-warning">${icon("info")}L’enregistrement d’une entreprise ne valide pas automatiquement ses certifications. Les certifications sont gérées dans leur module officiel.</div></div></article>`,
+    5: () => `<article class="panel form-card">${head("Vérification avant enregistrement", "Le serveur reste souverain sur les contrôles d’unicité, les permissions et les règles métier.")}<div class="review-layout">${reviewSection("Identification", [["Identifiant national", state.company.identifiant_national], ["Raison sociale", state.company.raison_sociale], ...(state.showLegalIdentifiers ? [["RCCM", state.company.rccm], ["NIF", state.company.nif], ["IFU", state.company.ifu]] : [])])}${reviewSection("Localisation / activité", [["Zone", (state.filters.zones || []).find((z) => String(z.id) === String(state.company.zone_siege_id))?.nom], ["Adresse", state.company.adresse_siege], ["Activité", state.company.activite_principale], ["Effectif", state.company.effectif]])}${reviewSection("Coordonnées", [["Téléphone", state.company.telephone_principal], ["Email", state.company.email_principal], ["Contacts", String(state.contacts.length)], ["Sites", String(state.sites.length)]])}${reviewSection("Offres", [["Produits / services", String(state.offers.length)], ["Secteurs secondaires", (state.company.secteurs_secondaires || []).join(", ")]])}<div class="review-warning">${icon("info")}L’enregistrement d’une entreprise ne valide pas automatiquement ses certifications. Les certifications sont gérées dans leur module officiel.</div></div></article>`,
   };
 
   function captureCompanyFields() {
@@ -218,7 +224,7 @@
       state.duplicateOk = true;
       box.hidden = false;
       box.className = "duplicate-result ok";
-      box.innerHTML = `${icon("info")}<div><strong>RCCM non renseigné</strong><small>Le serveur enregistrera l’entreprise en attente de régularisation conformément à RM-12.</small></div>`;
+      box.innerHTML = `${icon("info")}<div><strong>RCCM non renseigné</strong><small>Ce champ est facultatif et ne bloque pas l’enregistrement.</small></div>`;
       refreshIcons();
       return true;
     }
@@ -246,6 +252,11 @@
   function bindStep() {
     bindStructured();
     $("#checkDuplicate")?.addEventListener("click", (event) => checkDuplicate(event.currentTarget));
+    $("#toggleLegalIdentifiers")?.addEventListener("change", (event) => {
+      captureCompanyFields();
+      state.showLegalIdentifiers = event.currentTarget.checked;
+      renderStep();
+    });
     refreshIcons();
   }
 
@@ -481,7 +492,7 @@
       const offersPromise = state.editing ? apiGet(`/api/v1/entreprises/${state.id}/offres?include_inactive=true`) : Promise.resolve([]);
 
       const [filters, company, contacts, sites, offers] = await Promise.all([filtersPromise, companyPromise, contactsPromise, sitesPromise, offersPromise]);
-      state.filters = filters || { zones: [], sectors: [] };
+      state.filters = filters || { zones: [], sectors: [], legal_identifiers_collection_enabled: false };
 
       if (company) {
         Object.keys(state.company).forEach((key) => {
@@ -490,6 +501,7 @@
         state.company.date_creation = company.date_creation || "";
         state.company.capital_social = company.capital_social ?? "";
         state.company.effectif = company.effectif ?? "";
+        state.showLegalIdentifiers = Boolean(company.rccm || company.nif);
         state.contacts = (contacts || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         state.sites = (sites || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         state.offers = (offers || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");

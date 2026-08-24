@@ -320,6 +320,7 @@ class EntrepriseFiltersResponse(BaseModel):
     zones: list[EntrepriseZoneOption] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
+    legal_identifiers_collection_enabled: bool = False
 
 
 class EntrepriseRegistrySummary(BaseModel):
@@ -386,4 +387,3 @@ class EntrepriseControlSummaryItem(BaseModel):
 
 class EntrepriseControlSummaryResponse(BaseModel):
     items: list[EntrepriseControlSummaryItem] = Field(default_factory=list)
-

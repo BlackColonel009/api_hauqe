@@ -26,6 +26,9 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
+from app.services.legal_identifiers_policy_service import (
+    legal_identifiers_collection_enabled,
+)
 from app.models.certification import Certification
 from app.models.certification_declaree import CertificationDeclaree
 from app.models.correction import Correction
@@ -1256,9 +1259,10 @@ class ValidationBnecService:
                     if entreprise.identifiant_national
                     else "Identifiant non renseigné"
                 ),
-                entreprise.rccm or "RCCM non renseigné",
                 entreprise.statut or "Statut non renseigné",
             ]
+            if await legal_identifiers_collection_enabled(db):
+                source_details.insert(1, entreprise.rccm or "RCCM non renseigné")
             target_title = source_title
             target_details = ["Dossier précréé pendant la collecte"]
             codification_required = element.statut != "INTEGRE" and needs_code
@@ -1778,9 +1782,7 @@ class ValidationBnecService:
             "A_COMPLETER",
             "EN_SAISIE",
         }:
-            entreprise.statut = (
-                "EN_ATTENTE_REGULARISATION" if not entreprise.rccm else "A_VERIFIER"
-            )
+            entreprise.statut = "A_VERIFIER"
         element.ressource_source_id = entreprise.id
         element.ressource_cible_id = entreprise.id
         element.action = "CONFIRMER"
@@ -2048,8 +2050,6 @@ class ValidationBnecService:
         )
         if active > 0:
             entreprise.statut = "CERTIFIEE_ACTIVE"
-        elif not entreprise.rccm:
-            entreprise.statut = "EN_ATTENTE_REGULARISATION"
         else:
             entreprise.statut = "A_VERIFIER"
         entreprise.date_derniere_verification = date.today()

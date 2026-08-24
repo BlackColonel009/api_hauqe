@@ -9,7 +9,7 @@
     const rccm=qs('[name="rccm"]');if(!rccm)return;
     rccm.required=false;
     const label=rccm.closest(".form-field")?.querySelector("label");if(label)label.innerHTML="Numéro RCCM <span class=\"rule-conditional\">Conditionnel</span>";
-    note(rccm.closest(".identifier-wrap"),"<strong>RM-11/RM-12 :</strong> le RCCM reste unique. Sans RCCM, l’entreprise sera enregistrée « En attente de régularisation » et une alerte sera créée.");
+    note(rccm.closest(".identifier-wrap"),"<strong>Identifiant juridique facultatif :</strong> le RCCM reste unique lorsqu’il est renseigné ; son absence ne bloque pas l’enregistrement ni l’intégration BNEC.");
     const name=qs('[name="name"]'),region=qs('[name="region"]'),commune=qs('[name="commune"]'),phone=qs('[name="phone"]'),email=qs('[name="email"]');
     [name,region,commune].forEach(x=>x&&(x.required=true));if(phone&&email){note(email,"Au moins un téléphone ou un courriel principal est obligatoire pour valider l’entreprise.");}
   }

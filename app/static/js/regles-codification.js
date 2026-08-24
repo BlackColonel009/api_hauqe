@@ -106,7 +106,9 @@
       async (event) => {
         const button = event.target.closest(
           "#openFuccsHistorical24, "
-          + "#prefillFuccsHistorical24"
+          + "#prefillFuccsHistorical24, "
+          + "#openFuccsHistorical22NoLegalIdentifiers, "
+          + "#prefillFuccsHistorical22NoLegalIdentifiers"
         );
 
         if (!button) return;
@@ -114,7 +116,14 @@
         event.preventDefault();
         event.stopPropagation();
 
-        await requestFuccsHistorical24(event);
+        if (button.matches(
+          "#openFuccsHistorical22NoLegalIdentifiers, "
+          + "#prefillFuccsHistorical22NoLegalIdentifiers"
+        )) {
+          await requestFuccsHistorical22NoLegalIdentifiers(event);
+        } else {
+          await requestFuccsHistorical24(event);
+        }
       },
       {
         capture: true,
@@ -1317,20 +1326,19 @@ ${
 
         <div>
           <strong>Modèle historique de recette disponible</strong>
-          <small>
-            Préremplissez automatiquement 6 rubriques et 24 critères,
-            chacun noté sur 2, soit un total maximal de 48.
-          </small>
+          <small>Choisissez le modèle de recette adapté à la collecte actuelle.</small>
         </div>
 
-        <button
-          class="btn btn-primary app-btn"
-          id="prefillFuccsHistorical24"
-          type="button"
-        >
-          <i data-lucide="list-plus"></i>
-          Préremplir 24 critères
-        </button>
+        <div class="fuccs-prefill-actions">
+          <button class="btn btn-primary app-btn" id="prefillFuccsHistorical24" type="button">
+            <i data-lucide="list-plus"></i>
+            Préremplissage 1 · 24 critères
+          </button>
+          <button class="btn btn-outline-secondary app-btn" id="prefillFuccsHistorical22NoLegalIdentifiers" type="button">
+            <i data-lucide="list-minus"></i>
+            Préremplissage 2 · sans RCCM/NIF
+          </button>
+        </div>
       </section>
     `
     : ""
@@ -2074,9 +2082,9 @@ function selectedFuccsCounts() {
   };
 }
 
-async function requestFuccsHistorical24(event = null) {
+async function requestFuccsPrefill(variant, event = null) {
   const sourceButton = event?.target?.closest?.(
-    "#openFuccsHistorical24, #prefillFuccsHistorical24"
+    variant.triggerSelector
   ) || null;
 
   try {
@@ -2126,7 +2134,7 @@ async function requestFuccsHistorical24(event = null) {
         state(
           "Aucune grille FUCCS brouillon vide n’est disponible. "
           + "Créez une nouvelle grille, sélectionnez-la, puis "
-          + "relancez le préremplissage.",
+            + "relancez le préremplissage.",
           true
         );
         return;
@@ -2152,21 +2160,19 @@ async function requestFuccsHistorical24(event = null) {
     if (counts.rubrics > 0 || counts.criteria > 0) {
       state(
         "La grille sélectionnée contient déjà des rubriques "
-        + "ou des critères. Le modèle historique exige une "
+        + `ou des critères. ${variant.label} exige une `
         + "grille totalement vide.",
         true
       );
       return;
     }
 
-    const confirmation = $("#fuccsHistorical24Confirm");
-    const dialog = $("#fuccsHistorical24Dialog");
+    const confirmation = $(variant.confirmationSelector);
+    const dialog = $(variant.dialogSelector);
 
     if (!confirmation || !dialog) {
       state(
-        "Le formulaire de confirmation FUCCS n’est pas présent "
-        + "dans la page. Remplacez aussi le fichier "
-        + "regles-codification.html du correctif précédent.",
+        "Le formulaire de confirmation FUCCS n’est pas présent dans la page.",
         true
       );
       return;
@@ -2198,14 +2204,32 @@ async function requestFuccsHistorical24(event = null) {
   }
 }
 
-async function prefillFuccsHistorical24(event) {
+function requestFuccsHistorical24(event = null) {
+  return requestFuccsPrefill({
+    triggerSelector: "#openFuccsHistorical24, #prefillFuccsHistorical24",
+    confirmationSelector: "#fuccsHistorical24Confirm",
+    dialogSelector: "#fuccsHistorical24Dialog",
+    label: "Le préremplissage historique",
+  }, event);
+}
+
+function requestFuccsHistorical22NoLegalIdentifiers(event = null) {
+  return requestFuccsPrefill({
+    triggerSelector: "#openFuccsHistorical22NoLegalIdentifiers, #prefillFuccsHistorical22NoLegalIdentifiers",
+    confirmationSelector: "#fuccsHistorical22Confirm",
+    dialogSelector: "#fuccsHistorical22Dialog",
+    label: "Le préremplissage 2",
+  }, event);
+}
+
+async function prefillFuccsTemplate(event, variant) {
   event.preventDefault();
 
   if (!selectedFuccsGrid) return;
 
-  if (!$("#fuccsHistorical24Confirm").checked) {
+  if (!$(variant.confirmationSelector).checked) {
     state(
-      "Confirmez l’utilisation du modèle historique de recette.",
+      `Confirmez l’utilisation de ${variant.label}.`,
       true
     );
     return;
@@ -2213,26 +2237,25 @@ async function prefillFuccsHistorical24(event) {
 
   try {
     await run(
-      () => api.apiPost(
-        `/api/v1/fuccs/grilles/${selectedFuccsGrid.id}`
-        + "/prefill-historical-24",
+        () => api.apiPost(
+          `/api/v1/fuccs/grilles/${selectedFuccsGrid.id}`
+          + variant.endpoint,
         {}
       ),
       {
         button: event.submitter,
         title: "Grille FUCCS",
-        message: "Préremplissage des 24 critères",
+        message: variant.progressMessage,
         detail: "Création transactionnelle des 6 rubriques.",
       }
     );
 
-    $("#fuccsHistorical24Dialog").close();
+    $(variant.dialogSelector).close();
     await loadSelectedFuccsGrid();
     await loadFuccsGrids();
 
     state(
-      "Les 24 critères historiques ont été ajoutés. "
-      + "Vérifiez-les avant publication."
+      `${variant.criteriaCount} critères ont été ajoutés. Vérifiez-les avant publication.`
     );
   } catch (error) {
     state(
@@ -2240,6 +2263,28 @@ async function prefillFuccsHistorical24(event) {
       true
     );
   }
+}
+
+function prefillFuccsHistorical24(event) {
+  return prefillFuccsTemplate(event, {
+    confirmationSelector: "#fuccsHistorical24Confirm",
+    dialogSelector: "#fuccsHistorical24Dialog",
+    endpoint: "/prefill-historical-24",
+    label: "le modèle historique de recette",
+    progressMessage: "Préremplissage des 24 critères",
+    criteriaCount: 24,
+  });
+}
+
+function prefillFuccsHistorical22NoLegalIdentifiers(event) {
+  return prefillFuccsTemplate(event, {
+    confirmationSelector: "#fuccsHistorical22Confirm",
+    dialogSelector: "#fuccsHistorical22Dialog",
+    endpoint: "/prefill-historical-22-no-legal-identifiers",
+    label: "le préremplissage 2 sans RCCM/NIF",
+    progressMessage: "Préremplissage des 22 critères",
+    criteriaCount: 22,
+  });
 }
 
 
@@ -2807,6 +2852,7 @@ async function prefillFuccsHistorical24(event) {
     $("#fuccsRetireForm").onsubmit = retireFuccsGrid;
     $("#fuccsDeleteForm").onsubmit = deleteFuccsDraftItem;
     $("#fuccsHistorical24Form").onsubmit = prefillFuccsHistorical24;
+    $("#fuccsHistorical22Form").onsubmit = prefillFuccsHistorical22NoLegalIdentifiers;
 
     $("#fuccsGridCode").oninput = (event) => {
       event.target.value = normalizeFuccsCode(event.target.value);
@@ -2917,6 +2963,19 @@ async function prefillFuccsHistorical24(event) {
           "Sélectionnez une grille BROUILLON vide puis "
           + "préremplissez les 24 critères"
         )
+        : "Permission FUCCS.ADMINISTRER_GRILLE requise";
+    }
+
+    const secondPrefillToolbarButton =
+      $("#openFuccsHistorical22NoLegalIdentifiers");
+    if (secondPrefillToolbarButton) {
+      secondPrefillToolbarButton.disabled = false;
+      secondPrefillToolbarButton.setAttribute(
+        "aria-disabled",
+        String(!canAdminFuccs)
+      );
+      secondPrefillToolbarButton.title = canAdminFuccs
+        ? "Sélectionnez une grille BROUILLON vide puis préremplissez les 22 critères sans RCCM/NIF"
         : "Permission FUCCS.ADMINISTRER_GRILLE requise";
     }
 

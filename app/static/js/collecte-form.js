@@ -505,9 +505,6 @@
                 ${escapeHtml(
                   selectedEnterprise.identifiant_national || ""
                 )}
-                ${selectedEnterprise.rccm
-                  ? ` · RCCM ${escapeHtml(selectedEnterprise.rccm)}`
-                  : ""}
               </small>
             </span>
           </div>
@@ -538,7 +535,7 @@
           <input
             id="enterpriseSearch"
             type="search"
-            placeholder="Raison sociale, identifiant, RCCM ou NIF…"
+            placeholder="Raison sociale, identifiant ou IFU…"
             autocomplete="off"
           >
         </div>
@@ -1371,7 +1368,6 @@
             </strong>
             <small>
               ${escapeHtml(item.identifiant_national || "")}
-              ${item.rccm ? ` · ${escapeHtml(item.rccm)}` : ""}
             </small>
           </div>
           <span class="more-button">${icon("check")}</span>

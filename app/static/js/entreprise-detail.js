@@ -181,8 +181,8 @@
     $("#companyStatus").innerHTML = statusBadge(company.statut);
     $("#companySubtitle").textContent = [company.activite_principale, zoneLabel].filter(Boolean).join(" · ") || "Informations du registre";
     $("#companyNationalId").textContent = company.identifiant_national || "—";
-    $("#companyRccm").textContent = company.rccm || "Non renseigné";
-    $("#companyTaxId").textContent = company.nif || company.ifu || "—";
+    $("#companyRccm")?.closest("span")?.remove();
+    $("#companyTaxId").textContent = company.ifu || "—";
 
     const edit = $("#editCompanyButton");
     edit.href = `#/entreprises/modifier/${state.id}`;
