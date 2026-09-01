@@ -287,6 +287,19 @@
     }
   }
 
+  function uniqueOffers(items) {
+    const seen = new Set();
+    return (items || []).filter((item) => {
+      const key = [
+        item.type_offre, item.nom, item.description, item.categorie,
+        item.volume, item.unite, item.capacite, item.marches_vises,
+      ].map((value) => String(value ?? "").trim().toUpperCase()).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function campaignOptions() {
     const values = (workspace.campaigns || []).map((item) => [
       item.id,
@@ -1271,7 +1284,7 @@
     $("#addOffer")?.addEventListener("click", () => {
       capture();
       offers.push({});
-      render();
+      render(false);
     });
 
     document
@@ -1292,14 +1305,14 @@
             offers.splice(index, 1);
           }
 
-          render();
+          render(false);
         });
       });
 
     $("#addDeclaredCert")?.addEventListener("click", () => {
       capture();
       declaredCertifications.push({});
-      render();
+      render(false);
     });
 
     document
@@ -1323,7 +1336,7 @@
             declaredCertifications.splice(index, 1);
           }
 
-          render();
+          render(false);
         });
       });
 
@@ -2176,7 +2189,7 @@ async function saveQuickEnterprise(event) {
       ]);
 
     offers = Array.isArray(offerData)
-      ? offerData
+      ? uniqueOffers(offerData)
       : [];
 
     declaredCertifications = Array.isArray(certData)

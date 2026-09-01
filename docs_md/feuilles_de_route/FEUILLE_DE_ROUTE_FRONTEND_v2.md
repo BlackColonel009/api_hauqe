@@ -3665,3 +3665,45 @@ Aucun changement :
 - syntaxe JavaScript validée avec `node --check` ;
 - recette navigateur à réaliser sur les étapes 3 et 4, en affichage bureau, tablette et mobile ;
 - vérifier notamment la conservation des valeurs après sauvegarde du brouillon et rechargement de la fiche.
+
+## Mise à jour — configuration des rappels par échéance (01/09/2026)
+
+Dans `#/echeances`, la fiche détaillée d’une échéance permet désormais de :
+
+- activer ou désactiver les rappels e-mail de l’agent affecté ;
+- définir le nombre de jours avant l’échéance à partir duquel les rappels sont
+  quotidiens ;
+- activer ou désactiver l’escalade au jour J ;
+- exclure individuellement un administrateur HAUQE de cette seule échéance,
+  sans supprimer les alertes des autres administrateurs.
+
+Le panneau réutilise les modals HAUQE et les interrupteurs compacts du thème.
+
+### Règle d’interface à ne pas enfreindre
+
+Un UUID ne doit jamais être rendu dans une page, une alerte, un modal, une
+infobulle ou un e-mail. Le frontend affiche exclusivement des libellés métier
+compréhensibles par le personnel HAUQE.
+
+## Standard d’interface — modals HAUQE (01/09/2026)
+
+Le thème de référence unique est celui des modals du module **Échéances** :
+en-tête contextualisé avec icône, sections lisibles, champs homogènes,
+fermeture compacte et actions regroupées dans le pied de page.
+
+Toute nouvelle fenêtre doit réutiliser les classes de ce standard plutôt que
+créer un modal visuellement indépendant. Cette règle couvre également les
+formulaires opérationnels Documents, Échanges organismes, Décisions et
+actions, Qualité des données et Sauvegardes. Le constructeur BNEC demeure une
+page et reprend uniquement cette hiérarchie graphique.
+
+### Règle de lisibilité au zoom
+
+La hauteur du modal est limitée à la fenêtre. Seul le corps du formulaire
+défile ; l’en-tête et les actions restent accessibles.
+
+## Correctif — alertes et actions urgentes compréhensibles (01/09/2026)
+
+Le tableau de bord et les alertes de veille affichent les repères métier de
+l’entreprise et de la certification. Les UUID ne sont jamais rendus à la place
+de ces informations.

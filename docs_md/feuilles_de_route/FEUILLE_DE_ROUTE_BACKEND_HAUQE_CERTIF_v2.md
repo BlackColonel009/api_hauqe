@@ -1021,3 +1021,31 @@ Avant toute nouvelle étape :
 - envoi traité par la file SMTP intégrée au service applicatif ;
 - lien à usage unique, expiration 30 minutes et révocation des sessions
   conservés.
+
+## Échéances — rappels automatisés et escalade paramétrable (01/09/2026)
+
+- chaque échéance possède une politique de rappel : activation des e-mails à
+  l’agent, nombre de jours avant la date et escalade aux administrateurs au
+  jour J ;
+- le scan quotidien prépare les notifications internes et e-mails à J-n, puis
+  à J-1 et J ;
+- les administrateurs ciblés sont les titulaires actifs du rôle `ADMIN_HAUQE` ;
+- une exclusion peut être définie par échéance pour retirer un administrateur
+  précis, sans empêcher les autres administrateurs de recevoir l’escalade ;
+- les envois sont dédoublonnés et journalisés dans `rappels_echeances` ;
+- migrations : `a6d4e8f1b203`, `b7e5f9a2c314` et `c8f6a0b3d425` ;
+- le worker permanent exécute le scan une fois par jour avant le traitement
+  normal de la file SMTP.
+- les e-mails destinés aux agents et administrateurs affichent les repères
+  métier (entreprise, certification, norme) et jamais les UUID techniques.
+- le worker permanent exécute les tâches d’inactivité quotidiennement et le
+  résumé utilisateur hebdomadaire chaque lundi ;
+- les relances externes reçoivent le contexte métier de la certification ;
+- un échec SMTP est relancé au plus trois fois, avec un délai de 15 minutes,
+  et le statut de succès signifie uniquement « accepté par le relais SMTP ».
+
+### À éviter impérativement
+
+Les UUID et clés primaires restent internes (API, PostgreSQL, audit). Ils sont
+interdits dans les alertes, e-mails, libellés et exports utilisateurs ; un
+repère métier lisible doit toujours les remplacer.

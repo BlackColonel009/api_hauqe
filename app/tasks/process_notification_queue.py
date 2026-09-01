@@ -150,7 +150,7 @@ def send_smtp(
             smtp.login(user, password or "")
         smtp.send_message(message)
 
-    return f"SMTP:{host}"
+    return f"ACCEPTE_PAR_RELAIS_SMTP:{host}"
 
 
 async def run(limit: int = 100) -> None:

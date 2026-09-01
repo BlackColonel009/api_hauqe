@@ -167,7 +167,7 @@
           ${
             followups.length
               ? followups.map((item) => `
-                  <article class="watch-followup-row">
+                  <article class="watch-followup-row" data-followup-preview="${e(item.id)}" title="Afficher le message envoyé">
                     <span><i data-lucide="${item.date_reponse ? "message-circle-reply" : "send"}"></i></span>
                     <div>
                       <strong>${e(item.objet || "Relance")}</strong>
@@ -220,6 +220,19 @@
         $("#followupResponseText").value = "";
         $("#followupResult").value = "";
         $("#followupResponseDialog").showModal();
+        icons();
+      };
+    });
+
+    node.querySelectorAll("[data-followup-preview]").forEach((row) => {
+      row.onclick = (event) => {
+        if (event.target.closest("button")) return;
+        const item = followups.find((x) => String(x.id) === String(row.dataset.followupPreview));
+        if (!item) return;
+        $("#followupPreviewTitle").textContent = item.objet || "Relance";
+        $("#followupPreviewMeta").textContent = `${item.destinataire || "—"} · ${item.canal || "—"} · ${item.statut || "—"}`;
+        $("#followupPreviewMessage").textContent = item.contenu || "Aucun contenu enregistré.";
+        $("#followupPreviewDialog").showModal();
         icons();
       };
     });

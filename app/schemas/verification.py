@@ -161,7 +161,7 @@ class VerificationAssignmentResponse(BaseModel):
     updated_at: datetime
 
 class VerificationPointCreateRequest(BaseModel):
-    code: str = Field(min_length=1, max_length=255)
+    code: str = Field(default="", max_length=255)
     libelle: str = Field(min_length=1, max_length=255)
     categorie: str | None = Field(default=None, max_length=255)
     resultat: str = Field(min_length=1)
@@ -230,7 +230,8 @@ class ExternalConfirmationCreateRequest(BaseModel):
     canal: str | None = Field(default=None, max_length=255)
     destinataire: str = Field(min_length=1, max_length=255)
     objet: str = Field(min_length=1, max_length=255)
-    contenu_demande: str = Field(min_length=1)
+    contenu_demande: str = Field(default="")
+    informations_partagees: list[str] = Field(default_factory=list)
     date_envoi: date | None = None
     date_echeance: date | None = None
     statut: str | None = Field(default="EN_ATTENTE", max_length=255)

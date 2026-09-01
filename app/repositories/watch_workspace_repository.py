@@ -15,6 +15,7 @@ from app.models.entreprise import Entreprise
 from app.models.norme import Norme
 from app.models.organisme import Organisme
 from app.models.rapport_veille import RapportVeille
+from app.models.relance_veille import RelanceVeille
 from app.models.renouvellement_certification import RenouvellementCertification
 from app.models.utilisateur import Utilisateur
 
@@ -164,7 +165,59 @@ class WatchWorkspaceRepository:
                     "route": f"#/certifications/{row.certification_id}",
                 }
 
-        return {"label": f"{code} · {resource_id}", "subtitle": None, "route": None}
+        if code in {"DOSSIER_VEILLE", "RELANCE_VEILLE"}:
+            if code == "RELANCE_VEILLE":
+                statement = (
+                    select(
+                        Certification.id.label("certification_id"),
+                        Certification.identifiant_national,
+                        Certification.numero_certificat,
+                        Entreprise.raison_sociale,
+                        Entreprise.nom_commercial,
+                        Norme.code.label("standard_code"),
+                    )
+                    .select_from(RelanceVeille)
+                    .join(DossierVeille, DossierVeille.id == RelanceVeille.dossier_veille_id)
+                    .join(Certification, Certification.id == DossierVeille.certification_id)
+                    .join(Entreprise, Entreprise.id == Certification.entreprise_id)
+                    .outerjoin(Norme, Norme.id == Certification.norme_id)
+                    .where(RelanceVeille.id == resource_id)
+                )
+            else:
+                statement = (
+                    select(
+                        Certification.id.label("certification_id"),
+                        Certification.identifiant_national,
+                        Certification.numero_certificat,
+                        Entreprise.raison_sociale,
+                        Entreprise.nom_commercial,
+                        Norme.code.label("standard_code"),
+                    )
+                    .select_from(DossierVeille)
+                    .join(Certification, Certification.id == DossierVeille.certification_id)
+                    .join(Entreprise, Entreprise.id == Certification.entreprise_id)
+                    .outerjoin(Norme, Norme.id == Certification.norme_id)
+                    .where(DossierVeille.id == resource_id)
+                )
+
+            result = await db.execute(statement)
+            row = result.one_or_none()
+            if row:
+                company = row.raison_sociale or row.nom_commercial or "Entreprise concernée"
+                certificate = row.identifiant_national or row.numero_certificat or "Certification déclarée"
+                return {
+                    "label": f"{company} · {certificate}",
+                    "subtitle": " · ".join(v for v in (row.numero_certificat, row.standard_code) if v) or None,
+                    "route": f"#/certifications/{row.certification_id}",
+                }
+
+        # Un identifiant UUID est réservé aux API et journaux techniques : il
+        # ne doit jamais devenir un libellé visible dans l'espace utilisateur.
+        return {
+            "label": code.replace("_", " ").title() or "Ressource associée",
+            "subtitle": None,
+            "route": None,
+        }
 
     @staticmethod
     async def deadline_summary(db: AsyncSession):

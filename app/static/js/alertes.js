@@ -27,6 +27,15 @@
       .replaceAll("'", "&#039;");
   }
 
+  function publicText(value, fallback = "") {
+    const text = String(value ?? "")
+      .replace(/\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([.,;:])/g, "$1")
+      .trim();
+    return text || fallback;
+  }
+
   function perm(code) {
     return Array.isArray(user?.permissions)
       && user.permissions.includes(code);
@@ -113,13 +122,13 @@
     $("#emptyAlerts").hidden = rows.length > 0;
 
     $("#alertsList").innerHTML = rows.map((item) => `
-      <button class="alert-row ${selected?.id === item.id ? "selected" : ""}" type="button" data-alert="${e(item.id)}" aria-label="Afficher le détail de l’alerte ${e(item.titre || "")}">
+      <button class="alert-row ${selected?.id === item.id ? "selected" : ""}" type="button" data-alert="${e(item.id)}" aria-label="Afficher le détail de l’alerte ${e(publicText(item.titre, "Alerte"))}">
         <span class="row-level-icon ${levelClass(item.niveau)}">
           <i data-lucide="${Number(item.niveau) === 4 ? "triangle-alert" : Number(item.niveau) >= 2 ? "clock-alert" : "info"}"></i>
         </span>
         <div class="alert-row-copy">
-          <strong>${e(item.titre || "Alerte")}</strong>
-          <span>${e(item.resource_label || item.ressource_type || "Ressource")}</span>
+          <strong>${e(publicText(item.titre, "Alerte à traiter"))}</strong>
+          <span>${e(publicText(item.resource_label || item.ressource_type, "Ressource associée"))}</span>
           <small>${e(item.level_label || `Niveau ${item.niveau || "—"}`)} · ${e(dateLabel(item.date_detection))}</small>
         </div>
         <div class="alert-owner">
@@ -169,13 +178,13 @@
       RESOLUE: "Résolue",
       CLOTUREE: "Clôturée",
     }[status] || status.replaceAll("_", " ");
-    const resource = selected.resource_label || selected.ressource_type || "Ressource non renseignée";
+    const resource = publicText(selected.resource_label || selected.ressource_type, "Ressource non renseignée");
 
     container.innerHTML = `
       <header class="alert-record-header">
         <div class="alert-record-brand">
           <span><i data-lucide="bell-ring"></i></span>
-          <div><p class="eyebrow">HAUQE · Centre opérationnel</p><h2>${e(selected.titre || "Détail de l’alerte")}</h2><small>Fiche de consultation et de traitement</small></div>
+          <div><p class="eyebrow">HAUQE · Centre opérationnel</p><h2>${e(publicText(selected.titre, "Détail de l’alerte"))}</h2><small>Fiche de consultation et de traitement</small></div>
         </div>
         <button class="dialog-close alert-record-close" type="button" aria-label="Fermer" data-close-alert-detail><i data-lucide="x"></i></button>
       </header>
@@ -191,7 +200,7 @@
           <main>
             <section class="alert-record-message">
               <div class="alert-record-section-head"><span><i data-lucide="message-square-warning"></i></span><div><small>Signalement</small><h3>Message de l’alerte</h3></div></div>
-              <p>${e(selected.message || "Aucun message complémentaire n’a été renseigné.")}</p>
+              <p>${e(publicText(selected.message, "Aucun message complémentaire n’a été renseigné."))}</p>
             </section>
             ${selected.resource_route ? `<a class="alert-record-resource" href="${e(selected.resource_route)}"><span><i data-lucide="arrow-up-right"></i></span><div><small>Ressource associée</small><strong>Ouvrir la fiche concernée</strong></div><i data-lucide="chevron-right"></i></a>` : ""}
           </main>
@@ -336,8 +345,8 @@
 
       $("#alertNotificationUser").innerHTML = userOptions();
       $("#alertNotificationChannel").value = "IN_APP";
-      $("#alertNotificationSubject").value = selected?.titre || "";
-      $("#alertNotificationContent").value = selected?.message || "";
+      $("#alertNotificationSubject").value = publicText(selected?.titre, "Alerte HAUQE");
+      $("#alertNotificationContent").value = publicText(selected?.message, "");
       $("#alertNotificationEmail").value = "";
       recipientMode();
       $("#alertDetailDialog").close();

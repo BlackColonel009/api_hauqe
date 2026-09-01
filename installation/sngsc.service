@@ -1,0 +1,18 @@
+[Unit]
+Description=SNGSC - HAUQE Certif FastAPI
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=sngsc
+Group=sngsc
+WorkingDirectory=/var/www/api_hauqe
+EnvironmentFile=/var/www/api_hauqe/.env
+Environment="PATH=/var/www/api_hauqe/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/var/www/api_hauqe/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8014 --workers 1
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -6005,6 +6005,39 @@ Aucune migration Alembic.
 Aucune nouvelle table.
 Aucune nouvelle permission.
 
+## Mise à jour — rappels d’échéances et exclusions administrateurs (01/09/2026)
+
+- politique configurable par échéance : rappels à l’agent, horizon quotidien,
+  escalade au jour J ;
+- sélection des administrateurs `ADMIN_HAUQE` actifs pour l’escalade ;
+- exclusion individuelle possible d’un administrateur sur une échéance, sans
+  effet sur les autres administrateurs ni sur les rappels de l’agent ;
+- journal `rappels_echeances` pour dédoublonner les envois par destinataire,
+  type de rappel et date ;
+- migrations appliquées jusqu’à `c8f6a0b3d425` ;
+- scan quotidien raccordé au worker de traitement SMTP.
+- les e-mails de rappel résolvent désormais le contexte métier (entreprise,
+  identifiant entreprise, certification et norme) ; les UUID restent internes
+  aux journaux et ne sont jamais affichés aux destinataires.
+- le worker permanent exécute aussi le contrôle d’inactivité chaque jour et le
+  résumé hebdomadaire chaque lundi ;
+- une relance externe de veille reçoit systématiquement le contexte de la
+  certification si celui-ci n’est pas déjà présent dans le message ;
+- les échecs SMTP sont relancés automatiquement après 15 minutes, avec un
+  maximum de trois tentatives ; le résultat indique désormais explicitement
+  « accepté par le relais SMTP », sans prétendre confirmer la lecture.
+
+### À éviter impérativement — identifiants techniques
+
+- Ne jamais exposer un UUID, une clé primaire, un identifiant de dossier ou un
+  identifiant de ressource dans un e-mail, une alerte, un titre, une infobulle,
+  un libellé d’interface ou un export destiné aux utilisateurs.
+- Les UUID sont réservés aux routes API, relations PostgreSQL, journaux d’audit
+  et diagnostics techniques protégés.
+- Toute communication métier doit utiliser des repères lisibles : entreprise,
+  identifiant HAUQE, mission, certification, norme, organisme, date et action
+  attendue.
+
 
 ## ÉTAPE 06 — VÉRIFICATION DOCUMENTAIRE
 Statut : 🟡 raccordement produit — recette runtime à confirmer.
@@ -6058,6 +6091,14 @@ de réécrire l'écran de contrôle.
 Aucune nouvelle table.
 Aucune migration.
 Aucune nouvelle permission.
+
+## Correctif — contexte métier des alertes et actions urgentes (01/09/2026)
+
+- les ressources `DOSSIER_VEILLE` et `RELANCE_VEILLE` sont résolues jusqu’à
+  leur certification, entreprise et norme lorsqu’elles sont affichées ;
+- le tableau de bord opérationnel retourne ces libellés métier avec chaque
+  action urgente ;
+- aucune migration, seed ou modification de donnée historique n’est requise.
 
 ## Correctif — changement de mot de passe et clôture de session
 

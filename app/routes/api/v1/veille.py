@@ -131,6 +131,15 @@ async def create_deadline(
     )
 
 
+@deadline_router.get("/reminder-administrators")
+async def deadline_reminder_administrators(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("ECHEANCES.GERER")),
+):
+    """Administrateurs pouvant être exclus individuellement d'un rappel."""
+    return await WatchService.deadline_reminder_administrators(db)
+
+
 @deadline_router.get(
     "/{deadline_id}",
     response_model=DeadlineResponse,

@@ -2,9 +2,9 @@ import { APP_CONFIG } from "./config.js?v=20260731-1";
 import { hasAccessToken } from "./api.js";
 
 const routes = Object.freeze({
-  dashboard: { view: "/views/dashboard", script: "/static/js/app.js?v=20260730-1", title: "Tableau de bord" },
-  alertes: { view: "/views/alertes", script: "/static/js/alertes.js?v=20260730-2", title: "Centre des alertes" },
-  echeances: { view: "/views/echeances", script: "/static/js/echeances.js?v=20260731-1", title: "Calendrier des échéances" },
+  dashboard: { view: "/views/dashboard", script: "/static/js/app.js?v=20260901-1", title: "Tableau de bord" },
+  alertes: { view: "/views/alertes", script: "/static/js/alertes.js?v=20260901-1", title: "Centre des alertes" },
+  echeances: { view: "/views/echeances", script: "/static/js/echeances.js?v=20260901-1", title: "Calendrier des échéances" },
   entreprises: { view: "/views/entreprises", script: "/static/js/entreprises.js?v=20260730-1", title: "Entreprises certifiées" },
   "entreprise-detail": { view: "/views/entreprise-detail", script: "/static/js/entreprise-detail.js?v=20260730-1", title: "Dossier entreprise" },
   "entreprise-form": { view: "/views/entreprise-form", script: "/static/js/entreprise-form.js?v=20260730-1", title: "Entreprise — formulaire" },

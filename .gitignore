@@ -31,3 +31,11 @@ uploads/temporaires/*
 
 Cares-TOGO-API-du-site-WEB/
 logs/
+
+# Données d'exploitation strictement privées : ne jamais ajouter au dépôt.
+backups/*
+!backups/.gitkeep
+uploads/private/*
+!uploads/private/.gitkeep
+app/uploads/avatars/*
+!app/uploads/avatars/.gitkeep

@@ -408,6 +408,38 @@
     </form>
   </dialog>
 
+  <dialog id="deadlineReminderDialog" class="hauqe-dialog operational-form-dialog deadline-reminder-dialog">
+    <form method="dialog" id="deadlineReminderForm">
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="mail-check"></i></span>
+          <div><p class="eyebrow">Planification des envois</p><h2>Rappels de cette échéance</h2><small>Réglage propre à l’échéance sélectionnée.</small></div>
+        </div>
+        <button class="dialog-close operational-dialog-close" type="button" data-close-deadline-reminder><i data-lucide="x"></i></button>
+      </header>
+      <div class="operational-dialog-body">
+        <section class="operational-form-section reminder-settings-section">
+          <label class="reminder-switch-row" for="deadlineRemindersEnabled">
+            <span><strong>Envoyer les rappels à l’agent assigné</strong><small>Un e-mail et une notification seront préparés chaque jour à l’approche de la date.</small></span>
+            <input id="deadlineRemindersEnabled" type="checkbox" role="switch">
+          </label>
+          <label class="operational-field"><span>Début des rappels</span><div class="reminder-days-input"><input id="deadlineReminderDays" type="number" min="0" max="365" required><small>jour(s) avant l’échéance</small></div></label>
+          <label class="reminder-switch-row" for="deadlineAdminEscalation">
+            <span><strong>Escalader aux administrateurs le jour J</strong><small>Les administrateurs HAUQE actifs reçoivent également l’alerte et l’e-mail à la date prévue.</small></span>
+            <input id="deadlineAdminEscalation" type="checkbox" role="switch">
+          </label>
+          <section class="reminder-admin-exclusions">
+            <div><strong>Administrateurs à ne pas notifier</strong><small>Cette exclusion ne concerne que l’échéance ouverte ; les autres administrateurs continuent de recevoir l’alerte.</small></div>
+            <div id="deadlineExcludedAdmins" class="reminder-admin-list"><small>Chargement des administrateurs…</small></div>
+          </section>
+        </section>
+      </div>
+      <footer class="operational-dialog-footer">
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-reminder>Annuler</button>
+        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer le plan</button>
+      </footer>
+    </form>
+  </dialog>
+
   <dialog id="deadlineConnectionsDialog" class="hauqe-dialog deadline-connections-dialog">
     <form method="dialog">
       <header class="deadline-connections-header">

@@ -6,7 +6,7 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 11 août 2026
+**Dernière mise à jour :** 1er septembre 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
 
 > **Point de reprise du 11 août 2026 :** les correctifs d'authentification,
@@ -14,8 +14,9 @@
 > aucune migration ni seed. Après le pull, redémarrer `sngsc` afin de charger
 > le backend, puis forcer le rechargement du navigateur pour les scripts
 > frontend. Conserver `alembic upgrade head` dans la procédure standard : la
-> tête connue reste `c4d5e6f7a8b9` sauf migration plus récente présente dans le
-> dépôt au moment du déploiement.
+> tête connue reste `c8f6a0b3d425` au moment du déploiement. Ne jamais se
+> fier à l’ancienne valeur `c4d5e6f7a8b9` : les migrations de rappels
+> d’échéances doivent être appliquées avant le redémarrage.
 
 ## 0. Procédure canonique sans oubli
 
@@ -45,13 +46,13 @@ Ordre de lecture :
 
 ### 0.2 Variables de production indispensables
 
-Le fichier `/var/www/api_hauqe/.env` doit appartenir au compte du service et
-être limité à ce compte :
+Le fichier `/var/www/api_hauqe/.env` doit être lisible par le service, sans
+être modifiable par ce dernier. Configuration retenue :
 
 ```bash
 cd /var/www/api_hauqe
-sudo chown sngsc:sngsc .env
-sudo chmod 600 .env
+sudo chown root:sngsc .env
+sudo chmod 640 .env
 ```
 
 Valeurs attendues, sans recopier les exemples littéralement :
@@ -178,6 +179,9 @@ Ordre versionné actuel :
 | 6 | `a2b3c4d5e6f7` | Message et courriel des relances |
 | 7 | `b3c4d5e6f7a8` | Préférences d'actualisation automatique |
 | 8 | `c4d5e6f7a8b9` | Situations `EXPIREE` et `AUDIT_INITIAL` |
+| 9 | `a6d4e8f1b203` | Politique et journal des rappels d’échéance |
+| 10 | `b7e5f9a2c314` | Valeurs techniques du journal des rappels |
+| 11 | `c8f6a0b3d425` | Exclusion individuelle d’administrateur des rappels |
 
 Commandes obligatoires :
 
@@ -192,10 +196,10 @@ alembic current
 alembic heads
 ```
 
-Résultat attendu après la mise à jour du 3 août 2026 :
+Résultat attendu pour le déploiement actuel :
 
 ```text
-c4d5e6f7a8b9 (head)
+c8f6a0b3d425 (head)
 ```
 
 Contrôles PostgreSQL :
@@ -428,7 +432,7 @@ ls -lah logs backups uploads
 | Environnement virtuel Python | Terminée | `.venv` fonctionnel |
 | Installation des dépendances | Terminée | Imports principaux réussis |
 | Configuration `.env` | Terminée | Paramètres chargés |
-| Migrations Alembic | À remettre à niveau après le pull du 03/08 | `alembic current` doit afficher `c4d5e6f7a8b9 (head)` |
+| Migrations Alembic | Obligatoires avant le redémarrage | `alembic current` doit afficher `c8f6a0b3d425 (head)` |
 | Correction SQL 2.0 | Intégrée à Alembic | Colonne et contrainte `situation_declaree` gérées par `c4d5e6f7a8b9` |
 | Initialisation rôles et permissions | Terminée | Scripts de seed exécutés |
 | Test FastAPI local | Terminée | `/api/v1/health` retourne `status=ok` |
@@ -931,3 +935,108 @@ L’hébergement MVP sera considéré terminé lorsque :
 - les parcours MVP prioritaires sont testés ;
 - les journaux et procédures d’exploitation sont documentés ;
 - la feuille de route ne contient plus d’étape critique « À faire ».
+
+## 13. Worker de rappels d’échéances (01/09/2026)
+
+Le processus `app.tasks.run_background_services` doit rester actif. Il réalise
+désormais, une fois par date calendrier :
+
+1. le scan des échéances et la préparation des rappels ;
+2. le traitement de la file SMTP ;
+3. le traitement planifié des sauvegardes.
+
+Le même worker traite également le contrôle quotidien d’inactivité des comptes
+et le résumé hebdomadaire le lundi. Les échecs SMTP sont relancés au maximum
+trois fois, après un délai de 15 minutes entre deux tentatives.
+
+Après déploiement, appliquer les migrations jusqu’à la révision
+`c8f6a0b3d425`, puis redémarrer ce worker. Les e-mails restent dépendants des
+variables SMTP HAUQE valides ; les erreurs d’authentification Gmail sont
+enregistrées dans la file et les journaux sans perdre les données métier.
+
+## 14. Préparation obligatoire avant l’hébergement public (01/09/2026)
+
+### 14.1 Changements récents à prendre en compte
+
+| Élément | Impact serveur | Action obligatoire |
+|---|---|---|
+| Rappels d’échéance configurables | **Migration PostgreSQL requise** | Sauvegarder la base, puis exécuter `alembic upgrade head` jusqu’à `c8f6a0b3d425`. Aucun seed requis. |
+| Tâches quotidiennes et résumé hebdomadaire | Le worker intégré doit être relancé | Garder exactement un worker Uvicorn, puis redémarrer `sngsc`. |
+| Relances SMTP et identité HAUQE | Dépend du fichier `.env` | Renseigner une adresse Gmail autorisée, son mot de passe d’application et les coordonnées `HAUQE_CONTACT_*`. |
+| Sauvegardes applicatives | `pg_dump` et espace disque requis | Installer les outils PostgreSQL client, vérifier `pg_dump` / `pg_restore` et réserver au moins 5 Gio libres. |
+| Nouveaux styles frontend | Cache navigateur possible | Redémarrer le service et effectuer un rechargement forcé (`Ctrl + Shift + R`). |
+
+La migration utilise `gen_random_uuid()` ; l’extension PostgreSQL `pgcrypto`
+doit donc rester disponible dans la base. Contrôle serveur :
+
+```bash
+sudo -u postgres psql -d hauqe_certif -c "SELECT extname FROM pg_extension WHERE extname = 'pgcrypto';"
+```
+
+### 14.2 Précontrôle prêt à exécuter
+
+Le script `scripts/preflight_hebergement_linux.sh` est non destructif. Il
+contrôle les commandes PostgreSQL, le `.env` sans afficher les secrets, les
+droits d’écriture du compte `sngsc`, l’espace disque, le service et l’état
+Alembic. Après le pull et avant le redémarrage final :
+
+```bash
+cd /var/www/api_hauqe
+chmod +x scripts/preflight_hebergement_linux.sh
+sudo ./scripts/preflight_hebergement_linux.sh
+```
+
+Une sortie `ECHEC` est bloquante. Le script ne crée, ne supprime et ne modifie
+aucune donnée.
+
+### 14.3 Fichiers d’exploitation prêts à copier
+
+- `installation/sngsc.service` : unité systemd à **un seul worker**, avec un
+  `PATH` explicite permettant au worker de trouver `pg_dump` ;
+- `installation/nginx-hauqe-certif.conf.example` : virtual host Nginx à la
+  racine du domaine, avec limitation de taille, en-têtes de base et refus
+  d’accès à `uploads`, `backups`, `logs` et à la documentation API.
+
+Copier d’abord ces fichiers vers les emplacements système, adapter uniquement
+`DOMAINE_SNGSC`, puis valider avec `nginx -t` et `systemctl daemon-reload`.
+Ne pas servir l’application sous `/sngsc/` en production finale : le frontend
+utilise l’origine du domaine pour `/api/v1`, `/static` et les vues. Le domaine
+final doit donc publier HAUQE Certif à sa racine.
+
+### 14.4 Données privées : blocage de sécurité Git
+
+Les nouvelles archives `backups/*`, les documents `uploads/private/*` et les
+avatars sont désormais ignorés pour les futurs fichiers. En revanche, des
+archives et documents historiques sont déjà suivis par Git dans le dépôt
+actuel. Ils ne doivent pas être envoyés vers un dépôt partagé ou public.
+
+Avant un push vers un dépôt qui n’est pas strictement privé, décider d’une
+opération dédiée de retrait de ces fichiers de l’index et, si nécessaire, de
+l’historique Git. Cette opération est volontairement séparée du déploiement :
+elle ne sera jamais faite automatiquement, car elle peut modifier l’historique
+et les copies de sauvegarde.
+
+### 14.5 Séquence de déploiement actualisée
+
+```bash
+cd /var/www/api_hauqe
+git status --short
+git pull --ff-only
+
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+
+sudo -u postgres pg_dump -Fc hauqe_certif \
+  > "backups/pre-deploiement-$(date +%Y%m%d-%H%M%S).dump"
+alembic upgrade head
+alembic current
+
+sudo ./scripts/preflight_hebergement_linux.sh
+sudo systemctl restart sngsc
+sudo systemctl status sngsc --no-pager
+curl -fsS http://127.0.0.1:8014/api/v1/health
+sudo journalctl -u sngsc -n 100 --no-pager
+```
+
+Résultat attendu après migration : `c8f6a0b3d425 (head)`. Aucune migration ne
+doit être contournée, aucune seed n’est requise pour les correctifs récents.

@@ -121,6 +121,15 @@
       .replaceAll("'", "&#039;");
   }
 
+  function publicText(value, fallback = "") {
+    const cleaned = String(value ?? "")
+      .replace(/\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([.,;:])/g, "$1")
+      .trim();
+    return cleaned || fallback;
+  }
+
   function initials(name) {
     const parts = String(name || "")
       .trim()
@@ -685,6 +694,16 @@
       const type = String(item.type || "").toUpperCase();
       const level = Number(item.level || 1);
       const isAlert = type === "ALERTE";
+      const context = [item.resource_label, item.resource_subtitle]
+        .map((value) => publicText(value))
+        .filter(Boolean)
+        .join(" · ");
+      const title = publicText(item.title, "Action prioritaire");
+      const deadline = item.due_date
+        ? `Échéance : ${formatDate(item.due_date)}`
+        : isAlert
+          ? `Niveau ${level}`
+          : "À traiter";
 
       return `
         <button
@@ -697,15 +716,9 @@
           </span>
 
           <span class="priority-meta">
-            <strong>${escapeHtml(item.title || "Action prioritaire")}</strong>
+            <strong>${escapeHtml(title)}</strong>
             <small>
-              ${
-                item.due_date
-                  ? `Échéance : ${escapeHtml(formatDate(item.due_date))}`
-                  : isAlert
-                    ? `Niveau ${level}`
-                    : "À traiter"
-              }
+              ${escapeHtml(context ? `${context} · ${deadline}` : deadline)}
             </small>
           </span>
 

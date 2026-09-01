@@ -80,6 +80,8 @@ class PriorityAction(BaseModel):
     due_date: date | None = None
     resource_type: str | None = None
     resource_id: UUID | None = None
+    resource_label: str | None = None
+    resource_subtitle: str | None = None
 
 
 class ExpiringCertificationItem(BaseModel):

@@ -1,0 +1,98 @@
+/*
+ * Standard HAUQE pour les formulaires opérationnels.
+ * Référence visuelle obligatoire : modals du module Échéances.
+ * Ces règles sont purement graphiques : aucune donnée ni interaction métier.
+ */
+
+.stage13-dialog{--form-accent:#23795a;--form-accent-dark:#165d45;--form-accent-faint:#edf8f2;--form-accent-soft:#dff3e8}
+.stage13-dialog>form{width:100%}
+.stage13-dialog .stage13-form-grid{padding:15px;border:0;border-radius:0;background:transparent}
+.stage13-dialog .stage13-form-grid label,.quality-dialog.operational-form-dialog .quality-form label,.backup-dialog.operational-form-dialog .backup-form label{gap:6px;color:#63756c;font-size:8px;font-weight:850;letter-spacing:.055em;text-transform:uppercase}
+.stage13-dialog .stage13-form-grid label small,.backup-dialog.operational-form-dialog .backup-form small{margin-top:-1px;color:#87948e;font-size:7.5px;font-weight:500;letter-spacing:normal;line-height:1.45;text-transform:none}
+.stage13-dialog .stage13-form-grid input,.stage13-dialog .stage13-form-grid select,.stage13-dialog .stage13-form-grid textarea,.quality-dialog.operational-form-dialog .quality-form input,.quality-dialog.operational-form-dialog .quality-form textarea,.quality-dialog.operational-form-dialog .quality-form select,.backup-dialog.operational-form-dialog .backup-form input,.backup-dialog.operational-form-dialog .backup-form textarea,.backup-dialog.operational-form-dialog .backup-form select{min-height:47px;padding:0 13px;border-color:#d7e2dd;border-radius:13px;color:#2e4439;font:600 10px "DM Sans",sans-serif;box-shadow:0 2px 8px rgba(23,55,42,.025),inset 0 1px 0 rgba(255,255,255,.92);transition:border-color .18s ease,box-shadow .18s ease}
+.stage13-dialog .stage13-form-grid textarea,.quality-dialog.operational-form-dialog .quality-form textarea,.backup-dialog.operational-form-dialog .backup-form textarea{min-height:100px;padding:12px 13px;line-height:1.55}
+.stage13-dialog .stage13-form-grid input:focus,.stage13-dialog .stage13-form-grid select:focus,.stage13-dialog .stage13-form-grid textarea:focus,.quality-dialog.operational-form-dialog .quality-form input:focus,.quality-dialog.operational-form-dialog .quality-form textarea:focus,.quality-dialog.operational-form-dialog .quality-form select:focus,.backup-dialog.operational-form-dialog .backup-form input:focus,.backup-dialog.operational-form-dialog .backup-form textarea:focus,.backup-dialog.operational-form-dialog .backup-form select:focus{border-color:#66ad90;outline:0;box-shadow:0 0 0 4px rgba(35,121,90,.10),0 8px 22px rgba(24,88,64,.06)}
+.stage13-dialog .stage13-notice{margin:2px 0 0;border-color:#d8e7e0;border-radius:13px;background:#f3faf6;color:#557267;font-size:8.5px}
+
+.quality-dialog.operational-form-dialog,.backup-dialog.operational-form-dialog{--form-accent:#23795a;--form-accent-dark:#165d45;--form-accent-faint:#edf8f2;--form-accent-soft:#dff3e8;width:min(760px,calc(100vw - 28px));max-width:760px;border:0;border-radius:24px;background:transparent;box-shadow:none}
+.quality-dialog.operational-form-dialog form,.backup-dialog.operational-form-dialog form{max-height:min(92vh,900px);border:1px solid #d1e1da;border-radius:24px;background:#fff;box-shadow:0 34px 90px rgba(8,32,23,.30),0 10px 28px rgba(8,32,23,.14)}
+.quality-dialog.operational-form-dialog form>.operational-dialog-header,.backup-dialog.operational-form-dialog form>.operational-dialog-header{padding:24px 24px 20px;border:0}
+.quality-dialog.operational-form-dialog form>.operational-dialog-footer,.backup-dialog.operational-form-dialog form>.operational-dialog-footer{padding:14px 20px;border:0;border-top:1px solid #e2eae6}
+.quality-dialog.operational-form-dialog .quality-form,.backup-dialog.operational-form-dialog .backup-form{max-height:none;padding:15px;overflow:visible}
+
+/* Scroll limité au bloc de saisie de chaque modal opérationnel. */
+.stage13-dialog[data-operation-route="documents"]>form,
+.stage13-dialog[data-operation-route="decisions"]>form,
+.stage13-dialog[data-operation-route="echanges-organismes"]>form,
+.quality-dialog.operational-form-dialog>form,
+.backup-dialog.operational-form-dialog>form{height:min(780px,calc(100dvh - 28px));max-height:calc(100dvh - 28px);min-height:0}
+.stage13-dialog[data-operation-route="documents"]>form>.operational-dialog-body,
+.stage13-dialog[data-operation-route="decisions"]>form>.operational-dialog-body,
+.stage13-dialog[data-operation-route="echanges-organismes"]>form>.operational-dialog-body,
+.quality-dialog.operational-form-dialog>form>.operational-dialog-body,
+.backup-dialog.operational-form-dialog>form>.operational-dialog-body{display:grid;grid-template-rows:minmax(0,1fr);flex:1 1 auto;min-height:0;overflow:hidden!important}
+.stage13-dialog[data-operation-route="documents"] .operational-form-section,
+.stage13-dialog[data-operation-route="decisions"] .operational-form-section,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-form-section,
+.quality-dialog.operational-form-dialog .operational-form-section,
+.backup-dialog.operational-form-dialog .operational-form-section{min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.stage13-dialog[data-operation-route="documents"] .operational-section-heading,
+.stage13-dialog[data-operation-route="decisions"] .operational-section-heading,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-section-heading,
+.quality-dialog.operational-form-dialog .operational-section-heading,
+.backup-dialog.operational-form-dialog .operational-section-heading{position:sticky;z-index:2;top:0;background:#fff;box-shadow:0 1px 0 #e5ece8}
+.stage13-dialog[data-operation-route="documents"] .operational-form-section::-webkit-scrollbar,
+.stage13-dialog[data-operation-route="decisions"] .operational-form-section::-webkit-scrollbar,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-form-section::-webkit-scrollbar,
+.quality-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar,
+.backup-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar{width:9px}
+.stage13-dialog[data-operation-route="documents"] .operational-form-section::-webkit-scrollbar-track,
+.stage13-dialog[data-operation-route="decisions"] .operational-form-section::-webkit-scrollbar-track,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-form-section::-webkit-scrollbar-track,
+.quality-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-track,
+.backup-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-track{background:#edf3f0}
+.stage13-dialog[data-operation-route="documents"] .operational-form-section::-webkit-scrollbar-thumb,
+.stage13-dialog[data-operation-route="decisions"] .operational-form-section::-webkit-scrollbar-thumb,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-form-section::-webkit-scrollbar-thumb,
+.quality-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-thumb,
+.backup-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-thumb{border:2px solid #edf3f0;border-radius:999px;background:#9cb9ac}
+.stage13-dialog[data-operation-route="documents"] .operational-form-section::-webkit-scrollbar-thumb:hover,
+.stage13-dialog[data-operation-route="decisions"] .operational-form-section::-webkit-scrollbar-thumb:hover,
+.stage13-dialog[data-operation-route="echanges-organismes"] .operational-form-section::-webkit-scrollbar-thumb:hover,
+.quality-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-thumb:hover,
+.backup-dialog.operational-form-dialog .operational-form-section::-webkit-scrollbar-thumb:hover{background:#6f9988}
+
+/* Constructeur BNEC : même hiérarchie, sans le transformer en modal. */
+.codification-builder{overflow:hidden;border:1px solid #d9e6e0!important;border-radius:20px!important;background:linear-gradient(180deg,#fff 0%,#f7faf8 100%)!important;box-shadow:0 14px 34px rgba(22,64,46,.07)!important}
+.codification-builder>header{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:23px 24px 20px!important;overflow:hidden;border-bottom:1px solid #e1ebe6!important;background:linear-gradient(145deg,#fff 0%,#edf8f2 100%)}
+.codification-builder>header::before{content:"";position:absolute;top:0;right:0;left:0;height:4px;background:linear-gradient(90deg,#165d45,#23795a,#72bea0)}
+.codification-builder>header::after{content:"";position:absolute;right:-38px;top:-62px;width:180px;height:180px;border:28px solid rgba(35,121,90,.07);border-radius:50%}
+.codification-builder>header>div,.codification-builder>header>.inst-status{position:relative;z-index:1}
+.codification-builder>header h2{margin:2px 0 5px;color:#243b31;font:800 20px/1.2 Manrope,"DM Sans",sans-serif;letter-spacing:-.025em}
+.codification-builder>header p:not(.eyebrow){max-width:650px;margin:0;color:#73837b;font-size:9px;line-height:1.55}
+.codification-builder>header .inst-status{padding:8px 11px;border:1px solid #cfe4da;border-radius:999px;background:#fff;color:#23795a;font-size:7.5px;font-weight:850;letter-spacing:.07em;box-shadow:0 5px 14px rgba(23,92,68,.07)}
+.codification-builder .codification-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:18px 20px 0}
+.codification-builder .codification-form-grid.compact{grid-template-columns:repeat(4,minmax(0,1fr));padding-top:0}
+.codification-builder .codification-form-grid label{display:block;min-width:0}
+.codification-builder .codification-form-grid label.full{grid-column:1/-1}
+.codification-builder .codification-form-grid label>span{display:block;margin:0 0 6px 2px;color:#63756c;font-size:8px;font-weight:850;letter-spacing:.055em;text-transform:uppercase}
+.codification-builder .codification-form-grid label>span b{color:#bd5550}
+.codification-builder .codification-form-grid input,.codification-builder .codification-form-grid select,.codification-builder .codification-form-grid textarea{width:100%;min-height:46px;padding:0 13px;border:1px solid #d7e2dd;border-radius:13px;background:#fff;color:#2e4439;font:600 10px "DM Sans",sans-serif;box-shadow:0 2px 8px rgba(23,55,42,.025),inset 0 1px 0 rgba(255,255,255,.92)}
+.codification-builder .codification-form-grid textarea{min-height:88px;padding:11px 13px;line-height:1.55;resize:vertical}
+.codification-builder .codification-form-grid input:focus,.codification-builder .codification-form-grid select:focus,.codification-builder .codification-form-grid textarea:focus{border-color:#66ad90;outline:0;box-shadow:0 0 0 4px rgba(35,121,90,.10),0 8px 22px rgba(24,88,64,.06)}
+.codification-builder .codification-form-grid small{display:block;margin:5px 2px 0;color:#87948e;font-size:7.5px;line-height:1.45}
+.codification-token-panel,.codification-constants{margin:18px 20px 0;padding:15px;border:1px solid #dfe9e4;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(26,70,50,.035)}
+.codification-token-panel{display:grid;grid-template-columns:minmax(175px,.7fr) minmax(0,1.5fr);gap:15px;align-items:center;background:linear-gradient(135deg,#fff,#f0f8f4)}
+.codification-token-panel strong,.codification-token-panel small{display:block}.codification-token-panel strong{color:#2e493c;font-size:10px}.codification-token-panel small{margin-top:3px;color:#7c8c84;font-size:8px;line-height:1.45}
+.codification-token-list{display:flex;flex-wrap:wrap;gap:7px}.codification-token-list button{padding:7px 9px;border:1px solid #cce3d8;border-radius:9px;background:#fff;color:#1d7253;font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 3px 8px rgba(24,83,59,.05);transition:.16s ease}.codification-token-list button:hover{transform:translateY(-1px);border-color:#8ec3ab;background:#eaf6f0}
+.codification-constants{padding:0;overflow:hidden}.codification-constants .requirement-builder-head{padding:14px 15px;border-bottom:1px solid #e7efeb;background:#fbfdfc}.codification-constants h3{margin:0;color:#2d483b;font-size:10px}.codification-constants p{margin:3px 0 0;color:#7c8c84;font-size:8px}.codification-constants .codification-form-grid{padding:15px}
+.codification-preview-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:13px;margin:18px 20px 0}.codification-preview-card,.codification-validation-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px;border:1px solid #dce8e2;border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(25,61,46,.045)}
+.codification-preview-card small,.codification-preview-card strong{display:block}.codification-preview-card small{color:#7d8c85;font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.codification-preview-card strong{margin-top:6px;color:#1c6248;font:800 17px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}.codification-validation-card{justify-content:flex-start;background:linear-gradient(135deg,#f5fbf8,#eaf6f0)}.codification-validation-card>span{display:grid;place-items:center;width:39px;height:39px;border-radius:12px;background:#fff;color:#23795a}.codification-validation-card strong,.codification-validation-card small{display:block}.codification-validation-card strong{color:#2e493c;font-size:9px}.codification-validation-card small{margin-top:3px;color:#718178;font-size:7.5px;line-height:1.45}
+.codification-actions{margin-top:18px!important;padding:14px 20px!important;border-top:1px solid #e1ebe6!important;background:#fff!important}
+
+@media(max-width:760px){.codification-builder .codification-form-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.codification-token-panel,.codification-preview-grid{grid-template-columns:1fr}.codification-builder>header{padding:21px 18px 18px!important}.codification-builder .codification-form-grid{padding-inline:14px}.codification-token-panel,.codification-constants,.codification-preview-grid{margin-inline:14px}.codification-actions{padding-inline:14px!important}}
+@media(max-width:560px){.codification-builder .codification-form-grid,.codification-builder .codification-form-grid.compact{grid-template-columns:1fr}.codification-builder .codification-form-grid label.full{grid-column:auto}.operational-dialog-footer{align-items:stretch;flex-direction:column}.operational-footer-actions{justify-content:stretch}.operational-footer-actions .app-btn{flex:1}}
+
+[data-theme=dark] :is(.quality-dialog.operational-form-dialog,.backup-dialog.operational-form-dialog)>form,[data-theme=dark] .codification-builder{border-color:#315248!important;background:#102d27!important;color:#e5f0ec!important}
+[data-theme=dark] :is(.quality-dialog.operational-form-dialog,.backup-dialog.operational-form-dialog) .quality-form,[data-theme=dark] :is(.quality-dialog.operational-form-dialog,.backup-dialog.operational-form-dialog) .backup-form,[data-theme=dark] .codification-builder>header,[data-theme=dark] .codification-token-panel,[data-theme=dark] .codification-constants,[data-theme=dark] .codification-preview-card,[data-theme=dark] .codification-validation-card{background:#14372f!important}
+[data-theme=dark] .codification-builder :is(input,select,textarea){border-color:#315248!important;background:#0d2822!important;color:#e7f1ed!important}

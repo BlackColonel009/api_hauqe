@@ -11,5 +11,49 @@
     <div class="table-responsive"><table class="table stage13-table"><thead id="stage13Head"></thead><tbody id="stage13Rows"></tbody></table></div>
     <div class="priority-empty" id="stage13Empty" hidden>Aucun élément trouvé.</div>
   </section>
-  <dialog class="hauqe-dialog stage13-dialog" id="stage13Dialog"><form id="stage13Form"><header><div><p class="eyebrow" id="stage13DialogEyebrow"></p><h2 id="stage13DialogTitle"></h2></div><button type="button" class="dialog-close" data-dialog-close><i data-lucide="x"></i></button></header><div class="dialog-body" data-dialog-scroll><div class="stage13-form-grid" id="stage13Fields"></div></div><footer><button type="button" class="btn btn-outline-secondary app-btn" data-dialog-close>Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Enregistrer</button></footer></form></dialog>
+  <dialog class="hauqe-dialog operational-form-dialog stage13-dialog" id="stage13Dialog">
+    <form id="stage13Form">
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title">
+          <span class="operational-dialog-icon"><i data-lucide="file-pen-line"></i></span>
+          <div><p class="eyebrow" id="stage13DialogEyebrow"></p><h2 id="stage13DialogTitle"></h2><small>Renseignez les informations nécessaires, puis enregistrez l’opération.</small></div>
+        </div>
+        <button type="button" class="dialog-close operational-dialog-close" aria-label="Fermer" data-dialog-close><i data-lucide="x"></i></button>
+      </header>
+      <div class="operational-dialog-body" data-dialog-scroll>
+        <section class="operational-form-section">
+          <div class="operational-section-heading"><span><i data-lucide="clipboard-pen-line"></i></span><div><strong>Informations à renseigner</strong><small>Les champs obligatoires sont à compléter avant l’enregistrement.</small></div><b>01</b></div>
+          <div class="stage13-form-grid" id="stage13Fields"></div>
+        </section>
+      </div>
+      <footer class="operational-dialog-footer"><div class="operational-footer-note"><i data-lucide="shield-check"></i><span>Les informations enregistrées restent traçables.</span></div><div class="operational-footer-actions"><button type="button" class="btn btn-outline-secondary app-btn" data-dialog-close>Annuler</button><button type="submit" class="btn btn-primary app-btn"><i data-lucide="save"></i>Enregistrer</button></div></footer>
+    </form>
+  </dialog>
+  <dialog class="hauqe-dialog operational-form-dialog stage13-exchange-dialog" id="stage13PreviewDialog">
+    <form method="dialog">
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="mail-open"></i></span><div><p class="eyebrow">Échange enregistré</p><h2>Aperçu du message envoyé</h2><small>Le contenu ci-dessous est celui conservé dans le dossier de vérification.</small></div></div>
+        <button class="dialog-close operational-dialog-close" type="button" aria-label="Fermer" data-exchange-dialog-close><i data-lucide="x"></i></button>
+      </header>
+      <div class="operational-dialog-body" id="stage13PreviewContent"></div>
+      <footer class="operational-dialog-footer"><div class="operational-footer-note"><i data-lucide="shield-check"></i><span>Consultation seule : le message reste traçable.</span></div><div class="operational-footer-actions"><button class="btn btn-outline-secondary app-btn" type="button" data-exchange-dialog-close>Fermer</button></div></footer>
+    </form>
+  </dialog>
+  <dialog class="hauqe-dialog operational-form-dialog stage13-exchange-dialog" id="stage13ResponseDialog">
+    <form id="stage13ResponseForm">
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="reply"></i></span><div><p class="eyebrow">Réponse de l’organisme</p><h2>Enregistrer une réponse</h2><small>La réponse sera ajoutée au dossier de vérification et inscrite dans le journal d’audit.</small></div></div>
+        <button class="dialog-close operational-dialog-close" type="button" aria-label="Fermer" data-exchange-dialog-close><i data-lucide="x"></i></button>
+      </header>
+      <div class="operational-dialog-body">
+        <div class="operational-form-notice"><span><i data-lucide="file-check-2"></i></span><div><strong id="stage13ResponseSubject">Confirmation externe</strong><small id="stage13ResponseRecipient">Précisez le contenu et le résultat communiqué par l’organisme.</small></div></div>
+        <section class="operational-form-section"><div class="operational-section-heading"><span><i data-lucide="clipboard-pen-line"></i></span><div><strong>Éléments de réponse</strong><small>Renseignez les informations réellement reçues.</small></div><b>01</b></div><div class="operational-form-grid">
+          <label class="operational-field"><span>Date de réponse <b>*</b></span><input id="stage13ResponseDate" name="date_reponse" type="date" required></label>
+          <label class="operational-field"><span>Résultat</span><input id="stage13ResponseResult" name="resultat" maxlength="255" placeholder="Ex. Confirmation positive"></label>
+          <label class="operational-field full"><span>Contenu de la réponse <b>*</b></span><textarea id="stage13ResponseContent" name="contenu_reponse" rows="6" required placeholder="Saisissez ou résumez fidèlement la réponse reçue…"></textarea><small>Conservez les éléments utiles à la vérification.</small></label>
+        </div></section>
+      </div>
+      <footer class="operational-dialog-footer"><div class="operational-footer-note"><i data-lucide="info"></i><span>Les champs marqués * sont obligatoires.</span></div><div class="operational-footer-actions"><button class="btn btn-outline-secondary app-btn" type="button" data-exchange-dialog-close>Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Valider la réponse</button></div></footer>
+    </form>
+  </dialog>
 </div>

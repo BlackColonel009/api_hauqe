@@ -36,6 +36,10 @@ class DeadlineCreateRequest(BaseModel):
     date_echeance: date
     responsable_id: UUID | None = None
     priorite: str | None = Field(default=None, max_length=255)
+    rappels_email_actifs: bool = True
+    rappel_jours_avant: int = Field(default=2, ge=0, le=365)
+    escalade_administrateurs_jour_j: bool = True
+    administrateurs_exclus_ids: list[UUID] = Field(default_factory=list)
 
 
 class DeadlineUpdateRequest(BaseModel):
@@ -44,6 +48,10 @@ class DeadlineUpdateRequest(BaseModel):
     date_echeance: date | None = None
     responsable_id: UUID | None = None
     priorite: str | None = Field(default=None, max_length=255)
+    rappels_email_actifs: bool | None = None
+    rappel_jours_avant: int | None = Field(default=None, ge=0, le=365)
+    escalade_administrateurs_jour_j: bool | None = None
+    administrateurs_exclus_ids: list[UUID] | None = None
 
 
 class DeadlineCloseRequest(BaseModel):
@@ -62,6 +70,10 @@ class DeadlineResponse(BaseModel):
     priorite: str | None = None
     statut: str | None = None
     motif_cloture: str | None = None
+    rappels_email_actifs: bool = True
+    rappel_jours_avant: int = 2
+    escalade_administrateurs_jour_j: bool = True
+    administrateurs_exclus_ids: list[UUID] = Field(default_factory=list)
     jours_restants: int | None = None
     alertes_actives_count: int = 0
     created_at: datetime
@@ -325,6 +337,7 @@ class DailyScanResponse(BaseModel):
     scan_date: date
     deadlines_created: int = 0
     alerts_created: int = 0
+    reminders_queued: int = 0
     certification_deadlines_seen: int = 0
     audit_deadlines_seen: int = 0
     renewal_deadlines_seen: int = 0

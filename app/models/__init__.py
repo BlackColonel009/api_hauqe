@@ -94,6 +94,8 @@ from app.models.echeance import Echeance
 from app.models.notification import Notification
 from app.models.rapport_veille import RapportVeille
 from app.models.relance_veille import RelanceVeille
+from app.models.rappel_echeance import RappelEcheance
+from app.models.exclusion_rappel_echeance import ExclusionRappelEcheance
 
 from app.models.archive import Archive
 from app.models.decision_institutionnelle import DecisionInstitutionnelle

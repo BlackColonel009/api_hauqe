@@ -12,23 +12,32 @@ Il expose les lectures/écritures nécessaires au service :
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alerte import Alerte
+from app.models.affectation_verification import AffectationVerification
 from app.models.audit_certification import AuditCertification
 from app.models.certification import Certification
+from app.models.dossier_verification import DossierVerification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
+from app.models.entreprise import Entreprise
+from app.models.exclusion_rappel_echeance import ExclusionRappelEcheance
+from app.models.fiche_collecte import FicheCollecte
 from app.models.notification import Notification
+from app.models.norme import Norme
 from app.models.rapport_veille import RapportVeille
 from app.models.regle_metier import RegleMetier
+from app.models.rappel_echeance import RappelEcheance
 from app.models.relance_veille import RelanceVeille
 from app.models.renouvellement_certification import RenouvellementCertification
+from app.models.role import Role
 from app.models.utilisateur import Utilisateur
+from app.models.utilisateur_role import UtilisateurRole
 
 
 ACTIVE_DEADLINE_STATUSES = {"PLANIFIEE", "EN_COURS"}
@@ -50,6 +59,124 @@ class WatchRepository:
             select(Utilisateur).where(Utilisateur.id == user_id)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def certification_context(
+        db: AsyncSession,
+        certification_id: UUID,
+    ) -> str:
+        row = await db.execute(
+            select(
+                Entreprise.raison_sociale, Entreprise.nom_commercial,
+                Entreprise.identifiant_national,
+                Certification.identifiant_national.label("certification_ref"),
+                Certification.numero_certificat, Certification.date_effet,
+                Certification.date_expiration, Norme.code, Norme.nom,
+            ).join(Certification, Certification.entreprise_id == Entreprise.id)
+            .outerjoin(Norme, Norme.id == Certification.norme_id)
+            .where(Certification.id == certification_id)
+        )
+        item = row.one_or_none()
+        if not item:
+            return ""
+        company = item.raison_sociale or item.nom_commercial or "Entreprise concernée"
+        certificate = item.certification_ref or item.numero_certificat or "Certification déclarée"
+        standard = item.code or item.nom
+        lines = [f"Entreprise : {company}", f"Certification : {certificate}"]
+        if item.identifiant_national:
+            lines.append(f"Identifiant entreprise : {item.identifiant_national}")
+        if standard:
+            lines.append(f"Norme : {standard}")
+        if item.date_effet:
+            lines.append(f"Début / effet : {item.date_effet.isoformat()}")
+        if item.date_expiration:
+            lines.append(f"Fin / expiration : {item.date_expiration.isoformat()}")
+        return "\n".join(lines)
+
+    @staticmethod
+    async def active_hauqe_administrators(
+        db: AsyncSession,
+    ) -> list[Utilisateur]:
+        """Utilisateurs actifs portant le rôle institutionnel ADMIN_HAUQE."""
+        today = date.today()
+        result = await db.execute(
+            select(Utilisateur)
+            .join(
+                UtilisateurRole,
+                UtilisateurRole.utilisateur_id == Utilisateur.id,
+            )
+            .join(Role, Role.id == UtilisateurRole.role_id)
+            .where(
+                Role.code == "ADMIN_HAUQE",
+                Utilisateur.statut == "ACTIF",
+                or_(
+                    UtilisateurRole.statut.is_(None),
+                    UtilisateurRole.statut == "ACTIF",
+                ),
+                or_(
+                    UtilisateurRole.date_debut.is_(None),
+                    UtilisateurRole.date_debut <= today,
+                ),
+                or_(
+                    UtilisateurRole.date_fin.is_(None),
+                    UtilisateurRole.date_fin >= today,
+                ),
+                or_(Role.statut.is_(None), Role.statut == "ACTIF"),
+            )
+            .distinct()
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def reminder_already_recorded(
+        db: AsyncSession,
+        *,
+        deadline_id: UUID,
+        recipient_user_id: UUID,
+        reminder_type: str,
+        reminder_date: date,
+    ) -> bool:
+        result = await db.execute(
+            select(RappelEcheance.id).where(
+                RappelEcheance.echeance_id == deadline_id,
+                RappelEcheance.destinataire_utilisateur_id == recipient_user_id,
+                RappelEcheance.type_rappel == reminder_type,
+                RappelEcheance.date_rappel == reminder_date,
+            ).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def deadline_reminder_admin_exclusions(
+        db: AsyncSession,
+        deadline_id: UUID,
+    ) -> list[UUID]:
+        result = await db.execute(
+            select(ExclusionRappelEcheance.administrateur_id).where(
+                ExclusionRappelEcheance.echeance_id == deadline_id
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def replace_deadline_reminder_admin_exclusions(
+        db: AsyncSession,
+        *,
+        deadline_id: UUID,
+        administrator_ids: list[UUID],
+    ) -> None:
+        await db.execute(
+            delete(ExclusionRappelEcheance).where(
+                ExclusionRappelEcheance.echeance_id == deadline_id
+            )
+        )
+        for administrator_id in set(administrator_ids):
+            db.add(
+                ExclusionRappelEcheance(
+                    echeance_id=deadline_id,
+                    administrateur_id=administrator_id,
+                )
+            )
 
     @staticmethod
     async def active_alert_rule(
@@ -146,6 +273,93 @@ class WatchRepository:
             select(func.count(Echeance.id)).where(*filters)
         )
         return list(result.scalars().all()), int(count.scalar_one())
+
+    @staticmethod
+    async def active_deadlines_for_reminders(
+        db: AsyncSession,
+        *,
+        until: date,
+    ) -> list[Echeance]:
+        result = await db.execute(
+            select(Echeance).where(
+                Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+                Echeance.date_echeance.is_not(None),
+                Echeance.date_echeance <= until,
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def deadline_email_context(
+        db: AsyncSession,
+        deadline: Echeance,
+    ) -> dict[str, str]:
+        """Repères métier lisibles ; aucun UUID ne doit quitter le système."""
+        resource_type = (deadline.ressource_type or "").upper()
+        certification_id = None
+        if resource_type == "CERTIFICATION":
+            certification_id = deadline.ressource_id
+        elif resource_type == "RENOUVELLEMENT_CERTIFICATION":
+            row = await db.execute(select(RenouvellementCertification.certification_id).where(RenouvellementCertification.id == deadline.ressource_id))
+            certification_id = row.scalar_one_or_none()
+        elif resource_type == "AUDIT_CERTIFICATION":
+            row = await db.execute(select(AuditCertification.certification_id).where(AuditCertification.id == deadline.ressource_id))
+            certification_id = row.scalar_one_or_none()
+        elif resource_type == "DOSSIER_VEILLE":
+            row = await db.execute(
+                select(DossierVeille.certification_id).where(
+                    DossierVeille.id == deadline.ressource_id
+                )
+            )
+            certification_id = row.scalar_one_or_none()
+        elif resource_type == "RELANCE_VEILLE":
+            row = await db.execute(
+                select(DossierVeille.certification_id)
+                .join(RelanceVeille, RelanceVeille.dossier_veille_id == DossierVeille.id)
+                .where(RelanceVeille.id == deadline.ressource_id)
+            )
+            certification_id = row.scalar_one_or_none()
+
+        if certification_id:
+            row = await db.execute(
+                select(
+                    Entreprise.raison_sociale, Entreprise.nom_commercial,
+                    Entreprise.identifiant_national,
+                    Certification.identifiant_national.label("certification_ref"),
+                    Certification.numero_certificat, Norme.code, Norme.nom,
+                ).join(Certification, Certification.entreprise_id == Entreprise.id)
+                .outerjoin(Norme, Norme.id == Certification.norme_id)
+                .where(Certification.id == certification_id)
+            )
+            item = row.one_or_none()
+            if item:
+                company = item.raison_sociale or item.nom_commercial or "Entreprise concernée"
+                certificate = item.certification_ref or item.numero_certificat or "Certification déclarée"
+                standard = item.code or item.nom
+                details = [f"Entreprise : {company}", f"Certification : {certificate}"]
+                if item.identifiant_national:
+                    details.append(f"Identifiant entreprise : {item.identifiant_national}")
+                if standard:
+                    details.append(f"Norme : {standard}")
+                return {"label": f"{company} — {certificate}", "details": "\n".join(details)}
+
+        if resource_type == "AFFECTATION_VERIFICATION":
+            row = await db.execute(
+                select(Entreprise.raison_sociale, Entreprise.nom_commercial, Entreprise.identifiant_national)
+                .join(FicheCollecte, FicheCollecte.entreprise_id == Entreprise.id)
+                .join(DossierVerification, DossierVerification.fiche_collecte_id == FicheCollecte.id)
+                .join(AffectationVerification, AffectationVerification.dossier_verification_id == DossierVerification.id)
+                .where(AffectationVerification.id == deadline.ressource_id)
+            )
+            item = row.one_or_none()
+            if item:
+                company = item.raison_sociale or item.nom_commercial or "Entreprise concernée"
+                details = [f"Entreprise : {company}"]
+                if item.identifiant_national:
+                    details.append(f"Identifiant entreprise : {item.identifiant_national}")
+                return {"label": f"Vérification — {company}", "details": "\n".join(details)}
+
+        return {"label": "Échéance à traiter", "details": ""}
 
     @staticmethod
     async def find_active_deadline(
@@ -406,6 +620,11 @@ class WatchRepository:
                     (
                         (Notification.statut == "PLANIFIEE")
                         & (Notification.date_envoi <= date.today())
+                    ),
+                    (
+                        (Notification.statut == "ECHEC")
+                        & (func.coalesce(Notification.nombre_tentatives, 0) < 3)
+                        & (Notification.updated_at <= datetime.now() - timedelta(minutes=15))
                     ),
                 ),
             )

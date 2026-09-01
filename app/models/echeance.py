@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,6 +68,30 @@ class Echeance(
     motif_cloture: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
+    )
+
+    # Politique de rappel propre à cette échéance. Les valeurs par défaut
+    # appliquent la règle HAUQE : rappel quotidien à partir de J-2 et
+    # escalade aux administrateurs le jour J.
+    rappels_email_actifs: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
+
+    rappel_jours_avant: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=2,
+        server_default="2",
+    )
+
+    escalade_administrateurs_jour_j: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
     )
 
     responsable = relationship(

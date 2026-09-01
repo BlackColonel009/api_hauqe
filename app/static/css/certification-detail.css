@@ -158,3 +158,11 @@
   .renewal-empty-state{grid-template-columns:40px minmax(0,1fr)}
   .renewal-empty-state .btn{grid-column:1/-1;width:100%}
 }
+
+/* Vérifications : respiration uniforme des rubriques opérationnelles. */
+.certification-detail-page{padding-top:8px}
+.certification-detail-page #vdContent>.panel{margin-top:18px!important}
+.certification-detail-page #vdContent>.panel>.panel-heading{padding:21px 22px 16px}
+.certification-detail-page .form-subsection{margin:18px 18px 22px;padding:18px;border:1px solid #e1e9e5;border-radius:14px;background:#fafcfb}
+.certification-detail-page .form-subsection h3{margin:0 0 7px;font-size:12px}
+.certification-detail-page .form-subsection .field-help{margin:0 0 14px;line-height:1.5}

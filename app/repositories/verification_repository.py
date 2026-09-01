@@ -13,6 +13,8 @@ from app.models.organisme import Organisme
 from app.models.point_verification import PointVerification
 from app.models.utilisateur import Utilisateur
 from app.models.campagne import Campagne
+from app.models.certification_declaree import CertificationDeclaree
+from app.models.offre_declaree import OffreDeclaree
 from app.models.entreprise import Entreprise
 from app.models.mission_collecte import MissionCollecte
 from app.models.permission import Permission
@@ -149,6 +151,24 @@ class VerificationRepository:
     async def get_fiche(db: AsyncSession, fiche_id: UUID):
         r = await db.execute(select(FicheCollecte).where(FicheCollecte.id == fiche_id))
         return r.scalar_one_or_none()
+
+    @staticmethod
+    async def list_declared_certifications(db: AsyncSession, fiche_id: UUID):
+        result = await db.execute(
+            select(CertificationDeclaree)
+            .where(CertificationDeclaree.fiche_collecte_id == fiche_id)
+            .order_by(CertificationDeclaree.nom_certification, CertificationDeclaree.numero)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_declared_offers(db: AsyncSession, fiche_id: UUID):
+        result = await db.execute(
+            select(OffreDeclaree)
+            .where(OffreDeclaree.fiche_collecte_id == fiche_id)
+            .order_by(OffreDeclaree.nom, OffreDeclaree.type_offre)
+        )
+        return list(result.scalars().all())
 
     @staticmethod
     async def get_dossier(db: AsyncSession, dossier_id: UUID):

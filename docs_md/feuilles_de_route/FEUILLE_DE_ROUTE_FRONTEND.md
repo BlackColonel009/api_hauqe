@@ -3650,3 +3650,52 @@ bouton de déverrouillage désactivé.
   envoyés après le changement, car la session est déjà invalidée ; ils pourront
   être enregistrés après la nouvelle connexion ;
 - validation syntaxique JavaScript réussie.
+
+## Mise à jour — `#/echeances` : rappels configurables (01/09/2026)
+
+La fiche d’échéance expose désormais un modal « Configurer les rappels » avec :
+
+- interrupteur des rappels de l’agent affecté ;
+- nombre de jours avant la date à partir duquel les rappels sont quotidiens ;
+- interrupteur d’escalade aux administrateurs HAUQE au jour J ;
+- liste d’exclusion individuelle des administrateurs pour cette seule échéance.
+
+Le réglage est visible dans la fiche et ne modifie pas les autres échéances.
+
+## À éviter impérativement — UUID visibles (01/09/2026)
+
+Les UUID sont des identifiants techniques. Ils ne doivent jamais apparaître
+dans les pages utilisateur, modals, alertes, messages, champs préremplis,
+infobulles ou e-mails. Utiliser à la place un libellé métier compréhensible
+(entreprise, mission, certification, norme, organisme, date ou statut).
+
+## Standard d’interface — modals HAUQE (01/09/2026)
+
+La référence obligatoire pour tout nouveau modal ou formulaire opérationnel est
+le thème déjà utilisé dans **Échéances**. Il comprend : en-tête avec icône et
+contexte, corps aéré en sections, champs homogènes, bouton de fermeture compact
+et pied de page avec actions alignées.
+
+Ne pas créer un nouveau style isolé. Réutiliser les classes
+`operational-form-dialog`, `operational-dialog-header`,
+`operational-dialog-body` et `operational-dialog-footer`, puis adapter
+uniquement l’icône et la couleur d’accent si nécessaire.
+
+Écrans harmonisés avec cette règle : Nouvelle décision, Déposer un document,
+Nouvelle confirmation, Nouvelle revue et Nouvelle politique. Le constructeur
+de modèle BNEC reste une page et reprend la même hiérarchie visuelle sans être
+transformé en modal.
+
+### Règle de lisibilité au zoom
+
+La hauteur du modal est limitée à la fenêtre. Seul le corps du formulaire
+défile ; l’en-tête et les actions restent accessibles. Cette règle couvre
+Nouvelle décision, Déposer un document, Nouvelle confirmation, Nouvelle revue
+et Nouvelle politique.
+
+## Correctif — alertes et actions urgentes compréhensibles (01/09/2026)
+
+Les alertes de dossier de veille et les actions urgentes du tableau de bord
+affichent désormais l’entreprise, la certification concernée, la norme ou le
+numéro de certificat lorsque ces informations existent. Un UUID est supprimé
+du rendu même en cas de donnée ancienne incomplète.

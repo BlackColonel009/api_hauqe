@@ -41,6 +41,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.dashboard_repository import DashboardRepository
+from app.repositories.watch_workspace_repository import WatchWorkspaceRepository
 from app.schemas.dashboard import (
     AnnualDashboardResponse,
     BarometerResponse,
@@ -512,6 +513,11 @@ class DashboardService:
 
         actions: list[PriorityAction] = []
         for row in alerts:
+            resource = await WatchWorkspaceRepository.resource_context(
+                db,
+                resource_type=row.ressource_type,
+                resource_id=row.ressource_id,
+            )
             actions.append(
                 PriorityAction(
                     type="ALERTE",
@@ -520,9 +526,16 @@ class DashboardService:
                     due_date=None,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
+                    resource_label=resource["label"],
+                    resource_subtitle=resource["subtitle"],
                 )
             )
         for row in deadlines:
+            resource = await WatchWorkspaceRepository.resource_context(
+                db,
+                resource_type=row.ressource_type,
+                resource_id=row.ressource_id,
+            )
             actions.append(
                 PriorityAction(
                     type="ECHEANCE",
@@ -531,6 +544,8 @@ class DashboardService:
                     due_date=row.date_echeance,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
+                    resource_label=resource["label"],
+                    resource_subtitle=resource["subtitle"],
                 )
             )
         actions = actions[:10]

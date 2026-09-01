@@ -39,9 +39,10 @@ async def run() -> None:
         )
         logger.info(
             "Scan veille terminé : "
-            "%s échéance(s) créée(s), %s alerte(s) créée(s).",
+            "%s échéance(s) créée(s), %s alerte(s) créée(s), %s rappel(s) planifié(s).",
             result.deadlines_created,
             result.alerts_created,
+            result.reminders_queued,
         )
 
 

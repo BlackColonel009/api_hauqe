@@ -617,6 +617,11 @@
             <div class="deadline-section-title"><span><i data-lucide="align-left"></i></span><div><small>Instruction</small><h3>Description de l’échéance</h3></div></div>
             <p>${e(selected.description || "Aucune instruction complémentaire n’a été renseignée pour cette échéance.")}</p>
           </section>
+          <section class="deadline-reminder-summary">
+            <div class="deadline-section-title"><span><i data-lucide="mail-check"></i></span><div><small>Notifications automatiques</small><h3>Plan de rappel</h3></div></div>
+            <p>${selected.rappels_email_actifs ? `Rappel quotidien à l’agent à partir de J-${e(selected.rappel_jours_avant ?? 2)} jusqu’au jour J.` : "Rappel e-mail à l’agent désactivé."}</p>
+            <p>${selected.escalade_administrateurs_jour_j ? "Escalade e-mail aux administrateurs HAUQE actifs le jour J." : "Escalade aux administrateurs désactivée."}</p>
+          </section>
           ${closed ? `<section class="deadline-closure-note"><span><i data-lucide="file-check-2"></i></span><div><small>Décision enregistrée</small><strong>${e(selected.motif_cloture || "Le motif est consigné dans le journal d’audit.")}</strong></div></section>` : ""}
         </main>
         <aside class="deadline-detail-aside">
@@ -627,14 +632,37 @@
         </aside>
       </div>`;
     $("#deadlineDetailActions").innerHTML = perm("ECHEANCES.GERER") && !closed
-      ? `<button class="btn btn-outline-secondary app-btn" type="button" data-action="cancel"><i data-lucide="ban"></i>Annuler l’échéance</button>
+      ? `<button class="btn btn-outline-secondary app-btn" type="button" data-action="reminders"><i data-lucide="mail-cog"></i>Configurer les rappels</button>
+         <button class="btn btn-outline-secondary app-btn" type="button" data-action="cancel"><i data-lucide="ban"></i>Annuler l’échéance</button>
          <button class="btn btn-primary app-btn" type="button" data-action="complete"><i data-lucide="circle-check"></i>Terminer l’échéance</button>`
       : `<button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-detail>Fermer</button>`;
     $("#deadlineDetailDialog").showModal();
 
     $$("[data-action]").forEach((button) => {
-      button.onclick = () => {
+      button.onclick = async () => {
         action = button.dataset.action;
+        if (action === "reminders") {
+          $("#deadlineRemindersEnabled").checked = selected.rappels_email_actifs !== false;
+          $("#deadlineReminderDays").value = selected.rappel_jours_avant ?? 2;
+          $("#deadlineAdminEscalation").checked = selected.escalade_administrateurs_jour_j !== false;
+          const excluded = new Set((selected.administrateurs_exclus_ids || []).map(String));
+          try {
+            const administrators = await api.apiGet("/api/v1/echeances/reminder-administrators");
+            $("#deadlineExcludedAdmins").innerHTML = administrators.length
+              ? administrators.map((administrator) => `
+                <label class="reminder-admin-option">
+                  <input type="checkbox" value="${e(administrator.id)}" ${excluded.has(String(administrator.id)) ? "checked" : ""}>
+                  <span><strong>${e(administrator.label)}</strong><small>${e(administrator.email)}</small></span>
+                </label>`).join("")
+              : "<small>Aucun administrateur HAUQE actif n’est disponible.</small>";
+          } catch (error) {
+            $("#deadlineExcludedAdmins").innerHTML = `<small class="text-danger">${e(error?.message || "Impossible de charger les administrateurs.")}</small>`;
+          }
+          $("#deadlineDetailDialog").close();
+          $("#deadlineReminderDialog").showModal();
+          icons();
+          return;
+        }
         $("#deadlineDetailDialog").close();
         $("#deadlineActionTitle").textContent =
           action === "complete" ? "Terminer l’échéance" : "Annuler l’échéance";
@@ -670,6 +698,29 @@
     }
   }
 
+  async function saveReminderSettings(event) {
+    event.preventDefault();
+    if (!selected) return;
+    try {
+      const updated = await api.apiRequest(`/api/v1/echeances/${selected.id}`, {
+        method: "PATCH",
+        body: {
+          rappels_email_actifs: $("#deadlineRemindersEnabled").checked,
+          rappel_jours_avant: Number($("#deadlineReminderDays").value),
+          escalade_administrateurs_jour_j: $("#deadlineAdminEscalation").checked,
+          administrateurs_exclus_ids: $$("#deadlineExcludedAdmins input:checked").map((input) => input.value),
+        },
+      });
+      selected = updated;
+      $("#deadlineReminderDialog").close();
+      $("#deadlineDetailDialog").close();
+      await Promise.all([load(), loadGlobalDeadlines()]);
+      state("Plan de rappel enregistré pour cette échéance.");
+    } catch (error) {
+      state(error?.message || "Impossible d’enregistrer le plan de rappel.", true);
+    }
+  }
+
   async function scan() {
     try {
       const result = await api.apiPost("/api/v1/veille/scans/daily", {});
@@ -693,6 +744,7 @@
     };
     $("#deadlineForm").onsubmit = create;
     $("#deadlineActionForm").onsubmit = submitAction;
+    $("#deadlineReminderForm").onsubmit = saveReminderSettings;
 
     $("#deadlineTypeFilter").onchange = async (ev) => {
       filters.type_echeance = ev.target.value; await load();
@@ -781,6 +833,9 @@
     });
     $$("[data-close-deadline-action]").forEach((b) => {
       b.onclick = () => $("#deadlineActionDialog").close();
+    });
+    $$("[data-close-deadline-reminder]").forEach((b) => {
+      b.onclick = () => $("#deadlineReminderDialog").close();
     });
     $$("[data-close-deadline-connections]").forEach((b) => {
       b.onclick = () => $("#deadlineConnectionsDialog").close();

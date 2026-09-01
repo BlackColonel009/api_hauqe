@@ -54,6 +54,27 @@ class VerificationService:
         from app.repositories.veille_repository import WatchRepository
         from app.services.veille_service import WatchService
 
+        context_row = await VerificationRepository.workspace_item(
+            db, assignment.dossier_verification_id
+        )
+        context = (
+            VerificationService.workspace_item_response(context_row)
+            if context_row else None
+        )
+        company = (
+            context.entreprise_name or context.entreprise_trade_name
+            if context else None
+        ) or "Entreprise concernée"
+        company_id = context.entreprise_identifiant if context else None
+        mission = context.mission_code if context else None
+        business_context = "\n".join(
+            value for value in (
+                f"Entreprise : {company}",
+                f"Identifiant entreprise : {company_id}" if company_id else None,
+                f"Mission de collecte : {mission}" if mission else None,
+            ) if value
+        )
+
         dates = [
             ("DEBUT", assignment.date_debut, "Début de l'affectation"),
             ("FIN", assignment.date_fin, "Fin prévue de l'affectation"),
@@ -77,7 +98,7 @@ class VerificationService:
                 resource_type="AFFECTATION_VERIFICATION",
                 resource_id=assignment.id,
                 deadline_type=deadline_type,
-                title=f"{label} - dossier {assignment.dossier_verification_id}",
+                title=f"{label} — {company}",
                 due_date=due_date,
             )
             deadline.responsable_id = assignment.verificateur_id
@@ -87,8 +108,7 @@ class VerificationService:
                 db, deadline_id=deadline.id, rule_code=rule
             )
             message = (
-                f"{label} fixée au {due_date.isoformat()} pour le dossier "
-                f"{assignment.dossier_verification_id}."
+                f"{label} fixée au {due_date.isoformat()}.\n{business_context}"
             )
             if alert is None:
                 alert = Alerte(
@@ -311,7 +331,16 @@ class VerificationService:
     async def save_point(db, *, dossier_id, payload, actor, request):
         d=await VerificationService.get(db,dossier_id)
         if d.date_fin: raise HTTPException(409,"Dossier clôturé.")
-        code=payload.code.strip().upper()
+        code=(payload.code or "").strip().upper()
+        if not code:
+            # Proposition robuste même si certains points intermédiaires ont
+            # été supprimés : le premier code libre est retenu.
+            sequence = 1
+            while await VerificationRepository.get_point_by_code(
+                db, dossier_id=dossier_id, code=f"PV-{sequence:03d}"
+            ):
+                sequence += 1
+            code = f"PV-{sequence:03d}"
         if await VerificationRepository.get_point_by_code(db,dossier_id=dossier_id,code=code):
             raise HTTPException(409,"Code de point déjà utilisé dans ce dossier.")
         if payload.preuve_document_id and not await VerificationRepository.get_active_document(db,payload.preuve_document_id):
@@ -406,9 +435,56 @@ class VerificationService:
             raise HTTPException(404,"Organisme introuvable.")
         sent=payload.date_envoi or date.today()
         if payload.date_echeance and payload.date_echeance<sent: raise HTTPException(422,"Échéance antérieure à l'envoi.")
+        contenu_demande = (payload.contenu_demande or "").strip() or (
+            "Bonjour,\n\n"
+            f"Nous vous prions de nous communiquer les éléments utiles concernant : {payload.objet.strip()}.\n\n"
+            "Cordialement,\nHAUQE"
+        )
+        context_row = await VerificationRepository.workspace_item(db, dossier_id)
+        context = VerificationService.workspace_item_response(context_row) if context_row else None
+        declared = await VerificationRepository.list_declared_certifications(
+            db, d.fiche_collecte_id
+        )
+        offers = await VerificationRepository.list_declared_offers(
+            db, d.fiche_collecte_id
+        )
+        selected = {value.strip().upper() for value in payload.informations_partagees if value.strip()}
+        if not selected:
+            selected = {"ENTREPRISE", "MISSION", "CERTIFICATIONS", "DATES", "PRODUITS"}
+        certification_lines = []
+        for certificate in declared[:5]:
+            details = [
+                certificate.nom_certification,
+                f"N° {certificate.numero}" if certificate.numero else None,
+                certificate.norme_declaree,
+                f"Portée : {certificate.portee}" if certificate.portee else None,
+                f"Début : {certificate.date_obtention.isoformat()}" if "DATES" in selected and certificate.date_obtention else None,
+                f"Fin / expiration : {certificate.date_expiration.isoformat()}" if "DATES" in selected and certificate.date_expiration else None,
+            ]
+            certification_lines.append(" — ".join(value for value in details if value))
+        reference = [
+            "\n\nRéférences du dossier à confirmer :",
+            f"Entreprise : {context.entreprise_name}" if "ENTREPRISE" in selected and context and context.entreprise_name else None,
+            f"Identifiant entreprise : {context.entreprise_identifiant}" if "ENTREPRISE" in selected and context and context.entreprise_identifiant else None,
+            f"Mission : {context.mission_code}" if "MISSION" in selected and context and context.mission_code else None,
+        ]
+        if certification_lines and "CERTIFICATIONS" in selected:
+            reference.append("Certification(s) déclarée(s) :\n- " + "\n- ".join(certification_lines))
+        offer_lines = []
+        for offer in offers[:10]:
+            details = [
+                offer.nom,
+                offer.type_offre,
+                offer.categorie,
+                offer.description,
+            ]
+            offer_lines.append(" — ".join(value for value in details if value))
+        if offer_lines and "PRODUITS" in selected:
+            reference.append("Produits / offres déclarés :\n- " + "\n- ".join(offer_lines))
+        contenu_demande += "\n".join(value for value in reference if value)
         x=ConfirmationExterne(dossier_verification_id=dossier_id,organisme_id=payload.organisme_id,
             canal=txt(payload.canal),destinataire=payload.destinataire.strip(),objet=payload.objet.strip(),
-            contenu_demande=payload.contenu_demande.strip(),
+            contenu_demande=contenu_demande,
             date_envoi=sent,date_echeance=payload.date_echeance,date_reponse=None,contenu_reponse=None,
             resultat=None,document_id=None,statut=txt(payload.statut) or "EN_ATTENTE")
         db.add(x); await db.flush()
@@ -417,7 +493,9 @@ class VerificationService:
                 adresse_externe=x.destinataire, canal="EMAIL",
                 objet=x.objet, contenu=x.contenu_demande,
                 date_envoi=x.date_envoi, nombre_tentatives=0,
-                statut="EN_ATTENTE",
+                # La file SMTP ne doit prendre une demande future qu'à la
+                # date prévue ; une demande du jour reste immédiatement due.
+                statut="PLANIFIEE" if x.date_envoi > date.today() else "EN_ATTENTE",
             ))
         if x.date_echeance:
             deadline = Echeance(

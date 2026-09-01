@@ -54,6 +54,7 @@ from app.models.certification import Certification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
 from app.models.notification import Notification
+from app.models.rappel_echeance import RappelEcheance
 from app.models.rapport_veille import RapportVeille
 from app.models.relance_veille import RelanceVeille
 from app.models.renouvellement_certification import RenouvellementCertification
@@ -351,6 +352,16 @@ class WatchService:
             priorite=item.priorite,
             statut=item.statut,
             motif_cloture=item.motif_cloture,
+            rappels_email_actifs=item.rappels_email_actifs,
+            rappel_jours_avant=item.rappel_jours_avant,
+            escalade_administrateurs_jour_j=(
+                item.escalade_administrateurs_jour_j
+            ),
+            administrateurs_exclus_ids=(
+                await WatchRepository.deadline_reminder_admin_exclusions(
+                    db, item.id
+                )
+            ),
             jours_restants=days_remaining,
             alertes_actives_count=alert_count,
             created_at=item.created_at,
@@ -415,10 +426,22 @@ class WatchService:
             date_echeance=payload.date_echeance,
             responsable_id=payload.responsable_id,
             priorite=clean_text(payload.priorite),
+            rappels_email_actifs=payload.rappels_email_actifs,
+            rappel_jours_avant=payload.rappel_jours_avant,
+            escalade_administrateurs_jour_j=(
+                payload.escalade_administrateurs_jour_j
+            ),
             statut="PLANIFIEE",
         )
         db.add(item)
         await db.flush()
+
+        if payload.administrateurs_exclus_ids:
+            await WatchService._set_deadline_reminder_admin_exclusions(
+                db,
+                deadline_id=item.id,
+                administrator_ids=payload.administrateurs_exclus_ids,
+            )
 
         await write_audit_event(
             db,
@@ -463,6 +486,9 @@ class WatchService:
             )
 
         changes = payload.model_dump(exclude_unset=True)
+        administrator_exclusions = changes.pop(
+            "administrateurs_exclus_ids", None
+        )
 
         if changes.get("responsable_id"):
             await WatchService.require_active_user(
@@ -487,6 +513,13 @@ class WatchService:
             if isinstance(value, str):
                 value = clean_text(value)
             setattr(item, field, value)
+
+        if administrator_exclusions is not None:
+            await WatchService._set_deadline_reminder_admin_exclusions(
+                db,
+                deadline_id=item.id,
+                administrator_ids=administrator_exclusions,
+            )
 
         await write_audit_event(
             db,
@@ -515,6 +548,45 @@ class WatchService:
         await db.commit()
         await db.refresh(item)
         return await WatchService.deadline_response(db, item)
+
+    @staticmethod
+    async def _set_deadline_reminder_admin_exclusions(
+        db: AsyncSession,
+        *,
+        deadline_id: UUID,
+        administrator_ids: list[UUID],
+    ) -> None:
+        active_admins = await WatchRepository.active_hauqe_administrators(db)
+        active_ids = {user.id for user in active_admins}
+        requested_ids = set(administrator_ids)
+        if not requested_ids.issubset(active_ids):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Les exclusions doivent désigner des administrateurs HAUQE "
+                    "actifs."
+                ),
+            )
+        await WatchRepository.replace_deadline_reminder_admin_exclusions(
+            db,
+            deadline_id=deadline_id,
+            administrator_ids=list(requested_ids),
+        )
+
+    @staticmethod
+    async def deadline_reminder_administrators(
+        db: AsyncSession,
+    ) -> list[dict[str, str]]:
+        return [
+            {
+                "id": str(user.id),
+                "label": " ".join(
+                    part for part in (user.prenoms, user.nom) if part
+                ) or user.email,
+                "email": user.email,
+            }
+            for user in await WatchRepository.active_hauqe_administrators(db)
+        ]
 
     @staticmethod
     async def close_deadline(
@@ -1285,7 +1357,7 @@ class WatchService:
         label = (
             certification.identifiant_national
             or certification.numero_certificat
-            or str(certification.id)
+            or "Certification sans référence renseignée"
         )
         await register_deadline(
             resource_type="CERTIFICATION",
@@ -1377,7 +1449,7 @@ class WatchService:
         counters = {"deadlines_created": 0, "alerts_created": 0}
         if accreditation.date_expiration is None:
             return counters
-        label = accreditation.numero or str(accreditation.id)
+        label = accreditation.numero or "Accréditation sans numéro renseigné"
         deadline, created = await WatchService.ensure_generated_deadline(
             db,
             resource_type="ACCREDITATION",
@@ -1398,6 +1470,210 @@ class WatchService:
         return counters
 
     @staticmethod
+    async def _ensure_deadline_reminder_alert(
+        db: AsyncSession,
+        *,
+        deadline: Echeance,
+        reminder_type: str,
+        days_remaining: int,
+    ) -> Alerte:
+        rule_code = (
+            f"DEADLINE_REMINDER:{deadline.id}:{reminder_type}:"
+            f"{date.today().isoformat()}"
+        )
+        existing = await WatchRepository.find_active_alert_for_rule(
+            db, deadline_id=deadline.id, rule_code=rule_code
+        )
+        if existing:
+            return existing
+
+        is_due = days_remaining == 0
+        item = Alerte(
+            echeance_id=deadline.id,
+            type_alerte="ECHEANCE",
+            niveau=4 if is_due else 3,
+            titre=(
+                f"Échéance aujourd’hui — {deadline.titre}"
+                if is_due else f"Rappel d’échéance — {deadline.titre}"
+            ),
+            message=(
+                f"L’échéance « {deadline.titre} » est prévue aujourd’hui."
+                if is_due
+                else (
+                    f"L’échéance « {deadline.titre} » est prévue dans "
+                    f"{days_remaining} jour(s), le "
+                    f"{deadline.date_echeance.isoformat()}."
+                )
+            ),
+            ressource_type=deadline.ressource_type,
+            ressource_id=deadline.ressource_id,
+            responsable_id=deadline.responsable_id,
+            date_detection=date.today(),
+            regle_notification=rule_code,
+            statut="NOUVELLE",
+        )
+        db.add(item)
+        await db.flush()
+        return item
+
+    @staticmethod
+    async def _queue_deadline_reminder(
+        db: AsyncSession,
+        *,
+        deadline: Echeance,
+        recipient,
+        reminder_type: str,
+        days_remaining: int,
+        alert: Alerte,
+    ) -> bool:
+        if await WatchRepository.reminder_already_recorded(
+            db,
+            deadline_id=deadline.id,
+            recipient_user_id=recipient.id,
+            reminder_type=reminder_type,
+            reminder_date=date.today(),
+        ):
+            return False
+
+        due_label = deadline.date_echeance.strftime("%d/%m/%Y")
+        context = await WatchRepository.deadline_email_context(db, deadline)
+        label = context["label"]
+        details = context["details"]
+        if days_remaining == 0:
+            subject = f"Échéance à traiter aujourd’hui : {label}"
+            body = (
+                f"Bonjour {recipient.prenoms or recipient.nom or ''},\n\n"
+                f"L’échéance concernant {label} arrive à son terme aujourd’hui "
+                f"({due_label}).\n\n{details}\n\n"
+                "Merci de vérifier son traitement dans le SNGSC."
+            )
+        else:
+            subject = f"Rappel : échéance dans {days_remaining} jour(s) — {label}"
+            body = (
+                f"Bonjour {recipient.prenoms or recipient.nom or ''},\n\n"
+                f"L’échéance concernant {label} est prévue le {due_label}, "
+                f"dans {days_remaining} jour(s).\n\n{details}\n\n"
+                "Merci d’anticiper son traitement."
+            )
+
+        in_app = Notification(
+            alerte_id=alert.id,
+            destinataire_utilisateur_id=recipient.id,
+            canal="IN_APP",
+            objet=subject,
+            contenu=body,
+            date_envoi=date.today(),
+            date_lecture=None,
+            resultat="Disponible dans l'application",
+            nombre_tentatives=0,
+            message_erreur=None,
+            statut="ENVOYEE",
+        )
+        db.add(in_app)
+
+        email = None
+        if recipient.email:
+            email = Notification(
+                alerte_id=alert.id,
+                destinataire_utilisateur_id=recipient.id,
+                canal="EMAIL",
+                objet=subject,
+                contenu=body,
+                date_envoi=None,
+                date_lecture=None,
+                resultat=None,
+                nombre_tentatives=0,
+                message_erreur=None,
+                statut="EN_ATTENTE",
+            )
+            db.add(email)
+
+        await db.flush()
+        db.add(
+            RappelEcheance(
+                echeance_id=deadline.id,
+                destinataire_utilisateur_id=recipient.id,
+                notification_id=email.id if email else in_app.id,
+                type_rappel=reminder_type,
+                date_rappel=date.today(),
+            )
+        )
+        return True
+
+    @staticmethod
+    async def dispatch_deadline_reminders(db: AsyncSession) -> int:
+        """Planifie les rappels du jour, sans doublon, pour les échéances actives."""
+        queued = 0
+        today = date.today()
+        deadlines = await WatchRepository.active_deadlines_for_reminders(
+            db, until=today + timedelta(days=365)
+        )
+
+        for deadline in deadlines:
+            days_remaining = (deadline.date_echeance - today).days
+            if days_remaining < 0:
+                continue
+
+            if (
+                deadline.rappels_email_actifs
+                and deadline.responsable_id
+                and days_remaining <= deadline.rappel_jours_avant
+            ):
+                recipient = await WatchRepository.get_user(
+                    db, deadline.responsable_id
+                )
+                if recipient and (recipient.statut or "").upper() == "ACTIF":
+                    alert = await WatchService._ensure_deadline_reminder_alert(
+                        db,
+                        deadline=deadline,
+                        reminder_type="AGENT",
+                        days_remaining=days_remaining,
+                    )
+                    queued += int(
+                        await WatchService._queue_deadline_reminder(
+                            db,
+                            deadline=deadline,
+                            recipient=recipient,
+                            reminder_type="AGENT",
+                            days_remaining=days_remaining,
+                            alert=alert,
+                        )
+                    )
+
+            if (
+                days_remaining == 0
+                and deadline.escalade_administrateurs_jour_j
+            ):
+                excluded_admin_ids = set(
+                    await WatchRepository.deadline_reminder_admin_exclusions(
+                        db, deadline.id
+                    )
+                )
+                alert = await WatchService._ensure_deadline_reminder_alert(
+                    db,
+                    deadline=deadline,
+                    reminder_type="ADMINISTRATEURS",
+                    days_remaining=days_remaining,
+                )
+                for administrator in await WatchRepository.active_hauqe_administrators(db):
+                    if (
+                        administrator.id == deadline.responsable_id
+                        or administrator.id in excluded_admin_ids
+                    ):
+                        continue
+                    queued += int(
+                        await WatchService._queue_deadline_reminder(
+                            db,
+                            deadline=deadline,
+                            recipient=administrator,
+                            reminder_type="ADMINISTRATEUR",
+                            days_remaining=days_remaining,
+                            alert=alert,
+                        )
+                    )
+        return queued
+
+    @staticmethod
     async def run_daily_scan(
         db: AsyncSession,
         *,
@@ -1408,6 +1684,7 @@ class WatchService:
 
         created_deadlines = 0
         created_alerts = 0
+        reminders_queued = 0
 
         certifications = await WatchRepository.certifications_with_expiration(db)
         audits = await WatchRepository.audits_with_due_date(db)
@@ -1423,7 +1700,7 @@ class WatchService:
                     "EXPIRATION_CERTIFICATION",
                     (
                         f"Expiration certification "
-                        f"{cert.identifiant_national or cert.numero_certificat or cert.id}"
+                        f"{cert.identifiant_national or cert.numero_certificat or 'sans référence renseignée'}"
                     ),
                     cert.date_expiration,
                 )
@@ -1435,7 +1712,7 @@ class WatchService:
                     "AUDIT_CERTIFICATION",
                     audit.id,
                     "AUDIT_CERTIFICATION",
-                    f"Audit de certification {audit.type_audit or audit.id}",
+                    f"Audit de certification {audit.type_audit or 'planifié'}",
                     audit.date_prevue,
                 )
             )
@@ -1446,7 +1723,7 @@ class WatchService:
                     "RENOUVELLEMENT_CERTIFICATION",
                     renewal.id,
                     "RENOUVELLEMENT_CERTIFICATION",
-                    f"Renouvellement de certification {renewal.certification_id}",
+                    "Renouvellement de certification",
                     renewal.date_limite,
                 )
             )
@@ -1484,6 +1761,8 @@ class WatchService:
                 ):
                     created_alerts += 1
 
+        reminders_queued = await WatchService.dispatch_deadline_reminders(db)
+
         await write_audit_event(
             db,
             action="WATCH_DAILY_SCAN",
@@ -1496,6 +1775,7 @@ class WatchService:
                 "date": date.today().isoformat(),
                 "deadlines_created": created_deadlines,
                 "alerts_created": created_alerts,
+                "reminders_queued": reminders_queued,
                 "certifications_seen": len(certifications),
                 "audits_seen": len(audits),
                 "renewals_seen": len(renewals),
@@ -1508,6 +1788,7 @@ class WatchService:
             scan_date=date.today(),
             deadlines_created=created_deadlines,
             alerts_created=created_alerts,
+            reminders_queued=reminders_queued,
             certification_deadlines_seen=len(certifications),
             audit_deadlines_seen=len(audits),
             renewal_deadlines_seen=len(renewals),
@@ -1541,7 +1822,7 @@ class WatchService:
             resource_type="DOSSIER_VEILLE",
             resource_id=case.id,
             deadline_type="PROCHAINE_ACTION_VEILLE",
-            title=f"Prochaine action du dossier de veille {case.id}",
+            title="Prochaine action du dossier de veille",
             due_date=due_date,
         )
         deadline.responsable_id = case.responsable_id
@@ -1820,13 +2101,19 @@ class WatchService:
                 "La date d'échéance de relance précède la date d'envoi.",
             )
 
+        business_context = await WatchRepository.certification_context(
+            db, case.certification_id
+        )
+        enriched_content = payload.contenu.strip()
+        if business_context and "Entreprise :" not in enriched_content:
+            enriched_content += "\n\nInformations relatives au dossier :\n" + business_context
         item = RelanceVeille(
             dossier_veille_id=case_id,
             destinataire=payload.destinataire.strip(),
             adresse_email=email,
             canal=normalize_code(payload.canal),
             objet=payload.objet.strip(),
-            contenu=payload.contenu.strip(),
+            contenu=enriched_content,
             date_envoi=sent,
             date_echeance=payload.date_echeance,
             date_reponse=None,
