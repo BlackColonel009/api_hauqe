@@ -18,6 +18,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
@@ -180,11 +181,26 @@ class AccountRepository:
         db: AsyncSession,
         user_id: UUID,
     ) -> SecuriteCompteUtilisateur:
+        # Cette opération peut être appelée simultanément par la connexion,
+        # le MFA et le worker d'inactivité. L'UPSERT PostgreSQL garantit
+        # qu'une seule ligne de sécurité existe pour un même utilisateur.
+        inserted = await db.execute(
+            insert(SecuriteCompteUtilisateur)
+            .values(utilisateur_id=user_id)
+            .on_conflict_do_nothing(index_elements=["utilisateur_id"])
+            .returning(SecuriteCompteUtilisateur.id)
+        )
+        security_id = inserted.scalar_one_or_none()
+        if security_id is not None:
+            item = await db.get(SecuriteCompteUtilisateur, security_id)
+            if item is not None:
+                return item
+
         item = await AccountRepository.get_security(db, user_id)
         if item is None:
-            item = SecuriteCompteUtilisateur(utilisateur_id=user_id)
-            db.add(item)
-            await db.flush()
+            raise RuntimeError(
+                "La ligne de sécurité du compte n'a pas pu être résolue."
+            )
         return item
 
     # ========================================================

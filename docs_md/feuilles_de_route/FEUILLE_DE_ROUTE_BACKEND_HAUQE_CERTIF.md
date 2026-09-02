@@ -6014,7 +6014,7 @@ Aucune nouvelle permission.
   effet sur les autres administrateurs ni sur les rappels de l’agent ;
 - journal `rappels_echeances` pour dédoublonner les envois par destinataire,
   type de rappel et date ;
-- migrations appliquées jusqu’à `c8f6a0b3d425` ;
+- migrations appliquées jusqu’à `d9f2a7c4e318` ;
 - scan quotidien raccordé au worker de traitement SMTP.
 - les e-mails de rappel résolvent désormais le contexte métier (entreprise,
   identifiant entreprise, certification et norme) ; les UUID restent internes
@@ -6035,6 +6035,23 @@ Aucune nouvelle permission.
   message avec le contexte du dossier lié lorsque celui-ci est disponible ;
 - le résumé hebdomadaire liste jusqu'à trois prochaines échéances sous forme
   de libellés métier lisibles.
+
+## Correctif — concurrence sécurité et doublons entreprise (02/09/2026)
+
+- `get_or_create_security()` utilise désormais un UPSERT PostgreSQL : une
+  connexion, une action MFA et le worker ne peuvent plus créer deux lignes de
+  sécurité pour le même utilisateur ;
+- aucune migration n'est requise pour ce correctif de sécurité ;
+- la précréation depuis une collecte, la création et la modification d'une
+  entreprise recherchent désormais une raison sociale normalisée (casse,
+  espaces et ponctuation ignorés) dans l'ensemble du registre ;
+- si l'entreprise existe, elle n'est pas recréée : la précréation sélectionne
+  directement son dossier existant ;
+- la migration `d9f2a7c4e318` ajoute l'index unique
+  `uq_entreprises_raison_sociale_normalisee`, qui protège aussi les créations
+  simultanées ;
+- la migration s'arrête volontairement si des doublons historiques existent :
+  ils doivent être examinés et rapprochés, jamais supprimés automatiquement.
 
 ### À éviter impérativement — identifiants techniques
 

@@ -46,6 +46,24 @@ from app.models.zone_administrative import (
 
 class EntrepriseRepository:
 
+    @staticmethod
+    def normalized_name_expression():
+        """Clé métier insensible à la casse, aux espaces et ponctuations."""
+        return func.lower(
+            func.regexp_replace(
+                func.btrim(Entreprise.raison_sociale),
+                "[[:space:][:punct:]]+",
+                "",
+                "g",
+            )
+        )
+
+    @staticmethod
+    def normalize_company_name(name: str) -> str:
+        return "".join(
+            char for char in name.strip().lower() if char.isalnum()
+        )
+
     # ========================================================
     # RECHERCHE PAR IDENTIFIANT TECHNIQUE
     # ========================================================
@@ -87,6 +105,26 @@ class EntrepriseRepository:
         )
 
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_normalized_name(
+        db: AsyncSession,
+        name: str,
+        *,
+        exclude_id: UUID | None = None,
+    ) -> Entreprise | None:
+        """Retrouve une entreprise existante malgré les écarts de forme."""
+        normalized = EntrepriseRepository.normalize_company_name(name)
+        if not normalized:
+            return None
+        filters = [
+            Entreprise.raison_sociale.is_not(None),
+            EntrepriseRepository.normalized_name_expression() == normalized,
+        ]
+        if exclude_id is not None:
+            filters.append(Entreprise.id != exclude_id)
+        result = await db.execute(select(Entreprise).where(*filters))
+        return result.scalars().first()
 
 
     # ========================================================
@@ -708,4 +746,3 @@ class EntrepriseRepository:
             )
         )
         return list(result.scalars().all())
-

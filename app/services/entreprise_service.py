@@ -318,6 +318,19 @@ class EntrepriseService:
             email_principal=payload.email_principal,
         )
 
+        same_name = await EntrepriseRepository.get_by_normalized_name(
+            db,
+            payload.raison_sociale or "",
+        )
+        if same_name is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Une entreprise portant déjà cette raison sociale "
+                    "existe dans le registre."
+                ),
+            )
+
         normalized_rccm = normalize_code(payload.rccm)
 
         if normalized_rccm is not None:
@@ -563,6 +576,20 @@ class EntrepriseService:
             telephone_principal=prospective_phone,
             email_principal=prospective_email,
         )
+
+        same_name = await EntrepriseRepository.get_by_normalized_name(
+            db,
+            prospective_reason or "",
+            exclude_id=entreprise.id,
+        )
+        if same_name is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Une autre entreprise porte déjà cette raison sociale "
+                    "dans le registre."
+                ),
+            )
 
         if (entreprise.statut or "").strip().upper() == "INCOMPLET_COLLECTE":
             changes["statut"] = None

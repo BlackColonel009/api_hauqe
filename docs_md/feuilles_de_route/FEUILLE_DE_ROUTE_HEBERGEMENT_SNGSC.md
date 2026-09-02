@@ -14,7 +14,7 @@
 > aucune migration ni seed. Après le pull, redémarrer `sngsc` afin de charger
 > le backend, puis forcer le rechargement du navigateur pour les scripts
 > frontend. Conserver `alembic upgrade head` dans la procédure standard : la
-> tête connue reste `c8f6a0b3d425` au moment du déploiement. Ne jamais se
+> tête connue reste `d9f2a7c4e318` au moment du déploiement. Ne jamais se
 > fier à l’ancienne valeur `c4d5e6f7a8b9` : les migrations de rappels
 > d’échéances doivent être appliquées avant le redémarrage.
 
@@ -182,6 +182,25 @@ Ordre versionné actuel :
 | 9 | `a6d4e8f1b203` | Politique et journal des rappels d’échéance |
 | 10 | `b7e5f9a2c314` | Valeurs techniques du journal des rappels |
 | 11 | `c8f6a0b3d425` | Exclusion individuelle d’administrateur des rappels |
+| 12 | `d9f2a7c4e318` | Unicité de raison sociale normalisée des entreprises |
+
+Avant d'appliquer `d9f2a7c4e318`, contrôler les doublons historiques. Une
+sortie vide permet de poursuivre ; une sortie non vide doit être examinée et
+traitée fonctionnellement avant la migration :
+
+```bash
+sudo -u postgres psql -d hauqe_certif -c "
+SELECT lower(regexp_replace(btrim(raison_sociale), '[[:space:][:punct:]]+', '', 'g')) AS cle,
+       count(*) AS total
+FROM entreprises
+WHERE raison_sociale IS NOT NULL AND btrim(raison_sociale) <> ''
+GROUP BY 1
+HAVING count(*) > 1
+ORDER BY total DESC, cle;"
+```
+
+Cette migration n'efface ni ne fusionne aucune entreprise : elle refuse de
+s'exécuter tant que des doublons historiques subsistent.
 
 Commandes obligatoires :
 
@@ -199,7 +218,7 @@ alembic heads
 Résultat attendu pour le déploiement actuel :
 
 ```text
-c8f6a0b3d425 (head)
+d9f2a7c4e318 (head)
 ```
 
 Contrôles PostgreSQL :
@@ -432,7 +451,7 @@ ls -lah logs backups uploads
 | Environnement virtuel Python | Terminée | `.venv` fonctionnel |
 | Installation des dépendances | Terminée | Imports principaux réussis |
 | Configuration `.env` | Terminée | Paramètres chargés |
-| Migrations Alembic | Obligatoires avant le redémarrage | `alembic current` doit afficher `c8f6a0b3d425 (head)` |
+| Migrations Alembic | Obligatoires avant le redémarrage | `alembic current` doit afficher `d9f2a7c4e318 (head)` |
 | Correction SQL 2.0 | Intégrée à Alembic | Colonne et contrainte `situation_declaree` gérées par `c4d5e6f7a8b9` |
 | Initialisation rôles et permissions | Terminée | Scripts de seed exécutés |
 | Test FastAPI local | Terminée | `/api/v1/health` retourne `status=ok` |
@@ -950,7 +969,7 @@ et le résumé hebdomadaire le lundi. Les échecs SMTP sont relancés au maximum
 trois fois, après un délai de 15 minutes entre deux tentatives.
 
 Après déploiement, appliquer les migrations jusqu’à la révision
-`c8f6a0b3d425`, puis redémarrer ce worker. Les e-mails restent dépendants des
+`d9f2a7c4e318`, puis redémarrer ce worker. Les e-mails restent dépendants des
 variables SMTP HAUQE valides ; les erreurs d’authentification Gmail sont
 enregistrées dans la file et les journaux sans perdre les données métier.
 
@@ -960,7 +979,7 @@ enregistrées dans la file et les journaux sans perdre les données métier.
 
 | Élément | Impact serveur | Action obligatoire |
 |---|---|---|
-| Rappels d’échéance configurables | **Migration PostgreSQL requise** | Sauvegarder la base, puis exécuter `alembic upgrade head` jusqu’à `c8f6a0b3d425`. Aucun seed requis. |
+| Rappels d’échéance configurables et unicité entreprise | **Migration PostgreSQL requise** | Sauvegarder la base, vérifier l'absence de doublon historique de raison sociale, puis exécuter `alembic upgrade head` jusqu’à `d9f2a7c4e318`. Aucun seed requis. |
 | Tâches quotidiennes et résumé hebdomadaire | Le worker intégré doit être relancé | Garder exactement un worker Uvicorn, puis redémarrer `sngsc`. |
 | Relances SMTP et identité HAUQE | Dépend du fichier `.env` | Renseigner une adresse Gmail autorisée, son mot de passe d’application et les coordonnées `HAUQE_CONTACT_*`. |
 | Sauvegardes applicatives | `pg_dump` et espace disque requis | Installer les outils PostgreSQL client, vérifier `pg_dump` / `pg_restore` et réserver au moins 5 Gio libres. |
@@ -1038,5 +1057,5 @@ curl -fsS http://127.0.0.1:8014/api/v1/health
 sudo journalctl -u sngsc -n 100 --no-pager
 ```
 
-Résultat attendu après migration : `c8f6a0b3d425 (head)`. Aucune migration ne
+Résultat attendu après migration : `d9f2a7c4e318 (head)`. Aucune migration ne
 doit être contournée, aucune seed n’est requise pour les correctifs récents.

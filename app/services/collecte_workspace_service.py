@@ -10,6 +10,7 @@ from app.models.entreprise import Entreprise
 from app.repositories.collecte_workspace_repository import (
     CollecteWorkspaceRepository,
 )
+from app.repositories.entreprise_repository import EntrepriseRepository
 from app.schemas.collecte_workspace import (
     CollecteRegistryItem,
     CollecteRegistryResponse,
@@ -133,18 +134,17 @@ class CollecteWorkspaceService:
                 detail="Zone administrative active introuvable.",
             )
 
-        existing = await CollecteWorkspaceRepository.find_exact_enterprise(
+        existing = await EntrepriseRepository.get_by_normalized_name(
             db,
-            name=name,
-            zone_id=payload.zone_siege_id,
+            name,
         )
         if existing is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": (
-                        "Une entreprise portant exactement ce nom "
-                        "existe déjà dans cette zone."
+                        "Une entreprise portant ce nom existe déjà dans "
+                        "le registre. Elle a été sélectionnée."
                     ),
                     "entreprise_id": str(existing.id),
                 },
