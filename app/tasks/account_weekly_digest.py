@@ -28,6 +28,7 @@ from app.models.notification import Notification
 from app.models.preference_utilisateur import PreferenceUtilisateur
 from app.models.utilisateur import Utilisateur
 from app.repositories.account_repository import AccountRepository
+from app.repositories.veille_repository import WatchRepository
 
 logger = logging.getLogger(__name__)
 configure_logging()
@@ -65,18 +66,20 @@ async def run() -> None:
                     Alerte.statut.in_(["NOUVELLE", "AFFECTEE", "EN_COURS"]),
                 )
             )
-            deadlines_result = await db.execute(
-                select(func.count(Echeance.id)).where(
+            deadlines_query = (
+                select(Echeance)
+                .where(
                     Echeance.responsable_id == user.id,
                     Echeance.statut.in_(["PLANIFIEE", "EN_COURS"]),
                     Echeance.date_echeance >= today,
                     Echeance.date_echeance <= next_week,
                 )
+                .order_by(Echeance.date_echeance.asc(), Echeance.created_at.asc())
             )
-
             unread = int(unread_result.scalar_one())
             alerts = int(alerts_result.scalar_one())
-            deadlines = int(deadlines_result.scalar_one())
+            upcoming_deadlines = list((await db.execute(deadlines_query)).scalars())
+            deadlines = len(upcoming_deadlines)
 
             body = (
                 "Résumé hebdomadaire HAUQE Certif : "
@@ -84,6 +87,15 @@ async def run() -> None:
                 f"{alerts} alerte(s) active(s) affectée(s), "
                 f"{deadlines} échéance(s) dans les 7 prochains jours."
             )
+            if upcoming_deadlines:
+                lines = []
+                for deadline in upcoming_deadlines[:3]:
+                    context = await WatchRepository.deadline_email_context(db, deadline)
+                    lines.append(
+                        f"- {deadline.date_echeance.strftime('%d/%m/%Y')} : "
+                        f"{context['label']}"
+                    )
+                body += "\n\nProchaines échéances :\n" + "\n".join(lines)
 
             await AccountRepository.create_notification(
                 db,

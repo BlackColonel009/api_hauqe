@@ -22,6 +22,7 @@ from app.models.alerte import Alerte
 from app.models.affectation_verification import AffectationVerification
 from app.models.audit_certification import AuditCertification
 from app.models.certification import Certification
+from app.models.confirmation_externe import ConfirmationExterne
 from app.models.dossier_verification import DossierVerification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
@@ -320,6 +321,47 @@ class WatchRepository:
             )
             certification_id = row.scalar_one_or_none()
 
+        elif resource_type == "CONFIRMATION_EXTERNE":
+            row = await db.execute(
+                select(
+                    ConfirmationExterne.objet,
+                    Entreprise.raison_sociale,
+                    Entreprise.nom_commercial,
+                    Entreprise.identifiant_national,
+                )
+                .join(
+                    DossierVerification,
+                    DossierVerification.id
+                    == ConfirmationExterne.dossier_verification_id,
+                )
+                .join(
+                    FicheCollecte,
+                    FicheCollecte.id == DossierVerification.fiche_collecte_id,
+                )
+                .join(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+                .where(ConfirmationExterne.id == deadline.ressource_id)
+            )
+            item = row.one_or_none()
+            if item:
+                company = (
+                    item.raison_sociale
+                    or item.nom_commercial
+                    or "Entreprise concernée"
+                )
+                action = item.objet or deadline.titre or "Confirmation externe"
+                details = [
+                    f"Entreprise : {company}",
+                    f"Action attendue : {action}",
+                ]
+                if item.identifiant_national:
+                    details.append(
+                        f"Identifiant entreprise : {item.identifiant_national}"
+                    )
+                return {
+                    "label": f"{company} — {action}",
+                    "details": "\n".join(details),
+                }
+
         if certification_id:
             row = await db.execute(
                 select(
@@ -359,7 +401,14 @@ class WatchRepository:
                     details.append(f"Identifiant entreprise : {item.identifiant_national}")
                 return {"label": f"Vérification — {company}", "details": "\n".join(details)}
 
-        return {"label": "Échéance à traiter", "details": ""}
+        # Une échéance libre ne possède pas toujours une ressource métier.
+        # Son intitulé et sa description restent néanmoins bien plus utiles
+        # qu'un libellé générique, et ne doivent jamais exposer son UUID.
+        action = deadline.titre or deadline.type_echeance or "Échéance à traiter"
+        details = [f"Action attendue : {action}"]
+        if deadline.description:
+            details.append(f"Précision : {deadline.description.strip()}")
+        return {"label": action, "details": "\n".join(details)}
 
     @staticmethod
     async def find_active_deadline(

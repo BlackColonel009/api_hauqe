@@ -934,6 +934,13 @@ class WatchService:
     ) -> list[NotificationResponse]:
         alert = await WatchService.require_alert(db, alert_id)
         created: list[Notification] = []
+        context_details = ""
+        if alert.echeance_id:
+            deadline = await WatchRepository.get_deadline(db, alert.echeance_id)
+            if deadline:
+                context_details = (
+                    await WatchRepository.deadline_email_context(db, deadline)
+                )["details"]
 
         for recipient in payload.destinataires:
             user_id = recipient.destinataire_utilisateur_id
@@ -968,13 +975,17 @@ class WatchService:
             # Pour EMAIL vers utilisateur interne, le worker utilisera user.email.
             immediate = channel == "IN_APP"
 
+            content = payload.contenu.strip()
+            if context_details and "Entreprise :" not in content:
+                content += "\n\nInformations relatives au dossier :\n" + context_details
+
             item = Notification(
                 alerte_id=alert.id,
                 destinataire_utilisateur_id=user_id,
                 adresse_externe=external,
                 canal=channel,
                 objet=payload.objet.strip(),
-                contenu=payload.contenu.strip(),
+                contenu=content,
                 date_envoi=date.today() if immediate else None,
                 date_lecture=None,
                 resultat=(
@@ -1539,10 +1550,11 @@ class WatchService:
         context = await WatchRepository.deadline_email_context(db, deadline)
         label = context["label"]
         details = context["details"]
+        greeting = f"Bonjour {recipient.prenoms or recipient.nom or ''},".rstrip()
         if days_remaining == 0:
             subject = f"Échéance à traiter aujourd’hui : {label}"
             body = (
-                f"Bonjour {recipient.prenoms or recipient.nom or ''},\n\n"
+                f"{greeting}\n\n"
                 f"L’échéance concernant {label} arrive à son terme aujourd’hui "
                 f"({due_label}).\n\n{details}\n\n"
                 "Merci de vérifier son traitement dans le SNGSC."
@@ -1550,7 +1562,7 @@ class WatchService:
         else:
             subject = f"Rappel : échéance dans {days_remaining} jour(s) — {label}"
             body = (
-                f"Bonjour {recipient.prenoms or recipient.nom or ''},\n\n"
+                f"{greeting}\n\n"
                 f"L’échéance concernant {label} est prévue le {due_label}, "
                 f"dans {days_remaining} jour(s).\n\n{details}\n\n"
                 "Merci d’anticiper son traitement."

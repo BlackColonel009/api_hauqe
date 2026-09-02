@@ -6026,6 +6026,15 @@ Aucune nouvelle permission.
 - les échecs SMTP sont relancés automatiquement après 15 minutes, avec un
   maximum de trois tentatives ; le résultat indique désormais explicitement
   « accepté par le relais SMTP », sans prétendre confirmer la lecture.
+- les rappels d'une `CONFIRMATION_EXTERNE` résolvent aussi l'entreprise et
+  l'action demandée ; un rappel ne doit plus annoncer uniquement « Échéance à
+  traiter » ;
+- lorsqu'une échéance n'est reliée à aucune ressource métier, le courriel
+  affiche au minimum son action attendue et sa précision, jamais un UUID ;
+- les notifications envoyées manuellement depuis une alerte complètent le
+  message avec le contexte du dossier lié lorsque celui-ci est disponible ;
+- le résumé hebdomadaire liste jusqu'à trois prochaines échéances sous forme
+  de libellés métier lisibles.
 
 ### À éviter impérativement — identifiants techniques
 
