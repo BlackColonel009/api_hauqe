@@ -222,6 +222,9 @@ export async function apiRequest(path, options = {}) {
   try {
     response = await fetch(normalizePath(path), {
       ...fetchOptions,
+      // Les réponses privées (/me, dossiers, préférences…) ne doivent jamais
+      // être relues depuis le cache d'une session précédente.
+      cache: auth ? "no-store" : fetchOptions.cache,
       headers,
       body: requestBody,
       signal: controller.signal,
@@ -305,6 +308,8 @@ export async function apiBlob(path, options = {}) {
     response = await fetch(normalizePath(path), {
       ...fetchOptions,
       method: fetchOptions.method || "GET",
+      // Même règle pour les fichiers privés, notamment les avatars.
+      cache: auth ? "no-store" : fetchOptions.cache,
       headers,
       signal: controller.signal,
     });

@@ -118,7 +118,7 @@
 
     <main class="main-content">
       <header class="topbar">
-        <button class="icon-button menu-toggle" id="menuToggle" aria-label="Ouvrir le menu"><i data-lucide="menu"></i></button>
+        <button class="icon-button menu-toggle" id="menuToggle" aria-label="Ouvrir le menu" data-no-action-loader="true"><i data-lucide="menu"></i></button>
         <span class="topbar-logo" style="display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;">
           <svg xmlns="http://www.w3.org/2000/svg" 
             width="20" height="10" 
@@ -132,7 +132,7 @@
       </svg></span>
         <div class="topbar-title"><strong>Système national de gestion des certifications</strong><span id="lastSynchronizationLabel">Dernière synchronisation : en attente</span></div>
         <div class="topbar-actions">
-          <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Activer le thème sombre"><span class="theme-switch-track"><i class="theme-sun" data-lucide="sun"></i><i class="theme-moon" data-lucide="moon"></i><b></b></span><em id="themeSwitchLabel">Clair</em></button>
+          <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Activer le thème sombre" data-no-action-loader="true"><span class="theme-switch-track"><i class="theme-sun" data-lucide="sun"></i><i class="theme-moon" data-lucide="moon"></i><b></b></span><em id="themeSwitchLabel">Clair</em></button>
           <div class="topbar-dropdown-wrap presence-wrap" id="presenceWrap" hidden>
             <button
               class="presence-toggle"
@@ -141,6 +141,7 @@
               aria-label="Utilisateurs actifs"
               aria-expanded="false"
               aria-controls="presenceDropdown"
+              data-no-action-loader="true"
             >
               <span class="presence-toggle-icon"><i data-lucide="users-round"></i></span>
               <span class="presence-toggle-copy">
@@ -167,6 +168,7 @@
                   type="button"
                   aria-label="Actualiser les utilisateurs actifs"
                   title="Actualiser"
+                  data-no-action-loader="true"
                 >
                   <i data-lucide="refresh-cw"></i>
                 </button>
@@ -188,8 +190,8 @@
               </footer>
             </section>
           </div>
-          <div class="topbar-dropdown-wrap"><button class="icon-button notification-button" id="notificationToggle" aria-label="Notifications" aria-expanded="false"><i data-lucide="bell"></i><span id="notificationDot"></span></button><section class="topbar-dropdown notification-dropdown" id="notificationDropdown" hidden><header><div><strong>Notifications</strong><small>4 non lues</small></div><button id="markNotificationsRead">Tout marquer comme lu</button></header><div class="quick-notifications" id="quickNotifications"></div><footer><a href="#/alertes">Voir toutes les alertes<i data-lucide="arrow-right"></i></a></footer></section></div>
-          <div class="topbar-dropdown-wrap"><button class="user-menu" id="userMenuToggle" aria-expanded="false"><span class="avatar">AD</span><span class="user-copy"><strong>Amévi Dossou</strong><small>Administrateur HAUQE</small></span><i data-lucide="chevron-down"></i></button><section class="topbar-dropdown account-dropdown" id="accountDropdown" hidden><header><span class="avatar large">AD</span><div><strong>Amévi Dossou</strong><small>amevi.dossou@hauqe.tg</small><em>Administrateur HAUQE</em></div></header><nav><a href="#/profil"><i data-lucide="user-round"></i><span><strong>Mon profil</strong><small>Informations personnelles</small></span></a><a href="#/profil" data-profile-shortcut="security"><i data-lucide="shield-check"></i><span><strong>Sécurité</strong><small>Mot de passe et MFA</small></span></a><a href="#/profil" data-profile-shortcut="notifications"><i data-lucide="settings-2"></i><span><strong>Préférences</strong><small>Notifications et affichage</small></span></a><a href="#/journal-audit"><i data-lucide="history"></i><span><strong>Mon activité</strong><small>Connexions et opérations</small></span></a></nav><footer><a href="#/connexion"><i data-lucide="log-out"></i>Se déconnecter</a></footer></section></div>
+          <div class="topbar-dropdown-wrap"><button class="icon-button notification-button" id="notificationToggle" aria-label="Notifications" aria-expanded="false" data-no-action-loader="true"><i data-lucide="bell"></i><span id="notificationDot"></span></button><section class="topbar-dropdown notification-dropdown" id="notificationDropdown" hidden><header><div><strong>Notifications</strong><small>4 non lues</small></div><button id="markNotificationsRead" data-no-action-loader="true">Tout marquer comme lu</button></header><div class="quick-notifications" id="quickNotifications"></div><footer><a href="#/alertes">Voir toutes les alertes<i data-lucide="arrow-right"></i></a></footer></section></div>
+          <div class="topbar-dropdown-wrap"><button class="user-menu" id="userMenuToggle" aria-expanded="false" data-no-action-loader="true"><span class="avatar">AD</span><span class="user-copy"><strong>Amévi Dossou</strong><small>Administrateur HAUQE</small></span><i data-lucide="chevron-down"></i></button><section class="topbar-dropdown account-dropdown" id="accountDropdown" hidden><header><span class="avatar large">AD</span><div><strong>Amévi Dossou</strong><small>amevi.dossou@hauqe.tg</small><em>Administrateur HAUQE</em></div></header><nav><a href="#/profil"><i data-lucide="user-round"></i><span><strong>Mon profil</strong><small>Informations personnelles</small></span></a><a href="#/profil" data-profile-shortcut="security"><i data-lucide="shield-check"></i><span><strong>Sécurité</strong><small>Mot de passe et MFA</small></span></a><a href="#/profil" data-profile-shortcut="notifications"><i data-lucide="settings-2"></i><span><strong>Préférences</strong><small>Notifications et affichage</small></span></a><a href="#/journal-audit"><i data-lucide="history"></i><span><strong>Mon activité</strong><small>Connexions et opérations</small></span></a></nav><footer><a href="#/connexion"><i data-lucide="log-out"></i>Se déconnecter</a></footer></section></div>
         </div>
       </header>
       <div id="routeLoading" class="route-loading" hidden role="status" aria-live="polite"><div class="hauqe-h-loader option-a" aria-hidden="true"><svg viewBox="0 0 92 92"><circle class="hauqe-ring" cx="46" cy="46" r="39"/><circle class="hauqe-orbit" cx="46" cy="46" r="39"/><path class="hauqe-letter" d="M29 24V68M63 24V68M29 46H63"/><path class="hauqe-leaf" d="M68 25c8-8 14-4 13-13-9-1-14 5-13 13Z"/></svg></div><strong>HAUQE</strong><p>Initialisation de votre espace sécurisé…</p></div>
@@ -225,6 +227,6 @@
   <script src="/static/js/core/business-rules-ui.js?v=20260723-1"></script>
   <script src="/static/js/verification-detail-enhancements.js?v=20260901-1"></script>
   <script src="/static/js/sharing-context.js?v=20260901-1"></script>
-  <script type="module" src="/static/js/core/app-shell.js?v=20260803-1"></script>
+<script type="module" src="/static/js/core/app-shell.js?v=20260903-4"></script>
 </body>
 </html>

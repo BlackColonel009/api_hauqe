@@ -6,7 +6,7 @@ import re
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.certification import Certification
@@ -114,3 +114,24 @@ class HauqeIdentifierService:
                     highest = max(highest, int(match.group(1)))
 
         return f"{base}{highest + 1:04d}"
+
+    @classmethod
+    async def allocate_next(cls, db: AsyncSession, resource_type: str) -> str:
+        """Alloue une proposition pendant la transaction courante.
+
+        Le verrou PostgreSQL empêche deux précréations concurrentes de recevoir
+        le même numéro. L'appelant doit insérer l'objet avant son `commit`.
+        """
+        normalized_type = (resource_type or "").strip().upper()
+        cls.require_type(normalized_type)
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:scope))"),
+            {"scope": f"HAUQE_IDENTIFIER:{normalized_type}"},
+        )
+        identifier = await cls.propose(db, normalized_type)
+        await cls.ensure_available(
+            db,
+            identifier,
+            exclude_type=normalized_type,
+        )
+        return identifier

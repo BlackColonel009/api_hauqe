@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from app.schemas.collecte_workspace import (
     CollecteQuickEnterpriseResponse,
 )
 from app.services.auth_service import AuthContext
+from app.services.hauqe_identifier_service import HauqeIdentifierService
 
 
 def _client_ip(request: Request) -> str | None:
@@ -150,8 +151,14 @@ class CollecteWorkspaceService:
                 },
             )
 
+        provisional_identifier = await HauqeIdentifierService.allocate_next(
+            db,
+            "ENTREPRISE",
+        )
         item = Entreprise(
-            identifiant_national=f"TMP-COL-{uuid4().hex[:12].upper()}",
+            # Code provisoire HAUQE continuant la même séquence que le
+            # formulaire Entreprise. L'intégration BNEC le remplacera après N2.
+            identifiant_national=provisional_identifier,
             raison_sociale=name,
             zone_siege_id=payload.zone_siege_id,
             adresse_siege=(

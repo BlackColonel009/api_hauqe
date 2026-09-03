@@ -407,7 +407,17 @@ Créer ou modifier une entreprise au moyen d'un parcours progressif et contrôl�
 - contrôle des champs obligatoires ;
 - détection simulée des doublons ;
 - ajout dynamique de sites, produits et contacts ;
-- sauvegarde locale en brouillon ;
+- sauvegarde du brouillon côté serveur ;
+- bouton **Réinitialiser le brouillon**, uniquement dans le formulaire et
+  uniquement pour une fiche courante en statut `BROUILLON` ;
+- réinitialisation des saisies de mission, entreprise, offres, certifications
+  et observations ; la campagne, la zone et les affectations restent les
+  éléments structurels initiaux de la mission ;
+- après la réinitialisation, l'agent habilité peut sélectionner une autre
+  campagne et une autre zone : la même mission brouillon est déplacée sans
+  créer de doublon ;
+- les pièces déjà déposées disparaissent du formulaire car elles sont
+  désactivées et restent traçables dans la gestion documentaire ;
 - récapitulatif avant enregistrement ;
 - présentation responsive.
 
@@ -783,6 +793,23 @@ Permettre à un agent de préparer une mission, saisir sur le terrain la fiche d
 - pièces obligatoires selon le type d'entreprise ;
 - règles de consentement et de signature ;
 - circuit officiel de soumission, correction et verrouillage.
+
+### Gestion des campagnes — accès coordonnateur / administrateur
+
+Depuis `collectes.html`, le bouton **Gérer les campagnes** est visible
+uniquement avec `COLLECTE.AFFECTER`. La rubrique dédiée permet de créer,
+modifier ou désactiver une campagne et de consulter ses missions liées.
+
+- les agents de collecte sans `COLLECTE.AFFECTER` ne voient pas le bouton ;
+- la correction du code, du nom, de l'objet ou des dates est commune à toutes
+  les missions rattachées, y compris celles qui possèdent une fiche soumise ;
+- une désactivation empêche toute nouvelle sélection dans un formulaire de
+  collecte, sans supprimer les missions ni les fiches existantes ;
+- la référence et l'objet restent des données propres à chaque mission ; ils
+  peuvent être corrigés depuis la liste des missions liées.
+
+Fichiers : `campagnes-collecte.html`, `campagnes-collecte.js` et
+`collectes.css`.
 
 ---
 
@@ -2848,6 +2875,17 @@ La photo est affichée :
 - dans le hero de `profil.html` ;
 - dans la navbar après chargement.
 
+Isolation de session : lors d'une déconnexion ou d'un changement de compte,
+la navbar révoque l'URL Blob de l'avatar et revient immédiatement aux initiales.
+Toute réponse asynchrone commencée par une ancienne session est ignorée. Une
+photo ne doit jamais être réutilisée pour un autre compte.
+
+Les appels API authentifiés utilisent `cache: no-store`, y compris le profil,
+les préférences et les fichiers privés. Les réglages d'actualisation conservés
+par l'interface sont limités à la session courante puis purgés à la
+déconnexion ; la source de vérité reste `preferences_utilisateur` du compte
+connecté.
+
 ### MFA
 
 L'interface n'est pas désactivée.
@@ -3682,9 +3720,9 @@ Ne pas créer un nouveau style isolé. Réutiliser les classes
 uniquement l’icône et la couleur d’accent si nécessaire.
 
 Écrans harmonisés avec cette règle : Nouvelle décision, Déposer un document,
-Nouvelle confirmation, Nouvelle revue et Nouvelle politique. Le constructeur
-de modèle BNEC reste une page et reprend la même hiérarchie visuelle sans être
-transformé en modal.
+Nouvelle confirmation, Nouvelle revue, Nouvelle politique, Nouvelle campagne
+et Corriger la référence de mission. Le constructeur de modèle BNEC reste une
+page et reprend la même hiérarchie visuelle sans être transformé en modal.
 
 ### Règle de lisibilité au zoom
 
@@ -3699,3 +3737,152 @@ Les alertes de dossier de veille et les actions urgentes du tableau de bord
 affichent désormais l’entreprise, la certification concernée, la norme ou le
 numéro de certificat lorsque ces informations existent. Un UUID est supprimé
 du rendu même en cas de donnée ancienne incomplète.
+
+## Correctif — actions de gestion des campagnes fiables au premier clic (03/09/2026)
+
+- cause : les boutons d’action des lignes (« Modifier », « Désactiver »,
+  « Voir les missions ») recevaient des écouteurs de clic recréés après chaque
+  rendu de la liste. Lors d’un rafraîchissement ou de réponses réseau arrivant
+  dans un ordre différent, une ligne pouvait momentanément ne plus porter
+  l’écouteur attendu ;
+- correctif : un unique écouteur délégué est désormais posé sur le conteneur
+  stable des lignes. Il intercepte les actions des lignes actuelles et de toute
+  ligne affichée après une recherche, une sauvegarde ou un rafraîchissement ;
+- les actions « Modifier » et « Désactiver » transportent aussi les données
+  métier de leur propre ligne, comme « Corriger » sur une mission liée. Elles
+  ne dépendent donc plus d’un état JavaScript de liste qui pourrait être
+  remplacé entre l’affichage et le clic ;
+- les deux actions sont construites dans le DOM après les lignes et reçoivent
+  chacune leur écouteur direct, sur le même principe que « Corriger » dans les
+  missions liées. Elles n’utilisent plus la classe générique `more-button` ni
+  le chargeur global d’action ;
+- les réponses plus anciennes de chargement sont ignorées, afin qu’elles ne
+  remplacent pas une liste plus récente ; la désactivation est aussi protégée
+  contre les doubles envois ;
+- à éviter : attacher les événements directement aux éléments recréés par
+  `innerHTML` lorsqu’une liste est susceptible d’être actualisée. Préférer la
+  délégation sur un parent durable ou recréer les écouteurs de façon atomique.
+
+Un second facteur a été neutralisé : l’actualisation collaborative silencieuse
+ne s’exécute plus sur `#/campagnes-collecte`. Cette page comporte des actions
+immédiates et des modals ; elle ne doit jamais être remplacée en arrière-plan
+pendant qu’un utilisateur vise une icône. L’actualisation reste disponible
+uniquement sur demande explicite via son bouton dédié.
+
+Enfin, le routeur identifie chaque navigation et ignore toute réponse devenue
+ancienne avant d’insérer son HTML ou de lancer son script. Les paramètres de
+version des scripts sont ajoutés avec `&` lorsqu’une URL possède déjà `?` :
+cela évite de réutiliser un code JavaScript en cache ou d’associer un script à
+une page différente après deux navigations rapprochées.
+
+## Incident transversal — boutons initiaux inactifs ou exigeant plusieurs clics (03/09/2026)
+
+### Symptôme à rechercher sur chaque écran
+
+Un bouton présent dès le premier affichage d’une page peut sembler actif, mais
+ne déclencher son modal, sa confirmation ou son action qu’après plusieurs
+clics, voire seulement après avoir actualisé la page. À l’inverse, un bouton
+créé après une recherche, le déploiement d’un détail ou l’ajout d’une ligne
+peut fonctionner immédiatement. Ce comportement est **bloquant** pour la
+recette et la formation : aucun utilisateur ne doit avoir à cliquer plusieurs
+fois ou actualiser pour utiliser une action.
+
+### Cause confirmée et modèle de correction
+
+Le cas des campagnes a confirmé une interaction fragile entre :
+
+- les boutons d’icône initiaux utilisant la classe générique `more-button` ;
+- leur branchement pendant le premier rendu de liste ;
+- l’état global de chargement et, plus généralement, les écrans SPA dont les
+  scripts peuvent être remplacés après la page.
+
+La correction de référence est celle validée sur `#/campagnes-collecte` :
+
+1. rendre les lignes de données ;
+2. créer les boutons opérationnels dans le DOM **après** ce rendu ;
+3. poser un écouteur direct et unique sur chaque bouton ;
+4. fournir au bouton les seules données métier nécessaires à son action ;
+5. utiliser une classe locale explicite (ex. `campaign-action-button`) plutôt
+   que `more-button` pour une action métier ;
+6. poser `data-no-action-loader="true"` si l’action ouvre seulement un modal
+   ou une confirmation locale ;
+7. empêcher les réponses de navigation et de chargement devenues anciennes de
+   remplacer l’écran courant.
+
+Les actions générées dans une liste très dynamique peuvent conserver une
+délégation d’événements sur un parent stable. Le choix doit être validé par
+recette au premier clic, après fermeture du modal et après actualisation de la
+liste.
+
+### Audit obligatoire du menu
+
+Auditer chaque entrée de la barre latérale et ses sous-écrans selon ces blocs :
+
+1. Pilotage : Tableau de bord, Alertes, Échéances ;
+2. Registre national : Entreprises, Certifications, Organismes, Zones,
+   Collectes, Vérifications, Contrôle FUCCS, Validations, Intégrations BNEC ;
+3. Analyse : Scoring, INFC, SNCC, Veille, Décisions et actions ;
+4. Pilotage avancé : tableaux tactique, stratégique, annuel, baromètre,
+   tableau public, rapports ;
+5. Administration, Référentiels, Règles et codification, Publications,
+   Documents, Échanges organismes ;
+6. Audit et traçabilité : Journal, Mises à jour BNEC, Qualité des données,
+   Sauvegardes ;
+7. Profil, préférences, connexion, MFA, mot de passe oublié et session
+   sécurisée.
+
+Pour chaque page, tester au minimum : action initiale au premier clic,
+ouverture/fermeture/réouverture de modal, action après recherche ou filtre,
+action après actualisation de la liste et absence de bouton bloqué après une
+erreur API. Consigner l’écran, le bouton, le résultat et la correction dans
+cette feuille avant de passer au bloc suivant.
+
+### Recette en cours — bloc 7 : Compte, sécurité et NavBar (03/09/2026)
+
+Premier risque corrigé sur `#/profil` : les onglets, l’enregistrement, le
+changement d’avatar et la déconnexion étaient branchés seulement après le
+chargement asynchrone du profil, de l’avatar et des données de l’onglet. Ils
+sont maintenant branchés immédiatement. Si les données sont encore en cours
+de lecture, le premier clic affiche une information au lieu d’être perdu.
+
+La NavBar est permanente, mais ses commandes locales (menu mobile, thème,
+présence, notifications, menu utilisateur et marquage des notifications) sont
+désormais explicitement exclues du chargeur automatique global. Elles ouvrent
+ou ferment leur interface dès le premier clic ; les appels réseau éventuels
+restent ensuite silencieux et ne neutralisent pas la commande déclencheuse.
+
+Lorsqu’un contrôle initial de la NavBar est reconstruit pour neutraliser un
+ancien écouteur, toute référence vers un élément enfant doit être relue depuis
+la nouvelle instance. Cette règle est appliquée au compteur de présence
+`#presenceCount` : il est désormais rattaché au nouveau bouton de présence,
+afin que son total continue de se mettre à jour après la correction de
+réactivité.
+
+Le formulaire `#/mot-de-passe-oublie` est également lié avant la résolution du
+module API. La demande de lien, le renvoi et la définition du nouveau mot de
+passe interceptent donc immédiatement leur première soumission, puis attendent
+le client API si nécessaire ; aucune soumission native ou clic perdu ne peut
+survenir pendant l’initialisation.
+
+Restent à recetter dans ce bloc : connexion avec erreur, MFA avec erreur et
+retour, demande/réinitialisation du mot de passe, verrouillage/déverrouillage
+de session, préférences, sessions actives et fermeture/réouverture de tous les
+menus de la NavBar.
+
+**État de recette révisé : bloquant.** Les corrections initiales n’ont pas
+encore démontré une réactivité fiable sur l’ensemble du bloc. Ne pas déclarer
+Profil, préférences ou NavBar conformes tant que chaque bouton visible au
+chargement, menu déroulant, action d’onglet, modal et soumission de formulaire
+n’a pas été contrôlé au premier clic, puis après fermeture et réouverture.
+
+#### Registre de contrôle — bloc 7
+
+| Écran / zone | Contrôles à vérifier | État |
+|---|---|---|
+| NavBar | menu mobile, thème, présence, actualisation de présence, notifications, marquer comme lu, menu utilisateur, raccourcis compte, déconnexion | 🟡 instances reconstruites et écouteurs directs — recette navigateur requise |
+| Profil — structure initiale | onglets, enregistrer, photo, déconnexion | 🟡 instances reconstruites après lecture du profil — recette navigateur requise |
+| Profil — sécurité | mot de passe, MFA, code privé, test de verrouillage, sessions | 🟡 actions générées après rendu — recette navigateur requise |
+| Profil — préférences | choix de notification, actualisation et enregistrement | 🟡 actions générées après rendu — recette navigateur requise |
+| Connexion / MFA | afficher mot de passe, retour, soumettre, erreurs | 🟡 écouteurs synchrones — recette avec cas réel requise |
+| Mot de passe oublié | envoyer, renvoyer, enregistrer le nouveau mot de passe, retours | 🟡 formulaires liés avant API — recette avec cas réel requise |
+| Session sécurisée | afficher code, déverrouiller, déconnexion | 🟡 écouteurs synchrones — recette avec cas réel requise |

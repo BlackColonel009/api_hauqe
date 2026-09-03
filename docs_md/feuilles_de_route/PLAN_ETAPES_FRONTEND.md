@@ -57,6 +57,29 @@ conception.
 | Lisibilité des textes dans Alertes | 🟡 agrandie — recette navigateur |
 | Audits V0.1 à V0.4 | ✅ implémentés et documentés — recette utilisateur |
 
+## Recette prioritaire — fiabilité des boutons du menu (03/09/2026)
+
+Un incident transversal a été confirmé : certains boutons affichés dès le
+chargement initial d’un écran SPA peuvent exiger plusieurs clics. La correction
+de référence est validée sur **Gestion des campagnes** : créer les contrôles
+opérationnels après le rendu de leurs lignes, leur attacher un écouteur direct,
+éviter `more-button` pour une action métier et exclure les simples ouvertures
+de modals du chargeur global.
+
+| Bloc de recette | État | Critère de sortie |
+|---|---|---|
+| 1. Pilotage | À auditer | Chaque action initiale répond au premier clic. |
+| 2. Registre et parcours de collecte | À auditer | Modals, menus de ligne et validations testés avant/après filtre. |
+| 3. Analyse et veille | À auditer | Aucun bouton d’action ou de relance bloqué après fermeture de modal. |
+| 4. Pilotage avancé | À auditer | Filtres, exports et actions de détail stables au premier clic. |
+| 5. Administration et référentiels | À auditer | Création, modification, désactivation et publication stables. |
+| 6. Audit, qualité et sauvegardes | À auditer | Toutes les actions critiques répondent sans actualisation. |
+| 7. Compte et sécurité + NavBar | 🔴 recette bloquante | Des contrôles initiaux restent non réactifs ; audit exhaustif et correction bouton par bouton en cours. |
+
+La progression doit se faire bloc par bloc. Pour chaque écran, consigner le
+bouton testé, le résultat au premier clic, le comportement après fermeture du
+modal et celui après une erreur API avant de déclarer le bloc conforme.
+
 ## Mise à jour Audit V0.4 - 30 juillet 2026
 
 | Domaine | État réel |

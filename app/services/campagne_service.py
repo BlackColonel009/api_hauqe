@@ -203,6 +203,22 @@ class CampagneService:
         item = await CampagneService.get(db, campagne_id)
         changes = payload.model_dump(exclude_unset=True)
 
+        if "code" in changes:
+            code = clean_text(changes["code"])
+            if code is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Le code de campagne est obligatoire.",
+                )
+            code = code.upper()
+            existing = await CampagneRepository.get_by_code(db, code)
+            if existing is not None and existing.id != item.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Une campagne possède déjà ce code.",
+                )
+            changes["code"] = code
+
         if "responsable_id" in changes and changes["responsable_id"]:
             await CampagneService.ensure_active_user(
                 db,
@@ -215,6 +231,7 @@ class CampagneService:
         )
 
         before = {
+            "code": item.code,
             "nom": item.nom,
             "objet": item.objet,
             "objectif": item.objectif,
@@ -248,6 +265,7 @@ class CampagneService:
             adresse_ip=client_ip(request),
             valeurs_avant=before,
             valeurs_apres={
+                "code": item.code,
                 "nom": item.nom,
                 "objet": item.objet,
                 "objectif": item.objectif,

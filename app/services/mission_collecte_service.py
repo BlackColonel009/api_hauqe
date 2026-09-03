@@ -17,10 +17,12 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.models.affectation_mission import AffectationMission
+from app.models.fiche_collecte import FicheCollecte
 from app.models.mission_collecte import MissionCollecte
 from app.repositories.mission_collecte_repository import (
     MissionCollecteRepository,
@@ -221,16 +223,36 @@ class MissionCollecteService:
     ) -> MissionCollecteResponse:
         await CampagneService.get(db, campagne_id)
 
-        item = await MissionCollecteRepository.get_for_campaign(
-            db,
-            campagne_id=campagne_id,
-            mission_id=mission_id,
-        )
+        item = await MissionCollecteRepository.get_by_id(db, mission_id)
         if item is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Mission introuvable dans cette campagne.",
+                detail="Mission de collecte introuvable.",
             )
+
+        moving_campaign = item.campagne_id != campagne_id
+        if moving_campaign:
+            current_fiche = (await db.execute(
+                select(FicheCollecte)
+                .where(FicheCollecte.mission_id == item.id)
+                .order_by(
+                    FicheCollecte.numero_revision.desc().nullslast(),
+                    FicheCollecte.created_at.desc(),
+                )
+                .limit(1)
+            )).scalar_one_or_none()
+            if (
+                current_fiche is not None
+                and (current_fiche.statut or "").strip().upper()
+                != "BROUILLON"
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "La campagne d'une mission ne peut être changée que "
+                        "lorsque sa fiche courante est en BROUILLON."
+                    ),
+                )
 
         changes = payload.model_dump(exclude_unset=True)
 
@@ -256,6 +278,7 @@ class MissionCollecteService:
         )
 
         before = {
+            "campagne_id": str(item.campagne_id),
             "code": item.code,
             "objet": item.objet,
             "zone_id": str(item.zone_id),
@@ -263,6 +286,9 @@ class MissionCollecteService:
             "progression": item.progression,
             "statut": item.statut,
         }
+
+        if moving_campaign:
+            item.campagne_id = campagne_id
 
         for field, value in changes.items():
             if field in {"code", "objet", "priorite", "statut"}:
@@ -280,6 +306,7 @@ class MissionCollecteService:
             adresse_ip=client_ip(request),
             valeurs_avant=before,
             valeurs_apres={
+                "campagne_id": str(item.campagne_id),
                 "code": item.code,
                 "objet": item.objet,
                 "zone_id": str(item.zone_id),

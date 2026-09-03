@@ -93,6 +93,7 @@ async def frontend_view(
         "organisme-form": "views/organisme-form.html",
 
         "collectes": "views/collectes.html",
+        "campagnes-collecte": "views/campagnes-collecte.html",
         "collecte-form": "views/collecte-form.html",
 
         "verifications": "views/verifications.html",
@@ -163,4 +164,3 @@ app.include_router(
     api_router,
     prefix="/api/v1",
 )
-

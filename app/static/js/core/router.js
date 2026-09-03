@@ -15,7 +15,8 @@ const routes = Object.freeze({
   "organisme-detail": { view: "/views/organisme-detail", script: "/static/js/organisme-detail.js", title: "Dossier organisme" },
   "organisme-form": { view: "/views/organisme-form", script: "/static/js/organisme-form.js", title: "Organisme — formulaire" },
   collectes: { view: "/views/collectes", script: "/static/js/collectes.js", title: "Collectes & contrôles" },
-  "collecte-form": { view: "/views/collecte-form", script: "/static/js/collecte-form.js", title: "Fiche de collecte" },
+  "campagnes-collecte": { view: "/views/campagnes-collecte", script: "/static/js/campagnes-collecte.js?v=20260903-1", title: "Gestion des campagnes" },
+  "collecte-form": { view: "/views/collecte-form", script: "/static/js/collecte-form.js?v=20260902-1", title: "Fiche de collecte" },
   validations: { view: "/views/validations", script: "/static/js/validations.js", title: "Validation des collectes" },
   "validation-detail": { view: "/views/validation-detail", script: "/static/js/validation-detail.js", title: "Validation hiérarchisée" },
   controle: { view: "/views/controle", script: "/static/js/controle.js", title: "Grille de contrôle" },
@@ -29,7 +30,7 @@ const routes = Object.freeze({
   "journal-audit": { view: "/views/journal-audit", script: "/static/js/journal-audit.js?v=20260730-2", title: "Journal d’audit" },
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },
   "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js?v=20260731-1", title: "Mot de passe oublié" },
-  profil: { view: "/views/profil", script: "/static/js/profil.js?v=20260802-1", title: "Mon profil" },
+  profil: { view: "/views/profil", script: "/static/js/profil.js?v=20260902-1", title: "Mon profil" },
   verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
   "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
   integrations: { view: "/views/integrations", script: "/static/js/integrations.js", title: "Intégration BNEC" },
@@ -54,6 +55,7 @@ const routes = Object.freeze({
 });
 
 let currentRoute = null;
+let latestNavigationId = 0;
 
 function routeName() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
@@ -77,7 +79,11 @@ function executePageScript(src) {
   document.querySelectorAll("script[data-page-script]").forEach((script) => script.remove());
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `${src}?v=${Date.now()}`;
+    // Les routes possèdent parfois déjà un paramètre de version. Ajouter un
+    // second `?` donne une URL ambiguë et peut laisser le navigateur servir un
+    // script précédent. Le séparateur doit toujours être correct.
+    const separator = src.includes("?") ? "&" : "?";
+    script.src = `${src}${separator}load=${Date.now()}`;
     script.dataset.pageScript = "true";
     script.onload = resolve;
     script.onerror = reject;
@@ -115,6 +121,7 @@ function applyAuthRouteClass(name) {
 }
 
 export async function navigate(options = {}) {
+  const navigationId = ++latestNavigationId;
   const {
     silent = false,
     preserveScroll = false,
@@ -138,8 +145,13 @@ export async function navigate(options = {}) {
   try {
     const response = await fetch(route.view, { headers: { "X-Requested-With": "HAUQE-SPA" } });
     if (!response.ok) throw new Error(`Erreur ${response.status}`);
-    content.innerHTML = extractContent(await response.text());
+    const html = await response.text();
+    // Une navigation plus récente a gagné : cette réponse ne doit surtout pas
+    // remettre une ancienne page ou un ancien script dans le navigateur.
+    if (navigationId !== latestNavigationId) return;
+    content.innerHTML = extractContent(html);
     await executePageScript(route.script);
+    if (navigationId !== latestNavigationId) return;
     window.dispatchEvent(new CustomEvent("hauqe:page-ready", {
       detail: { route: name, refresh: silent },
     }));

@@ -527,6 +527,7 @@
         && hasPermission("COLLECTE.CREER");
 
       $("#newCollectionAction").hidden = !canCreateMission;
+      $("#manageCampaignsAction").hidden = !hasPermission("COLLECTE.AFFECTER");
 
       await Promise.all([
         loadFilters(),

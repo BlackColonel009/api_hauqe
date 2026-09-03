@@ -32,10 +32,12 @@ from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.models.certification_declaree import CertificationDeclaree
+from app.models.document import Document
 from app.models.evenement_collecte import EvenementCollecte
 from app.models.fiche_collecte import FicheCollecte
 from app.models.offre_declaree import OffreDeclaree
@@ -556,6 +558,141 @@ class FicheCollecteService:
                     if item.taux_completude is not None
                     else None
                 ),
+            },
+        )
+
+        await db.commit()
+        await db.refresh(item)
+        return fiche_response(item)
+
+    @staticmethod
+    async def reset_draft(
+        db: AsyncSession,
+        *,
+        mission_id: UUID,
+        fiche_id: UUID,
+        actor: AuthContext,
+        request: Request,
+    ) -> FicheCollecteResponse:
+        """
+        Réinitialise une fiche courante en BROUILLON sans supprimer la mission.
+
+        La campagne, la zone et les affectations restent attachées à la mission :
+        ce sont ses éléments structurels obligatoires. Les documents déjà
+        déposés sont désactivés, jamais supprimés physiquement.
+        """
+        item = await FicheCollecteService.ensure_draft_current(
+            db,
+            mission_id=mission_id,
+            fiche_id=fiche_id,
+        )
+        mission = await MissionCollecteService.get(db, mission_id)
+
+        offers = await FicheCollecteRepository.list_offres(db, item.id)
+        certifications = await FicheCollecteRepository.list_certifications(
+            db,
+            item.id,
+        )
+        document_rows = list((await db.execute(
+            select(Document)
+            .where(
+                Document.ressource_type == "FICHE_COLLECTE",
+                Document.ressource_id == item.id,
+                or_(
+                    Document.statut.is_(None),
+                    Document.statut != "INACTIF",
+                ),
+            )
+            .with_for_update()
+        )).scalars().all())
+
+        before = {
+            "entreprise_id": str(item.entreprise_id) if item.entreprise_id else None,
+            "offres": len(offers),
+            "certifications_declarees": len(certifications),
+            "documents_desactives": len(document_rows),
+            "mission": {
+                "code": mission.code,
+                "objet": mission.objet,
+                "date_debut_prevue": str(mission.date_debut_prevue) if mission.date_debut_prevue else None,
+                "date_fin_prevue": str(mission.date_fin_prevue) if mission.date_fin_prevue else None,
+                "priorite": mission.priorite,
+            },
+        }
+
+        # Saisie de mission réinitialisable ; campagne, zone et affectations
+        # restent en place car la mission en dépend structurellement.
+        mission.code = None
+        mission.objet = None
+        mission.date_debut_prevue = None
+        mission.date_fin_prevue = None
+        mission.date_debut_reelle = None
+        mission.date_fin_reelle = None
+        mission.priorite = None
+        mission.progression = 0
+
+        item.entreprise_id = None
+        item.version_formulaire = "HAUQE-COLLECTE-SIMPLIFIEE-V1"
+        item.consentement_obtenu = False
+        item.nom_declarant = None
+        item.fonction_declarant = None
+        item.telephone_declarant = None
+        item.email_declarant = None
+        item.signature_declarant = None
+        item.observations = None
+        item.collecte_par_id = actor.user.id
+        item.collecte_at = datetime.now(timezone.utc)
+
+        if offers:
+            await db.execute(
+                delete(OffreDeclaree).where(
+                    OffreDeclaree.fiche_collecte_id == item.id
+                )
+            )
+        if certifications:
+            await db.execute(
+                delete(CertificationDeclaree).where(
+                    CertificationDeclaree.fiche_collecte_id == item.id
+                )
+            )
+        for document in document_rows:
+            document.statut = "INACTIF"
+
+        await FicheCollecteService.calculate_completeness(db, item)
+        await FicheCollecteService.record_event(
+            db,
+            fiche_id=item.id,
+            type_evenement="REINITIALISATION_BROUILLON",
+            ancien_statut=item.statut,
+            nouveau_statut=item.statut,
+            commentaire=(
+                "Saisie métier réinitialisée ; campagne, zone et "
+                "affectations conservées."
+            ),
+            acteur_id=actor.user.id,
+        )
+        await write_audit_event(
+            db,
+            action="COLLECTE_FORM_RESET",
+            categorie="COLLECTE",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="fiche_collecte",
+            ressource_id=item.id,
+            adresse_ip=client_ip(request),
+            valeurs_avant=before,
+            valeurs_apres={
+                "entreprise_id": None,
+                "offres": 0,
+                "certifications_declarees": 0,
+                "documents_actifs": 0,
+                "mission": {
+                    "campagne_id": str(mission.campagne_id),
+                    "zone_id": str(mission.zone_id),
+                    "code": None,
+                    "objet": None,
+                    "priorite": None,
+                },
             },
         )
 

@@ -2507,6 +2507,21 @@ PATCH /api/v1/missions/{mission_id}/affectations/{affectation_id}
 
 État : **créés dans le lot / tests à effectuer**
 
+### Gestion des campagnes de collecte
+
+Les routes `POST/PATCH /api/v1/campagnes` restent réservées à
+`COLLECTE.AFFECTER`. La modification prend désormais aussi en charge `code` :
+le code est normalisé en majuscules, vérifié unique et inscrit dans l'audit
+avec sa valeur précédente. Une campagne désactivée (`INACTIVE`) est conservée
+avec ses missions et fiches, mais n'est plus proposée pour démarrer une
+nouvelle collecte.
+
+Les listes de collecte joignent la campagne en direct ; une correction de ses
+informations communes est donc visible également sur les missions dont la
+fiche est déjà soumise. Les données de la fiche terrain, la validation et les
+résultats BNEC ne sont pas modifiés. Impact PostgreSQL : **aucune migration,
+aucun seed**.
+
 ### Fiches de collecte / révisions
 
 ```text
@@ -2515,12 +2530,23 @@ GET   /api/v1/missions/{mission_id}/fiches/current
 POST  /api/v1/missions/{mission_id}/fiches
 GET   /api/v1/missions/{mission_id}/fiches/{fiche_id}
 PATCH /api/v1/missions/{mission_id}/fiches/{fiche_id}
+POST  /api/v1/missions/{mission_id}/fiches/{fiche_id}/reset
 POST  /api/v1/missions/{mission_id}/fiches/{fiche_id}/submit
 POST  /api/v1/missions/{mission_id}/fiches/{fiche_id}/revision
 GET   /api/v1/missions/{mission_id}/fiches/{fiche_id}/history
 ```
 
 État : **créés dans le lot / tests à effectuer**
+
+`POST .../reset` est réservé à `COLLECTE.MODIFIER` et à la fiche courante en
+`BROUILLON`. Il ne supprime ni la mission ni les traces : il vide les saisies
+métier, retire les offres et certifications déclarées du brouillon, désactive
+les documents liés et écrit un événement de collecte ainsi qu'un audit. La
+campagne, la zone et les affectations sont conservées immédiatement après la
+réinitialisation, car elles structurent la mission. Tant que la fiche reste en
+`BROUILLON`, l'agent ayant `COLLECTE.AFFECTER` peut ensuite changer la campagne
+et la zone : la même mission est déplacée, sans créer de doublon. Impact
+PostgreSQL : **aucune migration, aucun seed**.
 
 ### Offres déclarées
 
@@ -5348,6 +5374,16 @@ Non modifiable depuis Mon compte :
 - rôles ;
 - permissions.
 
+### Avatar personnel et changement de session
+
+`GET /api/v1/me/avatar` ne retourne que le document désigné par
+`preferences_utilisateur.avatar_document_id` du compte issu du Bearer token.
+La réponse porte les en-têtes `Cache-Control: private, no-store` et
+`Vary: Authorization` : un navigateur, un proxy ou une session ultérieure ne
+doit pas réemployer l'image d'un autre utilisateur.
+
+Impact base PostgreSQL : **non**. Aucune migration ni seed.
+
 ## Mot de passe
 
 ```text
@@ -6052,6 +6088,18 @@ Aucune nouvelle permission.
   simultanées ;
 - la migration s'arrête volontairement si des doublons historiques existent :
   ils doivent être examinés et rapprochés, jamais supprimés automatiquement.
+
+## Correctif — identifiant de précréation en collecte (02/09/2026)
+
+- une entreprise précréée depuis une collecte reçoit désormais un identifiant
+  HAUQE croissant `HAUQE-ENT-AAAA-XXXX`, dans la même séquence que le
+  formulaire Entreprise ;
+- ce code reste **provisoire** tant que la fiche suit le parcours de collecte ;
+  l'intégration BNEC après validation N2 le remplace par le code définitif issu
+  du modèle ENTREPRISE publié ;
+- un verrou transactionnel PostgreSQL empêche deux précréations simultanées de
+  recevoir le même numéro ;
+- aucune migration, aucune table et aucun seed ne sont requis.
 
 ### À éviter impérativement — identifiants techniques
 

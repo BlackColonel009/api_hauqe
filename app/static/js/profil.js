@@ -13,6 +13,7 @@
   let mfaEnrollment = null;
   let avatarObjectUrl = null;
   let avatarBusy = false;
+  let staticActionsBound = false;
 
   function icons() {
     if (window.lucide) {
@@ -1413,6 +1414,89 @@ async function uploadAvatar(file) {
     }
   }
 
+  // Les commandes visibles dès l'ouverture ne doivent pas attendre la fin des
+  // appels profil, avatar et préférences avant d'être branchées. Le premier
+  // clic reçoit donc toujours une réponse explicite.
+  function bindStaticActions() {
+    if (staticActionsBound) return;
+    staticActionsBound = true;
+
+    $$("[data-profile-tab]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!profile) {
+          toast("Chargement du profil en cours. Veuillez patienter un instant.");
+          return;
+        }
+        await switchTab(button.dataset.profileTab);
+      });
+    });
+
+    $("#saveProfile")?.addEventListener("click", async () => {
+      if (!profile) {
+        toast("Chargement du profil en cours. Veuillez patienter un instant.");
+        return;
+      }
+      await saveCurrentTab();
+    });
+
+    $("#profileLogout")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      await logout();
+    });
+  }
+
+  // Même procédé que les actions de campagnes : les contrôles visibles au
+  // départ sont remplacés après le chargement réel des données, puis branchés
+  // une seule fois sur leur nouvelle instance.
+  function rebuildInitialProfileControls() {
+    const selectors = [
+      "[data-profile-tab]",
+      "#saveProfile",
+      "#profileLogout",
+    ];
+
+    selectors.forEach((selector) => {
+      $$(selector).forEach((control) => {
+        const replacement = control.cloneNode(true);
+        control.replaceWith(replacement);
+      });
+    });
+
+    staticActionsBound = false;
+    bindStaticActions();
+  }
+
+  // L'action photo est construite après l'arrivée des données du profil, et
+  // non dans le HTML initial. Elle suit donc exactement le modèle validé sur
+  // Gestion des campagnes : bouton créé après rendu + écouteur direct unique.
+  function hydrateAvatarAction() {
+    const slot = $("#profileAvatarActionSlot");
+    if (!slot || !profile) return;
+
+    const input = document.createElement("input");
+    input.id = "avatarFileInput";
+    input.type = "file";
+    input.accept = "image/png,image/jpeg";
+    input.hidden = true;
+
+    const button = document.createElement("button");
+    button.id = "changeAvatar";
+    button.type = "button";
+    button.className = "avatar-camera";
+    button.setAttribute("aria-label", "Modifier la photo de profil");
+    button.setAttribute("title", "Modifier la photo de profil");
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = '<i data-lucide="camera"></i>';
+
+    button.addEventListener("click", () => input.click());
+    input.addEventListener("change", async (event) => {
+      const file = event.target.files?.[0] || null;
+      if (file) await uploadAvatar(file);
+    });
+
+    slot.replaceChildren(button, input);
+  }
+
   function applyRequestedShortcut() {
     try {
       const shortcut = sessionStorage.getItem(
@@ -1430,6 +1514,7 @@ async function uploadAvatar(file) {
   }
 
   async function init() {
+    bindStaticActions();
     const api = await import("/static/js/core/api.js");
     const auth = await import("/static/js/core/auth.js");
 
@@ -1437,6 +1522,8 @@ async function uploadAvatar(file) {
 
     try {
       profile = await api.apiGet("/api/v1/me/profile");
+      rebuildInitialProfileControls();
+      hydrateAvatarAction();
       auth.clearProfileCache();
       updateHero();
       await loadAvatar();
@@ -1451,37 +1538,7 @@ async function uploadAvatar(file) {
       return;
     }
 
-    $$("[data-profile-tab]").forEach((button) => {
-      button.addEventListener("click", () => {
-        switchTab(button.dataset.profileTab);
-      });
-    });
-
-    $("#saveProfile")?.addEventListener(
-      "click",
-      saveCurrentTab
-    );
-
     updateTopSaveButton();
-
-    $("#changeAvatar")?.addEventListener("click", () => {
-      $("#avatarFileInput")?.click();
-    });
-
-    $("#avatarFileInput")?.addEventListener("change", async (event) => {
-      const file = event.target.files?.[0] || null;
-      if (file) {
-        await uploadAvatar(file);
-      }
-    });
-
-    $("#profileLogout")?.addEventListener(
-      "click",
-      async (event) => {
-        event.preventDefault();
-        await logout();
-      }
-    );
 
     icons();
   }

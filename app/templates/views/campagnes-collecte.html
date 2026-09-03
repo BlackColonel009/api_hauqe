@@ -1,0 +1,89 @@
+<div class="page-content container-fluid campagnes-collecte-page">
+  <nav class="detail-breadcrumb">
+    <a href="#/collectes">Collectes & contrôles</a>
+    <i data-lucide="chevron-right"></i>
+    <span>Gestion des campagnes</span>
+  </nav>
+
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Collecte terrain</p>
+      <h1>Gestion des campagnes</h1>
+      <p>Créer, corriger ou désactiver une campagne sans supprimer ses missions ni ses collectes.</p>
+    </div>
+    <div class="heading-actions">
+      <a href="#/collectes" class="btn btn-outline-secondary app-btn"><i data-lucide="arrow-left"></i>Collectes</a>
+      <button id="newCampaign" class="btn btn-primary app-btn" type="button"><i data-lucide="plus"></i>Nouvelle campagne</button>
+    </div>
+  </section>
+
+  <section class="dashboard-api-state" id="campaignApiState" hidden></section>
+
+  <section class="panel campaign-management-intro">
+    <i data-lucide="shield-check"></i>
+    <div><strong>Correction administrative tracée</strong><span>Les informations communes sont corrigées pour toutes les missions liées. Les fiches terrain, soumises ou validées, ne sont pas modifiées.</span></div>
+  </section>
+
+  <section class="panel campaign-management-panel">
+    <div class="campaign-management-toolbar">
+      <label class="collecte-search"><i data-lucide="search"></i><input id="campaignSearch" type="search" placeholder="Rechercher par code, nom ou objet"></label>
+      <select id="campaignStatus"><option value="">Tous les statuts</option><option value="ACTIVE">Actives</option><option value="INACTIVE">Désactivées</option></select>
+      <button id="refreshCampaigns" class="btn btn-outline-secondary app-btn" type="button"><i data-lucide="refresh-cw"></i>Actualiser</button>
+    </div>
+    <div class="table-responsive"><table class="table campaign-management-table"><thead><tr><th>Campagne</th><th>Objet</th><th>Période</th><th>Statut</th><th>Missions</th><th></th></tr></thead><tbody id="campaignRows"></tbody></table></div>
+    <div class="collecte-empty" id="campaignEmpty" hidden><i data-lucide="folder-x"></i><strong>Aucune campagne trouvée</strong><span>Modifiez les filtres ou créez une nouvelle campagne.</span></div>
+  </section>
+
+  <dialog class="hauqe-dialog operational-form-dialog campaign-form-dialog" id="campaignDialog">
+    <form id="campaignForm" method="dialog">
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title">
+          <span class="operational-dialog-icon"><i data-lucide="folder-pen"></i></span>
+          <div>
+            <p class="eyebrow">Collecte terrain</p>
+            <h2 id="campaignDialogTitle">Nouvelle campagne</h2>
+            <small>Définissez les informations communes qui seront visibles sur les missions de cette campagne.</small>
+          </div>
+        </div>
+        <button class="dialog-close operational-dialog-close" type="button" aria-label="Fermer" data-close-campaign-dialog><i data-lucide="x"></i></button>
+      </header>
+      <div class="operational-dialog-body">
+        <div class="operational-form-notice">
+          <span><i data-lucide="shield-check"></i></span>
+          <div><strong>Modification administrative tracée</strong><small>La campagne structure les missions liées ; les fiches terrain déjà soumises ou validées ne sont pas modifiées.</small></div>
+        </div>
+        <section class="operational-form-section">
+          <div class="operational-section-heading"><span><i data-lucide="file-text"></i></span><div><strong>Identification de la campagne</strong><small>Renseignez un code stable et un intitulé compréhensible.</small></div><b>01</b></div>
+          <div class="operational-form-grid">
+            <label class="operational-field"><span>Code campagne <b>*</b></span><input id="campaignCode" maxlength="255" required placeholder="HAUQE-CAMP-2026-001"><small>Référence commune aux missions liées.</small></label>
+            <label class="operational-field"><span>Statut</span><select id="campaignFormStatus"><option value="ACTIVE">Active</option><option value="INACTIVE">Désactivée</option></select><small>Une campagne désactivée n’est plus proposée à la collecte.</small></label>
+            <label class="operational-field full"><span>Nom de la campagne</span><input id="campaignName" maxlength="255" placeholder="Intitulé de la campagne"></label>
+          </div>
+        </section>
+        <section class="operational-form-section">
+          <div class="operational-section-heading"><span><i data-lucide="target"></i></span><div><strong>Cadre opérationnel</strong><small>Expliquez l’objet et le résultat attendu de la campagne.</small></div><b>02</b></div>
+          <div class="operational-form-grid">
+            <label class="operational-field full"><span>Objet</span><textarea id="campaignObject" rows="3" maxlength="255" placeholder="But opérationnel de la campagne"></textarea></label>
+            <label class="operational-field full"><span>Objectif</span><textarea id="campaignGoal" rows="3" maxlength="255" placeholder="Résultat attendu"></textarea></label>
+          </div>
+        </section>
+        <section class="operational-form-section">
+          <div class="operational-section-heading"><span><i data-lucide="calendar-range"></i></span><div><strong>Période prévisionnelle</strong><small>Ces dates facilitent le préremplissage des missions de collecte.</small></div><b>03</b></div>
+          <div class="operational-form-grid">
+            <label class="operational-field"><span>Date de début</span><input id="campaignStart" type="date"></label>
+            <label class="operational-field"><span>Date de fin</span><input id="campaignEnd" type="date"></label>
+          </div>
+        </section>
+      </div>
+      <footer class="operational-dialog-footer"><div class="operational-footer-note"><i data-lucide="info"></i><span>Les champs marqués * sont obligatoires.</span></div><div class="operational-footer-actions"><button class="btn btn-outline-secondary app-btn" type="button" data-close-campaign-dialog>Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer</button></div></footer>
+    </form>
+  </dialog>
+
+  <dialog class="hauqe-dialog operational-form-dialog campaign-form-dialog" id="missionReferenceDialog">
+    <form id="missionReferenceForm" method="dialog">
+      <header class="operational-dialog-header"><div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="clipboard-pen-line"></i></span><div><p class="eyebrow">Mission de collecte</p><h2>Corriger la référence de mission</h2><small>La correction concerne uniquement la mission sélectionnée.</small></div></div><button class="dialog-close operational-dialog-close" type="button" aria-label="Fermer" data-close-mission-dialog><i data-lucide="x"></i></button></header>
+      <div class="operational-dialog-body"><div class="operational-form-notice"><span><i data-lucide="circle-check-big"></i></span><div><strong>Portée de la correction</strong><small>Les fiches déjà soumises ou validées restent inchangées.</small></div></div><section class="operational-form-section"><div class="operational-section-heading"><span><i data-lucide="notebook-pen"></i></span><div><strong>Informations de la mission</strong><small>Corrigez la référence ou l’objet lorsque la saisie initiale était erronée.</small></div><b>01</b></div><div class="operational-form-grid"><label class="operational-field full"><span>Référence de mission</span><input id="missionReferenceCode" maxlength="255" placeholder="Ex. HAUQE-MIS-2026-001"></label><label class="operational-field full"><span>Objet de mission</span><textarea id="missionReferenceObject" rows="3" maxlength="255" placeholder="Objet de la mission"></textarea></label></div></section></div>
+      <footer class="operational-dialog-footer"><div class="operational-footer-note"><i data-lucide="info"></i><span>Enregistrez uniquement après vérification de la référence.</span></div><div class="operational-footer-actions"><button class="btn btn-outline-secondary app-btn" type="button" data-close-mission-dialog>Annuler</button><button class="btn btn-primary app-btn" type="submit"><i data-lucide="save"></i>Enregistrer</button></div></footer>
+    </form>
+  </dialog>
+</div>

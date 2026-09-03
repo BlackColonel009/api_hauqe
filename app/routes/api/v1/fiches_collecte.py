@@ -148,6 +148,29 @@ async def update_fiche(
 
 
 @router.post(
+    "/{fiche_id}/reset",
+    response_model=FicheCollecteResponse,
+)
+async def reset_draft_fiche(
+    mission_id: UUID,
+    fiche_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("COLLECTE.MODIFIER")
+    ),
+):
+    """Réinitialise le contenu d'une fiche courante en brouillon."""
+    return await FicheCollecteService.reset_draft(
+        db,
+        mission_id=mission_id,
+        fiche_id=fiche_id,
+        actor=actor,
+        request=request,
+    )
+
+
+@router.post(
     "/{fiche_id}/submit",
     response_model=FicheCollecteResponse,
 )

@@ -28,6 +28,13 @@ class CollecteWorkspaceRepository:
                 Campagne.code,
                 Campagne.nom,
             )
+            .where(
+                or_(
+                    Campagne.statut.is_(None),
+                    func.upper(Campagne.statut) == "ACTIF",
+                    func.upper(Campagne.statut) == "ACTIVE",
+                )
+            )
             .order_by(
                 Campagne.date_debut.desc().nullslast(),
                 Campagne.code.desc(),

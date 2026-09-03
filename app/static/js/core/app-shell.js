@@ -4,7 +4,7 @@ import {
   getCurrentRoute,
   initRouter,
   refreshCurrentRoute,
-} from "./router.js?v=20260802-1";
+} from "./router.js?v=20260903-2";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
@@ -164,6 +164,14 @@ const PAGE_REFRESH_DEFAULTS = Object.freeze({
   refreshOnReturn: true,
 });
 const PAGE_REFRESH_INTERVALS = new Set([15, 30, 60, 120, 300]);
+// Ces écrans portent des actions immédiates et des modals d'édition. Les
+// remplacer silencieusement en arrière-plan laisse brièvement des boutons
+// visibles sans le script de la page et peut faire perdre un clic utilisateur.
+// Ils restent actualisables avec leur commande « Actualiser » explicite.
+const PAGE_REFRESH_EXCLUDED_ROUTES = new Set([
+  "campagnes-collecte",
+  "profil",
+]);
 let pageRefreshTimer = null;
 let pageRefreshRunning = false;
 let pageFormDirty = false;
@@ -195,7 +203,7 @@ function normalizePageRefreshPreferences(value = {}) {
 function readStoredPageRefreshPreferences() {
   try {
     return normalizePageRefreshPreferences(
-      JSON.parse(localStorage.getItem(PAGE_REFRESH_STORAGE_KEY) || "{}")
+      JSON.parse(sessionStorage.getItem(PAGE_REFRESH_STORAGE_KEY) || "{}")
     );
   } catch {
     return { ...PAGE_REFRESH_DEFAULTS };
@@ -205,7 +213,7 @@ function readStoredPageRefreshPreferences() {
 function applyPageRefreshPreferences(value, { persist = true } = {}) {
   pageRefreshPreferences = normalizePageRefreshPreferences(value);
   if (persist) {
-    localStorage.setItem(
+    sessionStorage.setItem(
       PAGE_REFRESH_STORAGE_KEY,
       JSON.stringify(pageRefreshPreferences)
     );
@@ -252,6 +260,7 @@ function pageRefreshIsSafe() {
     && !pageHasOpenDialog()
     && !pageHasActiveInput()
     && !document.body.classList.contains("hauqe-action-loading")
+    && !PAGE_REFRESH_EXCLUDED_ROUTES.has(getCurrentRoute())
     && !["connexion", "mot-de-passe-oublie"].includes(getCurrentRoute())
   );
 }
@@ -358,12 +367,20 @@ window.addEventListener("hauqe:refresh-preferences-updated", (event) => {
 window.addEventListener("hauqe:auth-state", (event) => {
   if (event.detail?.authenticated) {
     loadPageRefreshPreferences();
+  } else {
+    // Cette préférence est rattachée au compte. Elle ne doit pas devenir le
+    // réglage apparent du prochain utilisateur de ce navigateur.
+    try { sessionStorage.removeItem(PAGE_REFRESH_STORAGE_KEY); } catch {}
+    pageRefreshPreferences = { ...PAGE_REFRESH_DEFAULTS };
+    startPageRefreshRuntime();
   }
 });
 
-pageRefreshPreferences = readStoredPageRefreshPreferences();
+pageRefreshPreferences = hasAccessToken()
+  ? readStoredPageRefreshPreferences()
+  : { ...PAGE_REFRESH_DEFAULTS };
 startPageRefreshRuntime();
-loadPageRefreshPreferences();
+if (hasAccessToken()) loadPageRefreshPreferences();
 
 /* ============================================================
    SIDEBAR MOBILE ROBUSTE
@@ -488,20 +505,27 @@ document.addEventListener("click", (event) => {
   if (disabledLink) event.preventDefault();
 });
 
-const notificationToggle = document.querySelector("#notificationToggle");
+function rebuildInitialControl(control) {
+  if (!(control instanceof HTMLElement)) return control;
+  const rebuilt = control.cloneNode(true);
+  control.replaceWith(rebuilt);
+  return rebuilt;
+}
+
+let notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
-const userMenuToggle = document.querySelector("#userMenuToggle");
+let userMenuToggle = document.querySelector("#userMenuToggle");
 const accountDropdown = document.querySelector("#accountDropdown");
 const presenceWrap = document.querySelector("#presenceWrap");
-const presenceToggle = document.querySelector("#presenceToggle");
+let presenceToggle = document.querySelector("#presenceToggle");
 const presenceDropdown = document.querySelector("#presenceDropdown");
-const presenceCount = document.querySelector("#presenceCount");
+let presenceCount = document.querySelector("#presenceCount");
 const presenceSummary = document.querySelector("#presenceSummary");
 const presenceState = document.querySelector("#presenceState");
 const presenceUsers = document.querySelector("#presenceUsers");
-const presenceRefresh = document.querySelector("#presenceRefresh");
-const themeSwitch = document.querySelector("#themeSwitch");
-const themeSwitchLabel = document.querySelector("#themeSwitchLabel");
+let presenceRefresh = document.querySelector("#presenceRefresh");
+let themeSwitch = document.querySelector("#themeSwitch");
+let themeSwitchLabel = document.querySelector("#themeSwitchLabel");
 function applyTheme(theme) {
   const dark = theme === "dark";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -509,6 +533,13 @@ function applyTheme(theme) {
   themeSwitch.setAttribute("aria-label", dark ? "Activer le thème clair" : "Activer le thème sombre");
   themeSwitchLabel.textContent = dark ? "Sombre" : "Clair";
 }
+themeSwitch = rebuildInitialControl(themeSwitch);
+themeSwitchLabel = themeSwitch?.querySelector("#themeSwitchLabel");
+notificationToggle = rebuildInitialControl(notificationToggle);
+userMenuToggle = rebuildInitialControl(userMenuToggle);
+presenceToggle = rebuildInitialControl(presenceToggle);
+presenceCount = presenceToggle?.querySelector("#presenceCount");
+presenceRefresh = rebuildInitialControl(presenceRefresh);
 applyTheme(document.documentElement.dataset.theme || "light");
 themeSwitch.addEventListener("click", () => {
   const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
@@ -517,6 +548,9 @@ themeSwitch.addEventListener("click", () => {
 
 
 let shellAvatarObjectUrl = null;
+// Empêche une réponse avatar lancée sous une ancienne session de repeupler
+// le shell après une déconnexion ou un changement de compte.
+let shellAvatarRequestVersion = 0;
 
 function clearShellAvatarObjectUrl() {
   if (shellAvatarObjectUrl) {
@@ -579,6 +613,7 @@ function applyShellAvatar(url = null, initialsText = "U") {
 }
 
 async function hydrateShellAvatar(profile) {
+  const requestVersion = ++shellAvatarRequestVersion;
   const initialsText = initials(profile);
 
   clearShellAvatarObjectUrl();
@@ -592,6 +627,10 @@ async function hydrateShellAvatar(profile) {
       { suppressGlobalAuth: true }
     );
 
+    if (requestVersion !== shellAvatarRequestVersion || !hasAccessToken()) {
+      return;
+    }
+
     shellAvatarObjectUrl = URL.createObjectURL(blob);
     applyShellAvatar(shellAvatarObjectUrl, initialsText);
   } catch (error) {
@@ -599,6 +638,12 @@ async function hydrateShellAvatar(profile) {
       console.warn("Chargement avatar navbar :", error);
     }
   }
+}
+
+function clearShellAvatarForSessionChange() {
+  ++shellAvatarRequestVersion;
+  clearShellAvatarObjectUrl();
+  applyShellAvatar(null, "U");
 }
 
 function initials(profile) {
@@ -1350,6 +1395,7 @@ window.addEventListener("hauqe:auth-state", (event) => {
     startNotificationRuntime();
     startSidebarBadgeRuntime();
   } else {
+    clearShellAvatarForSessionChange();
     stopPresenceRuntime();
     stopNotificationRuntime();
     stopSidebarBadgeRuntime();

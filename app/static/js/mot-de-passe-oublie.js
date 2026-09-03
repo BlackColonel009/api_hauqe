@@ -1,7 +1,10 @@
-(async function () {
+(function () {
   "use strict";
 
-  const api = await import("/static/js/core/api.js");
+  // Les formulaires sont branchés sans attendre l'import du client API. Ainsi,
+  // le premier clic ou la première soumission est toujours intercepté, même si
+  // le navigateur est encore en train de charger les modules.
+  const apiReady = import("/static/js/core/api.js");
   const $ = (selector) => document.querySelector(selector);
 
   function icons() {
@@ -31,6 +34,7 @@
   }
 
   async function requestReset(email) {
+    const api = await apiReady;
     await api.apiPost(
       "/api/v1/auth/password/forgot",
       { email },
@@ -64,6 +68,7 @@
       requestSuccess.hidden = false;
       icons();
     } catch (failure) {
+      const api = await apiReady;
       showError(error, api.describeApiError(failure).message);
     } finally {
       setBusy(button, false, "Envoi en cours…", "Envoyer le lien sécurisé");
@@ -77,6 +82,7 @@
       await requestReset($("#resetTarget").textContent.trim());
       button.textContent = "Lien renvoyé";
     } catch (failure) {
+      const api = await apiReady;
       requestSuccess.hidden = true;
       requestForm.hidden = false;
       showError($("#resetRequestError"), api.describeApiError(failure).message);
@@ -113,6 +119,7 @@
       history.replaceState(null, "", `${location.pathname}${location.search}#/mot-de-passe-oublie`);
       icons();
     } catch (failure) {
+      const api = await apiReady;
       showError(error, api.describeApiError(failure).message);
     } finally {
       setBusy(button, false, "Enregistrement…", "Enregistrer le nouveau mot de passe");

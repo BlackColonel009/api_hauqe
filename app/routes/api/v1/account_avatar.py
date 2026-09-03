@@ -241,6 +241,14 @@ async def download_my_avatar(
         path=path,
         media_type=media_type,
         filename=document.nom_original or path.name,
+        headers={
+            # Une URL /me/avatar est identique pour tous les comptes : elle ne
+            # doit donc jamais être réutilisée depuis le cache d'une ancienne
+            # session après changement d'utilisateur.
+            "Cache-Control": "private, no-store, max-age=0",
+            "Pragma": "no-cache",
+            "Vary": "Authorization",
+        },
     )
 
 

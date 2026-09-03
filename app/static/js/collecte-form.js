@@ -351,7 +351,7 @@
             campaignOptions(),
             {
               required: true,
-              disabled: editMode || !canPlan,
+              disabled: !canPlan || !isDraft(),
             }
           )}
 
@@ -1188,9 +1188,12 @@
 
   function applySelectedCampaign(selectedCampaign, campaignMission = null) {
     campaign = selectedCampaign;
-    mission = null;
-    missionId = null;
-    fiche = null;
+    const keepCurrentDraft = Boolean(missionId && fiche && isDraft());
+    if (!keepCurrentDraft) {
+      mission = null;
+      missionId = null;
+      fiche = null;
+    }
     campagneId = selectedCampaign.id || state.campaign_id;
 
     Object.assign(state, {
@@ -1221,13 +1224,22 @@
       '[name="campaign_id"]'
     );
 
-    if (campaignSelect && !editMode) {
+    if (campaignSelect && isDraft()) {
       campaignSelect.addEventListener("change", async (event) => {
         capture();
         state.campaign_id = event.target.value;
         hideState();
 
         if (!state.campaign_id || state.campaign_id === "__new__") {
+          if (missionId) {
+            state.campaign_id = mission?.campagne_id || campagneId || "";
+            render(false);
+            showState(
+              "Sélectionnez une campagne existante pour cette mission brouillon.",
+              { error: true }
+            );
+            return;
+          }
           mission = null;
           missionId = null;
           campagneId = null;
@@ -2138,8 +2150,106 @@ async function saveQuickEnterprise(event) {
     }
   }
 
+  function resetUnsavedFormState() {
+    Object.assign(state, {
+      campaign_id: "",
+      new_campaign_code: "",
+      new_campaign_name: "",
+      new_campaign_start: "",
+      new_campaign_end: "",
+      mission_code: "",
+      mission_object: "",
+      zone_id: "",
+      planned_start: "",
+      planned_end: "",
+      priority: "",
+      assigned_user_id: "",
+      entreprise_id: "",
+      version_formulaire: "HAUQE-COLLECTE-SIMPLIFIEE-V1",
+      consentement_obtenu: false,
+      nom_declarant: "",
+      fonction_declarant: "",
+      telephone_declarant: "",
+      email_declarant: "",
+      signature_declarant: "",
+      observations: "",
+    });
+    campagneId = null;
+    campaign = null;
+    mission = null;
+    missionId = null;
+    fiche = null;
+    assignments = [];
+    offers = [];
+    declaredCertifications = [];
+    documents = [];
+    ficheHistory = [];
+    selectedEnterprise = null;
+    pendingFiles = [];
+  }
+
+  async function resetDraft(event) {
+    if (!isDraft()) {
+      showState(
+        "Seul un brouillon courant peut être réinitialisé.",
+        { error: true }
+      );
+      return;
+    }
+
+    const savedDraft = Boolean(fiche && missionId);
+    const message = savedDraft
+      ? "Réinitialiser cette fiche brouillon ? Les saisies de mission, entreprise, offres et certifications seront effacées. Les documents déposés seront désactivés, sans suppression physique. La campagne, la zone et les affectations seront conservées."
+      : "Réinitialiser toutes les saisies non enregistrées de ce formulaire ?";
+
+    if (!window.confirm(message)) return;
+
+    const task = async () => {
+      if (savedDraft) {
+        fiche = await apiPost(
+          `/api/v1/missions/${missionId}/fiches/${fiche.id}/reset`
+        );
+        selectedEnterprise = null;
+        pendingFiles = [];
+        step = 1;
+        await loadExisting();
+        showState(
+          "Brouillon réinitialisé. Reprenez la saisie à partir de la mission ; campagne, zone et affectations sont conservées."
+        );
+      } else {
+        resetUnsavedFormState();
+        step = 1;
+        showState("Formulaire non enregistré réinitialisé.");
+      }
+
+      updateActionState();
+      render(false);
+    };
+
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: event.currentTarget,
+          title: "Réinitialisation du brouillon",
+          message: "Nettoyage des saisies de collecte",
+          detail: savedDraft
+            ? "Les données métier sont retirées, l'historique est conservé."
+            : "Aucune donnée n'avait encore été enregistrée.",
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(
+        error?.message || "Réinitialisation du brouillon impossible.",
+        { error: true }
+      );
+    }
+  }
+
   function updateActionState() {
     const saveButton = $("#saveCollectDraft");
+    const resetButton = $("#resetCollectDraft");
     const submitButton = $("#submitCollect");
     const revisionButton = $("#createRevision");
 
@@ -2150,6 +2260,7 @@ async function saveQuickEnterprise(event) {
       );
 
     saveButton.hidden = !editable;
+    resetButton.hidden = !editable;
 
     submitButton.hidden = !(
       isDraft()
@@ -2423,6 +2534,11 @@ async function saveQuickEnterprise(event) {
           );
         }
       }
+    );
+
+    $("#resetCollectDraft").addEventListener(
+      "click",
+      resetDraft
     );
 
     $("#submitCollect").addEventListener(
