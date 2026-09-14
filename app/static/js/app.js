@@ -582,10 +582,6 @@
         <div class="dashboard-empty-state">
           ${icon("calendar-check-2")}
           <strong>Aucun certificat à échéance dans les 180 jours</strong>
-          <span>
-            Aucune information fictive n'est affichée.
-            Les prochaines expirations apparaîtront ici dès qu'elles existent dans la base.
-          </span>
         </div>
       `;
       refreshIcons();
@@ -1374,7 +1370,7 @@
     refreshIcons();
   }
 
-  async function exportDashboardCsv(event) {
+  async function exportDashboardExcel(event) {
     const actionLoader = loader();
 
     const task = async () => {
@@ -1387,7 +1383,7 @@
 
       link.href = url;
       link.download =
-        `hauqe-dashboard-operationnel-${new Date().toISOString().slice(0, 10)}.csv`;
+        `hauqe-dashboard-operationnel-${new Date().toISOString().slice(0, 10)}.xlsx`;
 
       document.body.appendChild(link);
       link.click();
@@ -1440,7 +1436,7 @@
   function bindActions() {
     $("#dashboardExport")?.addEventListener(
       "click",
-      exportDashboardCsv
+      exportDashboardExcel
     );
 
     $("#dashboardNewCollection")?.addEventListener(

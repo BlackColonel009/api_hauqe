@@ -3073,6 +3073,21 @@ entreprise récente → dossier entreprise
 Nouvelle collecte → formulaire collecte
 ```
 
+### Correctif production — contenu et export du dashboard (14/09/2026)
+
+- le message interne « Aucune information fictive… » ne doit jamais être
+  affiché ; lorsqu’aucun certificat n’arrive à échéance, seul le constat
+  « Aucun certificat à échéance dans les 180 jours » est rendu ;
+- `ACTIF` et `ACTIVE` sont deux variantes historiques du même statut. Le
+  dashboard les regroupe et affiche exclusivement **Active** ; aucune donnée
+  métier existante n’est modifiée ;
+- le bouton **Exporter Excel** télécharge un vrai fichier `.xlsx` mis en
+  forme. Il présente les indicateurs, les certifications à échéance et les
+  actions prioritaires avec leurs repères métier ;
+- aucun UUID ne doit apparaître dans une action, une alerte, une échéance ou
+  l’export. Les doublons techniques d’une même action sont regroupés avant
+  affichage.
+
 ## Action Loader global
 
 Nouveau module :

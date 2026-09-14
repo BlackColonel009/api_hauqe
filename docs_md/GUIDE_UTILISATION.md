@@ -20,7 +20,24 @@ Les droits définitifs devront être validés avant le développement de l'API d
 
 ## 3. Parcours d'une collecte
 
-1. Dans **Collectes & contrôles**, l'agent clique sur **Nouvelle collecte**.
+### Gérer les campagnes
+
+Le bouton **Gérer les campagnes** est affiché dans **Collectes & contrôles** uniquement pour les utilisateurs disposant de la permission `COLLECTE.AFFECTER`, notamment le coordonnateur ou l'administrateur habilité.
+
+Dans l'écran **Gestion des campagnes**, l'utilisateur peut :
+
+- rechercher une campagne par son code, son nom ou son objet ;
+- filtrer les campagnes actives ou désactivées et actualiser la liste ;
+- créer une campagne en renseignant au minimum son code, puis son nom, son objet, son objectif, sa période prévisionnelle et son statut ;
+- modifier les informations communes d'une campagne ;
+- consulter les missions liées et corriger leur référence ou leur objet ;
+- désactiver une campagne sans supprimer ses missions ni les collectes déjà enregistrées.
+
+Une campagne désactivée n'est plus proposée lors de la création d'une nouvelle mission. Les fiches déjà soumises ou validées restent inchangées lorsqu'une référence de mission est corrigée.
+
+### Créer et renseigner une collecte
+
+1. Dans **Collectes & contrôles**, l'agent clique sur **Nouvelle mission / collecte**.
 2. Il remplit le formulaire numérique : mission, entreprise, activités, produits, marchés, certifications et justificatifs. Les boutons **Ajouter un produit** et **Ajouter une certification** créent des enregistrements distincts conservés dans le brouillon. Pour chaque certification, il précise notamment le référentiel, l'organisme, le numéro, la portée, les dates, le statut et la disponibilité de la copie.
 3. Il peut utiliser **Enregistrer le brouillon** pour poursuivre ultérieurement.
 4. La dernière étape contrôle les informations primordiales et bloque une soumission incomplète. Les 28 critères et le score sont réservés aux étapes Validation et Contrôle.

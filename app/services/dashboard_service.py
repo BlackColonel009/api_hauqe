@@ -32,6 +32,7 @@ Le résultat public ne contient :
 from __future__ import annotations
 
 import calendar
+import re
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -83,12 +84,48 @@ def delta(current, previous):
     return Decimal(str(current)) - Decimal(str(previous))
 
 
-def distribution(rows) -> list[DistributionItem]:
+_UUID_PATTERN = re.compile(
+    r"\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
+    flags=re.IGNORECASE,
+)
+
+
+def clean_display_text(value: str | None, fallback: str) -> str:
+    """Supprime les identifiants techniques des libellés utilisateur."""
+    text = _UUID_PATTERN.sub("", str(value or ""))
+    text = re.sub(r"\s{2,}", " ", text)
+    text = re.sub(r"\s+([,.;:])", r"\1", text)
+    return text.strip(" ·—- ") or fallback
+
+
+def certification_status_label(value: str | None) -> str:
+    """Libellé unique pour les variations historiques de statut."""
+    status = str(value or "NON_RENSEIGNE").strip().upper()
+    labels = {
+        "ACTIVE": "Active",
+        "ACTIF": "Active",
+        "VALIDE": "Validée",
+        "VALIDE_ACTIVE": "Active",
+        "EN_ATTENTE": "En attente",
+        "EXPIREE": "Expirée",
+        "EXPIRE": "Expirée",
+        "SUSPENDUE": "Suspendue",
+        "SUSPENDU": "Suspendue",
+        "RETIREE": "Retirée",
+        "RETIRE": "Retirée",
+        "ANNULEE": "Annulée",
+        "ANNULE": "Annulée",
+        "NON_RENSEIGNE": "Non renseigné",
+    }
+    return labels.get(status, status.replace("_", " ").capitalize())
+
+
+def distribution(rows, labeler=None) -> list[DistributionItem]:
     total = sum(int(row.value or 0) for row in rows)
     return [
         DistributionItem(
             key=str(row.key),
-            label=str(row.key),
+            label=labeler(row.key) if labeler else str(row.key),
             value=int(row.value or 0),
             percentage=percent(int(row.value or 0), total),
         )
@@ -351,7 +388,10 @@ class DashboardService:
         body_rows = await DashboardRepository.distribution_by_body(db)
 
         return {
-            "certification_statuses": distribution(status_rows),
+            "certification_statuses": distribution(
+                status_rows,
+                certification_status_label,
+            ),
             "sncc_classes": distribution(sncc_class_rows),
             "sncc_risks": distribution(sncc_risk_rows),
             "by_sector": distribution(sector_rows),
@@ -522,7 +562,7 @@ class DashboardService:
                 PriorityAction(
                     type="ALERTE",
                     level=row.niveau,
-                    title=row.titre or "Alerte",
+                    title=clean_display_text(row.titre, "Alerte"),
                     due_date=None,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
@@ -540,7 +580,10 @@ class DashboardService:
                 PriorityAction(
                     type="ECHEANCE",
                     level=4,
-                    title=row.titre or "Échéance dépassée",
+                    title=clean_display_text(
+                        row.titre,
+                        "Échéance à traiter",
+                    ),
                     due_date=row.date_echeance,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
@@ -548,7 +591,22 @@ class DashboardService:
                     resource_subtitle=resource["subtitle"],
                 )
             )
-        actions = actions[:10]
+        # Une même action peut avoir généré plusieurs alertes techniques.
+        # Le tableau de bord n'affiche qu'une ligne métier par action.
+        unique_actions: list[PriorityAction] = []
+        seen_actions: set[tuple[str, str, str, str, date | None]] = set()
+        for action in actions:
+            key = (
+                action.type,
+                action.title,
+                action.resource_label or "",
+                action.resource_subtitle or "",
+                action.due_date,
+            )
+            if key not in seen_actions:
+                seen_actions.add(key)
+                unique_actions.append(action)
+        actions = unique_actions[:10]
 
         recent_rows = await DashboardRepository.recent_certifications(
             db,
@@ -568,7 +626,7 @@ class DashboardService:
                 "enterprise_name": row.raison_sociale,
                 "norm": row.norm_code,
                 "certification_body": row.organisme_name,
-                "status": row.statut,
+                "status": certification_status_label(row.statut),
                 "expiration_date": (
                     row.date_expiration.isoformat()
                     if row.date_expiration else None
@@ -661,7 +719,10 @@ class DashboardService:
                     unit="échéances",
                 ),
             ],
-            certification_statuses=distribution(status_rows),
+            certification_statuses=distribution(
+                status_rows,
+                certification_status_label,
+            ),
             deadline_buckets=[
                 DistributionItem(
                     key="EXPIREE",

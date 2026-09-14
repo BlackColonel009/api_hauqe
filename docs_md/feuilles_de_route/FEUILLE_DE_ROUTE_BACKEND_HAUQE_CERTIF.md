@@ -5155,6 +5155,20 @@ GET    /api/v1/public/indicators
     Filtres :
     `days`, `zone_id`, `sector`, `norm_id`, `organisme_id`.
 
+    ### Export opérationnel Excel (14/09/2026)
+
+    `GET /api/v1/dashboards/operational/export` produit désormais un fichier
+    `.xlsx` mis en forme, et non un CSV brut. Il reprend exactement le même
+    snapshot filtré que le dashboard. Les actions prioritaires contiennent le
+    contexte entreprise/certification disponible, les UUID sont retirés des
+    libellés et les doublons techniques sont regroupés. Cette route nécessite
+    la dépendance Python `openpyxl` ; aucune migration PostgreSQL n’est liée à
+    ce changement.
+
+    Pour les agrégats, `ACTIF` et `ACTIVE` sont normalisés comme le statut
+    affiché **Active**. La normalisation intervient uniquement à la lecture et
+    ne réécrit aucune certification historique.
+
     ### Filtres et définitions
 
     ```text

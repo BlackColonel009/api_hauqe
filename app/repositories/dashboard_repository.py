@@ -68,6 +68,10 @@ ACTIVE_CERT_STATUSES = {
     "VALIDE_ACTIVE",
 }
 
+# Variantes historiques de la même valeur de statut à regrouper uniquement
+# dans l'affichage de la répartition par statut.
+DASHBOARD_ACTIVE_STATUS_VARIANTS = {"ACTIF", "ACTIVE"}
+
 FINAL_FUCCS_STATUSES = {"FINALISE", "FINALISEE"}
 FINAL_INTEGRATION_STATUSES = {"INTEGREE", "INTEGRE"}
 ACTIVE_ALERT_STATUSES = {"NOUVELLE", "AFFECTEE", "EN_COURS"}
@@ -370,9 +374,22 @@ class DashboardRepository:
         if end_date:
             filters.append(func.date(Certification.created_at) <= end_date)
 
+        # Les données historiques emploient parfois ACTIF et parfois ACTIVE.
+        # Ces deux graphies désignent la même situation métier et doivent être
+        # regroupées dans les vues de pilotage, sans modifier les enregistrements.
+        canonical_status = case(
+            (
+                func.upper(func.coalesce(Certification.statut, "")).in_(
+                    list(DASHBOARD_ACTIVE_STATUS_VARIANTS)
+                ),
+                "ACTIVE",
+            ),
+            else_=func.coalesce(Certification.statut, "NON_RENSEIGNE"),
+        )
+
         result = await db.execute(
             select(
-                func.coalesce(Certification.statut, "NON_RENSEIGNE").label("key"),
+                canonical_status.label("key"),
                 func.count(distinct(Certification.id)).label("value"),
             )
             .select_from(Certification)
@@ -381,7 +398,7 @@ class DashboardRepository:
                 Entreprise.id == Certification.entreprise_id,
             )
             .where(*filters)
-            .group_by(Certification.statut)
+            .group_by(canonical_status)
             .order_by(func.count(distinct(Certification.id)).desc())
         )
         return result.all()

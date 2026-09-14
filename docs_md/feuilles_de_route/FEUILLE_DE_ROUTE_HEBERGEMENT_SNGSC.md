@@ -988,6 +988,7 @@ enregistrées dans la file et les journaux sans perdre les données métier.
 | Gestion des campagnes de collecte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc` puis recharger le navigateur (`Ctrl + Shift + R`) pour charger la rubrique, la correction de code et le filtrage des campagnes désactivées. |
 | Réinitialisation sécurisée d'un brouillon de collecte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc` après le déploiement ; l'action est disponible seulement dans le formulaire et seulement pour la fiche courante en `BROUILLON`. |
 | Isolation du profil, des préférences et des avatars au changement de compte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc`, puis recharger le navigateur (`Ctrl + Shift + R`) : l'API privée n'est plus lue depuis le cache et les réglages temporaires sont purgés à la déconnexion. |
+| Export Excel du dashboard opérationnel | **Nouvelle dépendance Python** | Exécuter `python -m pip install -r requirements.txt` pour installer `openpyxl`, puis redémarrer `sngsc`. L’export devient un fichier `.xlsx` mis en forme. Aucune migration ni seed. |
 
 La migration utilise `gen_random_uuid()` ; l’extension PostgreSQL `pgcrypto`
 doit donc rester disponible dans la base. Contrôle serveur :

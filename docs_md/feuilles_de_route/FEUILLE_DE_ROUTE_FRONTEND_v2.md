@@ -3332,6 +3332,7 @@ Statut : 🟡 **raccordement API réel — recette navigateur à faire**
 
 Pages :
 - `#/collectes`
+- `#/campagnes-collecte`
 - `#/collectes/nouveau`
 - `#/collectes/modifier/{mission_uuid}`
 
@@ -3348,6 +3349,14 @@ Décisions de raccordement :
 - documents déposés via le stockage privé ;
 - une fiche soumise devient lecture seule ;
 - une nouvelle révision est créée par l'endpoint métier existant.
+
+Gestion des campagnes livrée :
+- le bouton **Gérer les campagnes** est visible dans `#/collectes` pour les profils disposant de `COLLECTE.AFFECTER` ;
+- la page dédiée permet la recherche et le filtrage par statut ;
+- création et modification d'une campagne avec code, nom, objet, objectif, dates et statut ;
+- consultation des missions liées et correction de leur référence ou objet ;
+- désactivation logique d'une campagne, sans suppression des missions ni des fiches existantes ;
+- une campagne désactivée n'est plus proposée pour une nouvelle mission.
 
 Le formulaire est organisé en 6 niveaux :
 1. mission ;
