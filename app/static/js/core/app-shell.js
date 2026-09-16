@@ -4,7 +4,7 @@ import {
   getCurrentRoute,
   initRouter,
   refreshCurrentRoute,
-} from "./router.js?v=20260903-2";
+} from "./router.js?v=20260914-1";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,

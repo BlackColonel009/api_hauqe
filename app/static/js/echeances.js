@@ -37,6 +37,26 @@
       .replaceAll("'", "&#039;");
   }
 
+  const UUID_PATTERN = /\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/gi;
+
+  function displayText(value, fallback = "") {
+    const text = String(value ?? "")
+      .replace(UUID_PATTERN, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.;:])/g, "$1")
+      .trim()
+      .replace(/^[·—\-\s]+|[·—\-\s]+$/g, "");
+    return text || fallback;
+  }
+
+  function statusLabel(value) {
+    const status = String(value || "PLANIFIEE").toUpperCase();
+    return {
+      PLANIFIEE: "Planifiée", EN_COURS: "En cours", TERMINEE: "Terminée",
+      ANNULEE: "Annulée", EN_RETARD: "En retard",
+    }[status] || status.replaceAll("_", " ");
+  }
+
   function perm(code) {
     return Array.isArray(user?.permissions)
       && user.permissions.includes(code);
@@ -69,6 +89,9 @@
   }
 
   function urgency(item) {
+    const status = String(item.statut || "").toUpperCase();
+    if (status === "TERMINEE") return "completed";
+    if (status === "ANNULEE") return "cancelled";
     const d = item.jours_restants;
     if (d == null) return "neutral";
     if (d < 0) return "expired";
@@ -89,12 +112,12 @@
   function calendarTitle(item) {
     const status = String(item.statut || "").toUpperCase();
     if (status === "TERMINEE") {
-      return `Exécutée avec motif : ${item.motif_cloture || "motif consigné"}`;
+      return `Terminée : ${displayText(item.motif_cloture, "motif consigné")}`;
     }
     if (status === "ANNULEE") {
-      return `Annulée avec motif : ${item.motif_cloture || "motif consigné"}`;
+      return `Annulée : ${displayText(item.motif_cloture, "motif consigné")}`;
     }
-    return item.titre || item.type_echeance || "Échéance";
+    return displayText(item.titre || item.type_echeance, "Échéance");
   }
 
   function params() {
@@ -278,9 +301,9 @@
               <strong>${e(item.date_echeance?.slice(8, 10) || "—")}</strong>
               <small>${e(item.date_echeance ? new Intl.DateTimeFormat("fr-FR",{month:"short"}).format(new Date(`${item.date_echeance}T00:00:00`)) : "")}</small>
             </span>
-            <div><strong>${e(item.titre || "Échéance")}</strong><small>${e(item.resource_label || item.ressource_type || "Ressource")} · ${e(item.type_echeance || "—")}</small></div>
+            <div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))} · ${e(displayText(item.type_echeance, "—"))}</small></div>
             <div class="deadline-row-meta"><strong>${e(remaining(item))}</strong><small>${e(item.responsable_name || "Non affectée")}</small></div>
-            <span class="deadline-status-pill">${e(item.statut || "—")}</span>
+            <span class="deadline-status-pill">${e(statusLabel(item.statut))}</span>
             <button class="more-button" type="button" data-deadline="${e(item.id)}"><i data-lucide="chevron-right"></i></button>
           </article>
         `).join("")
@@ -363,9 +386,9 @@
       .filter((item) => {
         if (!query) return true;
         return [
-          item.titre,
+          displayText(item.titre),
           item.type_echeance,
-          item.resource_label,
+          displayText(item.resource_label),
           item.ressource_type,
           item.responsable_name,
           item.statut,
@@ -377,20 +400,29 @@
     $("#globalDeadlineRows").innerHTML = visible.map((item) => `
       <tr>
         <td><span class="registry-date ${urgency(item)}"><i data-lucide="calendar-days"></i>${e(dateLabel(item.date_echeance))}</span></td>
-        <td><strong>${e(item.titre || "Échéance")}</strong><small>${e(item.type_echeance || "Type non renseigné")}</small></td>
-        <td><span class="registry-source"><i data-lucide="link-2"></i>${e(sourceLabel(item))}</span><small>${e(item.resource_label || item.ressource_type || "Ressource")}</small></td>
+        <td><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.type_echeance, "Type non renseigné"))}</small></td>
+        <td><span class="registry-source"><i data-lucide="link-2"></i>${e(displayText(sourceLabel(item), "Source non renseignée"))}</span><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></td>
         <td>${e(item.responsable_name || "Non affectée")}</td>
-        <td><span class="registry-status">${e(String(item.statut || "—").replaceAll("_", " "))}</span></td>
-        <td><button class="registry-open" type="button" data-global-deadline="${e(item.id)}" aria-label="Ouvrir les détails"><i data-lucide="chevron-right"></i></button></td>
+        <td><span class="registry-status ${e(String(item.statut || "PLANIFIEE").toLowerCase())}">${e(statusLabel(item.statut))}</span>${String(item.statut || "").toUpperCase() === "ANNULEE" ? `<small class="registry-closure">Motif : ${e(displayText(item.motif_cloture, "consigné dans le journal"))}</small>` : ""}</td>
+        <td><span class="registry-action-slot" data-global-deadline-slot="${e(item.id)}"></span></td>
       </tr>
     `).join("");
     $("#globalDeadlineEmpty").hidden = visible.length > 0;
 
-    $$("[data-global-deadline]").forEach((button) => {
-      button.onclick = () => {
-        selected = allItems.find((item) => String(item.id) === String(button.dataset.globalDeadline));
+    $$("[data-global-deadline-slot]").forEach((slot) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "registry-open";
+      button.dataset.noActionLoader = "true";
+      button.setAttribute("aria-label", "Ouvrir les détails");
+      button.innerHTML = '<i data-lucide="chevron-right"></i>';
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selected = allItems.find((item) => String(item.id) === String(slot.dataset.globalDeadlineSlot));
         showDetail();
-      };
+      });
+      slot.replaceChildren(button);
     });
     icons();
   }
@@ -429,7 +461,7 @@
       ? active.map((item) => `
           <button class="upcoming-deadline-row" type="button" data-deadline="${e(item.id)}">
             <span class="${urgency(item)}"><i data-lucide="calendar-clock"></i></span>
-            <div><strong>${e(item.titre || "Échéance")}</strong><small>${e(item.resource_label || "Ressource")}</small></div>
+            <div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></div>
             <em>${e(remaining(item))}</em>
           </button>
         `).join("")
@@ -577,13 +609,6 @@
     const monthYear = dueDate && !Number.isNaN(dueDate.getTime())
       ? new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(dueDate)
       : "Date non définie";
-    const statusLabel = {
-      PLANIFIEE: "Planifiée",
-      EN_COURS: "En cours",
-      TERMINEE: "Terminée",
-      ANNULEE: "Annulée",
-      EN_RETARD: "En retard",
-    }[status] || status.replaceAll("_", " ");
     const priority = String(selected.priorite || "NORMALE").toUpperCase();
     const priorityLabel = {
       BASSE: "Basse",
@@ -596,7 +621,7 @@
     dialog.dataset.status = status;
     dialog.dataset.priority = priority;
 
-    $("#deadlineDetailTitle").textContent = selected.titre || "Échéance";
+    $("#deadlineDetailTitle").textContent = displayText(selected.titre, "Échéance");
     $("#deadlineDetailBody").innerHTML = `
       <section class="deadline-detail-overview">
         <div class="deadline-date-block" aria-label="Date prévue : ${e(dateLabel(selected.date_echeance))}">
@@ -606,7 +631,7 @@
         <div class="deadline-overview-copy">
           <small>Date prévue</small>
           <strong>${e(dateLabel(selected.date_echeance))}</strong>
-          <span class="deadline-resource-line"><i data-lucide="building-2"></i>${e(selected.resource_label || selected.ressource_type || "Ressource non renseignée")}</span>
+          <span class="deadline-resource-line"><i data-lucide="building-2"></i>${e(displayText(selected.resource_label || selected.ressource_type, "Ressource non renseignée"))}</span>
         </div>
         <span class="deadline-status-pill"><i data-lucide="${closed ? "check-circle-2" : "activity"}"></i>${e(statusLabel)}</span>
       </section>
@@ -615,14 +640,14 @@
         <main class="deadline-detail-main">
           <section class="deadline-description-panel">
             <div class="deadline-section-title"><span><i data-lucide="align-left"></i></span><div><small>Instruction</small><h3>Description de l’échéance</h3></div></div>
-            <p>${e(selected.description || "Aucune instruction complémentaire n’a été renseignée pour cette échéance.")}</p>
+            <p>${e(displayText(selected.description, "Aucune instruction complémentaire n’a été renseignée pour cette échéance."))}</p>
           </section>
           <section class="deadline-reminder-summary">
             <div class="deadline-section-title"><span><i data-lucide="mail-check"></i></span><div><small>Notifications automatiques</small><h3>Plan de rappel</h3></div></div>
-            <p>${selected.rappels_email_actifs ? `Rappel quotidien à l’agent à partir de J-${e(selected.rappel_jours_avant ?? 2)} jusqu’au jour J.` : "Rappel e-mail à l’agent désactivé."}</p>
-            <p>${selected.escalade_administrateurs_jour_j ? "Escalade e-mail aux administrateurs HAUQE actifs le jour J." : "Escalade aux administrateurs désactivée."}</p>
+            <p>${selected.rappels_email_actifs !== false ? `Rappel quotidien à l’agent à partir de J-${e(selected.rappel_jours_avant ?? 2)} jusqu’au jour J.` : "Rappel e-mail à l’agent désactivé."}</p>
+            <p>${selected.escalade_administrateurs_jour_j !== false ? "Escalade e-mail aux administrateurs HAUQE actifs le jour J." : "Escalade aux administrateurs désactivée."}</p>
           </section>
-          ${closed ? `<section class="deadline-closure-note"><span><i data-lucide="file-check-2"></i></span><div><small>Décision enregistrée</small><strong>${e(selected.motif_cloture || "Le motif est consigné dans le journal d’audit.")}</strong></div></section>` : ""}
+          ${closed ? `<section class="deadline-closure-note ${status === "ANNULEE" ? "cancelled" : "completed"}"><span><i data-lucide="${status === "ANNULEE" ? "ban" : "file-check-2"}"></i></span><div><small>${status === "ANNULEE" ? "Échéance annulée" : "Échéance terminée"}</small><strong>${e(displayText(selected.motif_cloture, "Le motif est consigné dans le journal d’audit."))}</strong></div></section>` : ""}
         </main>
         <aside class="deadline-detail-aside">
           <p class="deadline-aside-title">Repères</p>
@@ -711,9 +736,12 @@
           administrateurs_exclus_ids: $$("#deadlineExcludedAdmins input:checked").map((input) => input.value),
         },
       });
-      selected = updated;
+      // La fiche parent a été fermée pour ouvrir ce modal. On relit la
+      // ressource enregistrée puis on la rouvre immédiatement : le plan de
+      // rappel affiché reflète donc la valeur persistée, y compris `false`.
+      selected = await api.apiGet(`/api/v1/echeances/${updated.id}`);
       $("#deadlineReminderDialog").close();
-      $("#deadlineDetailDialog").close();
+      showDetail();
       await Promise.all([load(), loadGlobalDeadlines()]);
       state("Plan de rappel enregistré pour cette échéance.");
     } catch (error) {

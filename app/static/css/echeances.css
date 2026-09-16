@@ -1194,6 +1194,8 @@
 .deadline-detail-footer{display:flex!important;justify-content:flex-end;gap:10px;padding:16px 28px 20px!important;border-top:1px solid #dfe9e4;background:#fff;box-shadow:0 -6px 22px rgba(15,55,41,.035)}
 .deadline-detail-footer .btn{min-height:42px;border-radius:12px}
 .deadline-calendar-event span{white-space:normal;text-align:left;line-height:1.2}
+.deadline-calendar-event.completed{border-color:#19805a;background:#e8f6ee;color:#176446}
+.deadline-calendar-event.cancelled{border-color:#8a6975;background:#f5f1f3;color:#735963}
 .alert-row-action{display:inline-flex;align-items:center;gap:4px;color:var(--primary,#287e5f);font-size:.78rem;font-weight:700}
 @media(max-width:700px){.deadline-detail-header{min-height:112px;padding:20px!important}.deadline-detail-icon{width:48px;height:48px;flex-basis:48px;border-radius:15px}.deadline-detail-header h2{font-size:19px}.deadline-detail-body{padding:0 16px 18px!important}.deadline-detail-overview{grid-template-columns:64px minmax(0,1fr);margin-top:-14px;padding:12px}.deadline-date-block{min-height:62px}.deadline-date-block span{font-size:23px}.deadline-status-pill{grid-column:1/-1;justify-self:start}.deadline-detail-layout{grid-template-columns:1fr}.deadline-description-panel{min-height:auto}.deadline-detail-footer{flex-direction:column-reverse;padding:13px 16px 16px!important}.deadline-detail-footer .btn{width:100%;justify-content:center}}
 
@@ -1231,8 +1233,8 @@
 .deadline-registry-table td strong,.deadline-registry-table td small{display:block}.deadline-registry-table td strong{color:#26483a;font-size:10px}.deadline-registry-table td small{margin-top:3px;color:#819088;font-size:8px}
 .registry-date,.registry-source,.registry-status{display:inline-flex;align-items:center;gap:6px}
 .registry-date svg,.registry-source svg{width:14px;height:14px;color:#20805d}
-.registry-date.expired,.registry-date.critical{color:#b2433f}.registry-date.warning{color:#a46618}
-.registry-status{padding:6px 9px;border-radius:999px;background:#e9f5ef;color:#176b4d;font-size:8px;font-weight:800;text-transform:capitalize}
+.registry-date.expired,.registry-date.critical{color:#b2433f}.registry-date.warning{color:#a46618}.registry-date.completed{color:#176b4d}.registry-date.cancelled{color:#7a5d67}
+.registry-status{padding:6px 9px;border-radius:999px;background:#e9f5ef;color:#176b4d;font-size:8px;font-weight:800;text-transform:capitalize}.registry-status.terminee{background:#e5f6ee;color:#126947}.registry-status.annulee{background:#f3f1f2;color:#755c66}.registry-closure{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .registry-open{display:grid;width:31px;height:31px;place-items:center;border:1px solid #d8e7df;border-radius:10px;background:#fff;color:#177153;transition:.18s ease}
 .registry-open:hover{transform:translateX(3px);border-color:#73b99f;background:#eaf7f1}
 .registry-open svg{width:15px}.deadline-registry-empty{padding:35px;text-align:center;color:#75877f}.deadline-registry-empty svg{width:27px;height:27px;margin-bottom:8px}.deadline-registry-empty strong{display:block;font-size:11px}

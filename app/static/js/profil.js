@@ -1466,11 +1466,30 @@ async function uploadAvatar(file) {
     bindStaticActions();
   }
 
-  // L'action photo est construite après l'arrivée des données du profil, et
-  // non dans le HTML initial. Elle suit donc exactement le modèle validé sur
-  // Gestion des campagnes : bouton créé après rendu + écouteur direct unique.
+  function createAvatarActionButton(input) {
+    const button = document.createElement("button");
+    button.id = "changeAvatar";
+    button.type = "button";
+    button.className = "profile-avatar-action-button";
+    button.setAttribute("aria-label", "Modifier la photo de profil");
+    button.setAttribute("title", "Modifier la photo de profil");
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = '<i data-lucide="camera"></i>';
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      input.click();
+    });
+
+    return button;
+  }
+
+  // L'action photo suit le patron validé sur Campagnes et Entreprises :
+  // emplacement neutre, vrai bouton créé après rendu, classe locale et
+  // écouteur direct unique.
   function hydrateAvatarAction() {
-    const slot = $("#profileAvatarActionSlot");
+    const slot = $("[data-profile-avatar-action-slot]");
     if (!slot || !profile) return;
 
     const input = document.createElement("input");
@@ -1479,22 +1498,12 @@ async function uploadAvatar(file) {
     input.accept = "image/png,image/jpeg";
     input.hidden = true;
 
-    const button = document.createElement("button");
-    button.id = "changeAvatar";
-    button.type = "button";
-    button.className = "avatar-camera";
-    button.setAttribute("aria-label", "Modifier la photo de profil");
-    button.setAttribute("title", "Modifier la photo de profil");
-    button.setAttribute("data-no-action-loader", "true");
-    button.innerHTML = '<i data-lucide="camera"></i>';
-
-    button.addEventListener("click", () => input.click());
     input.addEventListener("change", async (event) => {
       const file = event.target.files?.[0] || null;
       if (file) await uploadAvatar(file);
     });
 
-    slot.replaceChildren(button, input);
+    slot.replaceChildren(input, createAvatarActionButton(input));
   }
 
   function applyRequestedShortcut() {

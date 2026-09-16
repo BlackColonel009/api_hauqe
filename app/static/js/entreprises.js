@@ -21,6 +21,7 @@
     requestId: 0,
     searchTimer: null,
     currentMenu: null,
+    view: "table",
   };
 
   let apiGet;
@@ -76,6 +77,18 @@
       || item.identifiant_national
       || "Entreprise"
     );
+  }
+
+  function serializeCompany(item) {
+    return encodeURIComponent(JSON.stringify(item));
+  }
+
+  function companyFromActionSlot(slot) {
+    try {
+      return JSON.parse(decodeURIComponent(slot.dataset.companyPayload || ""));
+    } catch {
+      return null;
+    }
   }
 
   function formatNumber(value) {
@@ -318,14 +331,11 @@
         <td>${classificationDisplay(item)}</td>
         <td>${statusBadge(item.statut)}</td>
         <td>
-          <button
-            class="more-button company-row-actions"
-            type="button"
-            data-company-menu="${escapeHtml(item.id)}"
-            aria-label="Actions pour ${escapeHtml(displayName(item))}"
-          >
-            <i data-lucide="ellipsis-vertical"></i>
-          </button>
+          <div
+            class="company-row-actions"
+            data-company-action-slot
+            data-company-payload="${escapeHtml(serializeCompany(item))}"
+          ></div>
         </td>
       </tr>
     `).join("");
@@ -334,9 +344,11 @@
       <article class="company-card" data-company-card="${escapeHtml(item.id)}" tabindex="0">
         <div class="company-card-head">
           ${identity(item)}
-          <button class="more-button company-row-actions" type="button" data-company-menu="${escapeHtml(item.id)}">
-            <i data-lucide="ellipsis-vertical"></i>
-          </button>
+          <div
+            class="company-row-actions"
+            data-company-action-slot
+            data-company-payload="${escapeHtml(serializeCompany(item))}"
+          ></div>
         </div>
 
         <div class="company-card-body">
@@ -361,12 +373,13 @@
     `).join("");
 
     empty.hidden = state.items.length > 0;
-    $("#tableView").hidden = state.items.length === 0 || $(".view-button[data-view='cards']")?.classList.contains("active");
-    cards.hidden = state.items.length === 0 || !$(".view-button[data-view='cards']")?.classList.contains("active");
+    $("#tableView").hidden = state.items.length === 0 || state.view !== "table";
+    cards.hidden = state.items.length === 0 || state.view !== "cards";
 
     $("#companyCount").textContent = `${formatNumber(state.total)} entreprise${state.total > 1 ? "s" : ""}`;
     $("#companyScopeText").textContent = state.archives ? "Entreprises archivées" : "Registre opérationnel";
 
+    hydrateCompanyActionButtons();
     bindRenderedRows();
     refreshIcons();
   }
@@ -481,14 +494,6 @@
 
       card.addEventListener("keydown", (event) => {
         if (event.key === "Enter") open();
-      });
-    });
-
-    document.querySelectorAll("[data-company-menu]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const item = state.items.find((company) => String(company.id) === String(button.dataset.companyMenu));
-        if (item) openRowMenu(button, item);
       });
     });
 
@@ -851,6 +856,78 @@
     }
   }
 
+  function applyCompanyView(value, { persist = true } = {}) {
+    state.view = value === "cards" || value === "grid" ? "cards" : "table";
+    document.querySelectorAll("button[data-company-view]").forEach((button) => {
+      const cards = button.dataset.view === "cards" || button.dataset.view === "grid";
+      button.classList.toggle("active", cards ? state.view === "cards" : state.view === "table");
+      button.setAttribute("aria-pressed", String(cards ? state.view === "cards" : state.view === "table"));
+    });
+
+    $("#cardView").hidden = state.items.length === 0 || state.view !== "cards";
+    $("#tableView").hidden = state.items.length === 0 || state.view !== "table";
+
+    if (persist) {
+      try { localStorage.setItem("hauqe-entreprises-view", state.view); } catch (_) {}
+    }
+  }
+
+  function createCompanyActionButton({
+    label,
+    iconName,
+    view = null,
+    handler,
+  }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `company-action-button${view ? " company-view-button view-button" : ""}`;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.setAttribute("data-no-action-loader", "true");
+    if (view) {
+      button.dataset.companyView = view;
+      button.dataset.view = view;
+    }
+    button.innerHTML = `<i data-lucide="${iconName}"></i>`;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler(button);
+    });
+    return button;
+  }
+
+  function hydrateCompanyActionButtons() {
+    document.querySelectorAll("[data-company-action-slot]").forEach((slot) => {
+      const item = companyFromActionSlot(slot);
+      if (!item?.id) return;
+      slot.replaceChildren(createCompanyActionButton({
+        label: `Actions pour ${displayName(item)}`,
+        iconName: "ellipsis-vertical",
+        handler: (button) => openRowMenu(button, item),
+      }));
+    });
+  }
+
+  function hydrateCompanyViewButtons() {
+    document.querySelectorAll("[data-company-view-action-slot]").forEach((slot) => {
+      const view = slot.dataset.companyViewActionSlot === "cards" ? "cards" : "table";
+      slot.replaceChildren(createCompanyActionButton({
+        label: view === "cards" ? "Vue grille" : "Vue liste",
+        iconName: view === "cards" ? "layout-grid" : "list",
+        view,
+        handler: () => applyCompanyView(view),
+      }));
+    });
+    applyCompanyView(state.view, { persist: false });
+  }
+
+  function restoreCompanyViewPreference() {
+    let savedView = null;
+    try { savedView = localStorage.getItem("hauqe-entreprises-view"); } catch (_) {}
+    state.view = savedView === "cards" ? "cards" : "table";
+  }
+
   function bindStaticActions() {
     const search = $("#companySearch");
 
@@ -962,25 +1039,6 @@
       loadRegistry({ button: event.currentTarget, forceLoader: true, message: state.archives ? "Chargement des archives" : "Retour au registre actif" });
     });
 
-    document.querySelectorAll(".view-button[data-view]").forEach((button) => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll(".view-button[data-view]").forEach((item) => item.classList.remove("active"));
-        button.classList.add("active");
-
-        const cards = button.dataset.view === "cards" || button.dataset.view === "grid";
-        $("#cardView").hidden = !cards || state.items.length === 0;
-        $("#tableView").hidden = cards || state.items.length === 0;
-        try {
-          localStorage.setItem("hauqe-entreprises-view", cards ? "cards" : "table");
-        } catch (_) {}
-      });
-    });
-
-    const savedView = localStorage.getItem("hauqe-entreprises-view");
-    if (savedView) {
-      document.querySelector(`.view-button[data-view="${savedView}"]`)?.click();
-    }
-
     document.addEventListener("click", (event) => {
       if (state.currentMenu && !event.target.closest("#companyActionMenu,[data-company-menu]")) {
         closeRowMenu();
@@ -1028,6 +1086,11 @@
 
     refreshIcons();
   }
+
+  // Ces deux boutons ne dépendent d'aucun appel API : ils répondent dès que
+  // le fragment HTML et son script sont présents, même si le registre charge.
+  restoreCompanyViewPreference();
+  hydrateCompanyViewButtons();
 
   bootstrap().catch((error) => {
     console.error("Entreprises bootstrap :", error);

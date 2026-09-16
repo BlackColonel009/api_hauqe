@@ -5,7 +5,7 @@ const routes = Object.freeze({
   dashboard: { view: "/views/dashboard", script: "/static/js/app.js?v=20260901-1", title: "Tableau de bord" },
   alertes: { view: "/views/alertes", script: "/static/js/alertes.js?v=20260901-1", title: "Centre des alertes" },
   echeances: { view: "/views/echeances", script: "/static/js/echeances.js?v=20260901-1", title: "Calendrier des échéances" },
-  entreprises: { view: "/views/entreprises", script: "/static/js/entreprises.js?v=20260730-1", title: "Entreprises certifiées" },
+  entreprises: { view: "/views/entreprises", script: "/static/js/entreprises.js?v=20260914-1", title: "Entreprises certifiées" },
   "entreprise-detail": { view: "/views/entreprise-detail", script: "/static/js/entreprise-detail.js?v=20260730-1", title: "Dossier entreprise" },
   "entreprise-form": { view: "/views/entreprise-form", script: "/static/js/entreprise-form.js?v=20260730-1", title: "Entreprise — formulaire" },
   certifications: { view: "/views/certifications", script: "/static/js/certifications.js", title: "Certifications" },
@@ -30,7 +30,7 @@ const routes = Object.freeze({
   "journal-audit": { view: "/views/journal-audit", script: "/static/js/journal-audit.js?v=20260730-2", title: "Journal d’audit" },
   connexion: { view: "/views/connexion", script: "/static/js/connexion.js", title: "Connexion" },
   "mot-de-passe-oublie": { view: "/views/mot-de-passe-oublie", script: "/static/js/mot-de-passe-oublie.js?v=20260731-1", title: "Mot de passe oublié" },
-  profil: { view: "/views/profil", script: "/static/js/profil.js?v=20260902-1", title: "Mon profil" },
+  profil: { view: "/views/profil", script: "/static/js/profil.js?v=20260914-1", title: "Mon profil" },
   verifications: { view: "/views/verifications", script: "/static/js/verifications.js", title: "Vérification documentaire" },
   "verification-detail": { view: "/views/verification-detail", script: "/static/js/verification-detail.js", title: "Dossier de vérification" },
   integrations: { view: "/views/integrations", script: "/static/js/integrations.js", title: "Intégration BNEC" },
@@ -143,7 +143,10 @@ export async function navigate(options = {}) {
   if (!silent) loading.hidden = false;
   error.hidden = true;
   try {
-    const response = await fetch(route.view, { headers: { "X-Requested-With": "HAUQE-SPA" } });
+    const response = await fetch(route.view, {
+      cache: "no-store",
+      headers: { "X-Requested-With": "HAUQE-SPA" },
+    });
     if (!response.ok) throw new Error(`Erreur ${response.status}`);
     const html = await response.text();
     // Une navigation plus récente a gagné : cette réponse ne doit surtout pas

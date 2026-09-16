@@ -7,6 +7,16 @@
 [data-theme="dark"] .registry-sync-line span,[data-theme="dark"] .companies-api-state,[data-theme="dark"] .company-action-menu,[data-theme="dark"] .company-dialog{border-color:#31564c;background:#102d27;color:#c2d8d0}[data-theme="dark"] .companies-api-state strong,[data-theme="dark"] .company-action-menu button,[data-theme="dark"] .company-dialog-head strong{color:#edf7f3}[data-theme="dark"] .company-action-menu button:hover{background:#173a31}[data-theme="dark"] .company-dialog textarea{border-color:#31564c;background:#0b241e;color:#edf7f3}[data-theme="dark"] .company-card,[data-theme="dark"] .company-kpi,[data-theme="dark"] .company-filters,[data-theme="dark"] .companies-head{border-color:#31564c;background:#102d27}
 @media(max-width:760px){.company-dialog-actions{flex-direction:column-reverse}.company-dialog-actions .btn{width:100%}.companies-api-state{flex-wrap:wrap}.companies-api-state button{width:100%;margin-left:0}.companies-head{flex-wrap:wrap}.companies-head>select{margin-left:0}.bulk-actions{width:100%;order:4}.bulk-actions button{width:100%}.registry-sync-line{display:none}}
 
+/* Actions Entreprises : même procédé et mêmes garanties que Gestion des campagnes. */
+.company-row-actions{display:flex;justify-content:flex-end;gap:7px}
+.company-view-action-slot{display:inline-flex}
+.company-action-button{position:relative;z-index:1;display:grid;width:30px;height:30px;place-items:center;border:1px solid #d7e5de;border-radius:8px;background:#fff;color:#2a7055;cursor:pointer;pointer-events:auto;transition:background .16s,border-color .16s,color .16s,transform .16s}
+.company-action-button:hover{border-color:#83bca3;background:#edf8f3;color:#155c40;transform:translateY(-1px)}
+.company-action-button:focus-visible{outline:3px solid rgba(44,139,99,.22);outline-offset:2px}
+.company-action-button svg{width:15px;height:15px;pointer-events:none}
+.company-view-button{width:34px;height:34px}
+.company-view-button.active{border-color:var(--green-600);background:var(--green-50);color:var(--green-700)}
+
 /* ============================================================
    HAUQE CERTIF — MODERN UI HARMONIZATION
    Référence visuelle : intégration BNEC Modern UI V2

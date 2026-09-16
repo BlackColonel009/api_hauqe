@@ -3715,6 +3715,42 @@ La fiche d’échéance expose désormais un modal « Configurer les rappels » 
 
 Le réglage est visible dans la fiche et ne modifie pas les autres échéances.
 
+## Correctif — échéances et tableau de bord public (14/09/2026)
+
+- le calendrier distingue visuellement une échéance **Terminée** (vert) et une
+  échéance **Annulée** (gris violacé), indépendamment de son ancien retard ;
+- le registre consolidé affiche des statuts métier lisibles, le motif d’une
+  annulation et n’expose aucun UUID dans sa ligne ou sa fiche détail ;
+- les rubriques « Échéances prioritaires » et la liste de la page appliquent
+  le même nettoyage des libellés métier ;
+- le bouton d’ouverture du registre est recréé et lié directement après chaque
+  rendu, afin de rester réactif malgré le chargeur global d’actions ;
+- la fiche restitue exactement les deux interrupteurs enregistrés du plan de
+  rappel ; après enregistrement, elle se rouvre avec la valeur relue depuis
+  l’API afin que le bloc « Notifications automatiques — Plan de rappel » soit
+  immédiatement à jour ;
+- le tableau de bord public masque les indicateurs non publiables en carte
+  (valeur absente ou structurée) : la chaîne technique `[object Object]` ne
+  doit jamais être affichée.
+
+Aucune migration ni seed n’est requis pour ce correctif.
+
+### Registre Entreprises — basculement Liste / Grille
+
+Les boutons **Liste**, **Grille** et les actions de ligne reproduisent le procédé
+validé dans **Gestion des campagnes**. Le rendu place d'abord un emplacement
+neutre. JavaScript crée ensuite le vrai bouton avec `document.createElement()`,
+une classe locale `company-action-button`, `pointer-events: auto`, un `z-index`
+local, `data-no-action-loader` et un écouteur `click` direct et unique. Le mode
+Liste/Grille s’appuie sur un état unique conservé localement.
+
+Audit complémentaire : un fragment de page SPA ne doit pas être repris depuis
+le cache avec un script plus récent. Le routeur charge donc les vues avec
+`cache: "no-store"`. Chaque emplacement de ligne transporte une copie sérialisée
+des informations de son entreprise, comme l'emplacement d'une campagne. Le
+bouton reçoit donc directement l'entreprise nécessaire à son action et ne
+dépend pas d'une nouvelle recherche dans le DOM au moment du clic.
+
 ## À éviter impérativement — UUID visibles (01/09/2026)
 
 Les UUID sont des identifiants techniques. Ils ne doivent jamais apparaître
@@ -3802,7 +3838,12 @@ peut fonctionner immédiatement. Ce comportement est **bloquant** pour la
 recette et la formation : aucun utilisateur ne doit avoir à cliquer plusieurs
 fois ou actualiser pour utiliser une action.
 
-### Cause confirmée et modèle de correction
+### RÈGLE PRIORITAIRE ET OBLIGATOIRE — modèle de correction validé
+
+> **Cette règle est la référence primordiale pour corriger les boutons non
+> réactifs sur toutes les autres pages du SNGSC / HAUQE Certif. Ne pas déclarer
+> un bouton corrigé avec une autre méthode tant que ce modèle n'a pas été essayé
+> et validé au premier clic.**
 
 Le cas des campagnes a confirmé une interaction fragile entre :
 
@@ -3811,23 +3852,70 @@ Le cas des campagnes a confirmé une interaction fragile entre :
 - l’état global de chargement et, plus généralement, les écrans SPA dont les
   scripts peuvent être remplacés après la page.
 
-La correction de référence est celle validée sur `#/campagnes-collecte` :
+La correction de référence est celle validée successivement sur
+`#/campagnes-collecte` puis sur `#/entreprises` :
 
 1. rendre les lignes de données ;
-2. créer les boutons opérationnels dans le DOM **après** ce rendu ;
-3. poser un écouteur direct et unique sur chaque bouton ;
-4. fournir au bouton les seules données métier nécessaires à son action ;
-5. utiliser une classe locale explicite (ex. `campaign-action-button`) plutôt
-   que `more-button` pour une action métier ;
-6. poser `data-no-action-loader="true"` si l’action ouvre seulement un modal
-   ou une confirmation locale ;
-7. empêcher les réponses de navigation et de chargement devenues anciennes de
-   remplacer l’écran courant.
+2. rendre dans chaque ligne un **emplacement neutre** contenant une copie
+   sérialisée des seules données métier utiles à l'action ;
+3. après le rendu, relire ces emplacements et créer chaque vrai bouton avec
+   `document.createElement("button")` ;
+4. utiliser une classe locale explicite par module, par exemple
+   `campaign-action-button` ou `company-action-button`, et ne pas réutiliser
+   `more-button` pour ces actions ;
+5. garantir en CSS `cursor: pointer`, `pointer-events: auto`,
+   `position: relative` et `z-index: 1` ; l'icône SVG interne porte
+   `pointer-events: none` ;
+6. poser `data-no-action-loader="true"` lorsque le clic ouvre un modal, un menu,
+   une confirmation ou une autre interface locale ;
+7. poser sur le bouton créé un écouteur `click` **direct et unique** avec
+   `preventDefault()` et `stopPropagation()` ;
+8. fournir directement au gestionnaire la donnée désérialisée de son
+   emplacement, sans rechercher à nouveau la ligne métier au moment du clic ;
+9. relancer cette hydratation immédiatement après chaque nouveau rendu,
+   recherche, filtre, pagination ou actualisation de la liste ;
+10. empêcher une ancienne réponse réseau de remplacer un rendu plus récent.
 
-Les actions générées dans une liste très dynamique peuvent conserver une
-délégation d’événements sur un parent stable. Le choix doit être validé par
-recette au premier clic, après fermeture du modal et après actualisation de la
-liste.
+Le même procédé s'applique aux commandes Liste/Grille ou aux boutons présents
+au chargement lorsqu'ils présentent le même défaut : emplacement neutre dans le
+template, création par la fabrique locale, puis écouteur direct. Une délégation
+d'événements ou un simple `onclick` ajouté au HTML ne constitue plus la
+correction de référence pour ce bug.
+
+Patron minimal obligatoire :
+
+```javascript
+function createActionButton({ label, iconName, handler }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "module-action-button";
+  button.setAttribute("data-no-action-loader", "true");
+  button.setAttribute("aria-label", label);
+  button.innerHTML = `<i data-lucide="${iconName}"></i>`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handler();
+  });
+  return button;
+}
+
+function hydrateActionButtons() {
+  document.querySelectorAll("[data-action-slot]").forEach((slot) => {
+    const payload = deserialize(slot.dataset.actionPayload);
+    slot.replaceChildren(createActionButton({
+      label: "Exécuter l'action",
+      iconName: "pencil",
+      handler: () => openAction(payload),
+    }));
+  });
+}
+```
+
+**Validation terrain du 14/09/2026 :** le modèle appliqué aux boutons Liste,
+Grille et actions de ligne de la page Entreprises a été confirmé fonctionnel
+par l'utilisateur. Cette validation fait de ce patron la base obligatoire de
+l'audit et des corrections des autres pages.
 
 ### Audit obligatoire du menu
 
@@ -3853,6 +3941,15 @@ erreur API. Consigner l’écran, le bouton, le résultat et la correction dans
 cette feuille avant de passer au bloc suivant.
 
 ### Recette en cours — bloc 7 : Compte, sécurité et NavBar (03/09/2026)
+
+Le bouton de sélection de la photo sur `#/profil` applique désormais le patron
+prioritaire validé : emplacement neutre dans `.profile-avatar`, création du
+vrai bouton par `createAvatarActionButton()`, classe locale
+`profile-avatar-action-button`, `pointer-events: auto`, `z-index` local, icône
+non cliquable et écouteur direct unique qui ouvre l'input fichier. La cause
+structurelle était un emplacement placé hors de `.profile-avatar` : les règles
+CSS définissant la surface cliquable de `.profile-avatar button` ne pouvaient
+donc pas s'appliquer. Recette utilisateur au premier clic encore requise.
 
 Premier risque corrigé sur `#/profil` : les onglets, l’enregistrement, le
 changement d’avatar et la déconnexion étaient branchés seulement après le

@@ -6086,6 +6086,20 @@ Aucune nouvelle permission.
 - le résumé hebdomadaire liste jusqu'à trois prochaines échéances sous forme
   de libellés métier lisibles.
 
+### Correctif de cohérence des plans de rappel (14/09/2026)
+
+- pour les rares échéances historiques où les trois réglages sont `NULL`, le
+  service applique explicitement la règle HAUQE par défaut : rappel agent à
+  partir de J-2 et escalade des administrateurs au jour J ;
+- une valeur `false` enregistrée par l’utilisateur reste toujours prioritaire,
+  tant dans l’API que dans le worker : activer ou désactiver un réglage d’une
+  échéance existante prend donc effet au prochain cycle du worker ;
+- les modifications de ce plan sont tracées dans l’audit ;
+- aucun UUID n’est réinjecté dans le contexte des actions prioritaires du
+  tableau de bord.
+
+Aucune migration Alembic, aucune table et aucun seed ne sont nécessaires.
+
 ## Correctif — concurrence sécurité et doublons entreprise (02/09/2026)
 
 - `get_or_create_security()` utilise désormais un UPSERT PostgreSQL : une

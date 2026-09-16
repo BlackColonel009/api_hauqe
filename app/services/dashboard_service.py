@@ -566,8 +566,12 @@ class DashboardService:
                     due_date=None,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
-                    resource_label=resource["label"],
-                    resource_subtitle=resource["subtitle"],
+                    resource_label=clean_display_text(
+                        resource["label"], "Ressource concernée"
+                    ),
+                    resource_subtitle=clean_display_text(
+                        resource["subtitle"], ""
+                    ),
                 )
             )
         for row in deadlines:
@@ -587,8 +591,12 @@ class DashboardService:
                     due_date=row.date_echeance,
                     resource_type=row.ressource_type,
                     resource_id=row.ressource_id,
-                    resource_label=resource["label"],
-                    resource_subtitle=resource["subtitle"],
+                    resource_label=clean_display_text(
+                        resource["label"], "Ressource concernée"
+                    ),
+                    resource_subtitle=clean_display_text(
+                        resource["subtitle"], ""
+                    ),
                 )
             )
         # Une même action peut avoir généré plusieurs alertes techniques.

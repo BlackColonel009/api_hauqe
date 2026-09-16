@@ -352,10 +352,18 @@ class WatchService:
             priorite=item.priorite,
             statut=item.statut,
             motif_cloture=item.motif_cloture,
-            rappels_email_actifs=item.rappels_email_actifs,
-            rappel_jours_avant=item.rappel_jours_avant,
+            # Les échéances créées avant l'ajout de ces réglages peuvent
+            # encore porter NULL. La règle historique est alors appliquée
+            # explicitement : rappel à l'agent à partir de J-2 et escalade
+            # aux administrateurs le jour J.
+            rappels_email_actifs=item.rappels_email_actifs is not False,
+            rappel_jours_avant=(
+                item.rappel_jours_avant
+                if item.rappel_jours_avant is not None
+                else 2
+            ),
             escalade_administrateurs_jour_j=(
-                item.escalade_administrateurs_jour_j
+                item.escalade_administrateurs_jour_j is not False
             ),
             administrateurs_exclus_ids=(
                 await WatchRepository.deadline_reminder_admin_exclusions(
@@ -507,6 +515,14 @@ class WatchService:
                 if item.responsable_id else None
             ),
             "priorite": item.priorite,
+            "rappels_email_actifs": item.rappels_email_actifs is not False,
+            "rappel_jours_avant": (
+                item.rappel_jours_avant
+                if item.rappel_jours_avant is not None else 2
+            ),
+            "escalade_administrateurs_jour_j": (
+                item.escalade_administrateurs_jour_j is not False
+            ),
         }
 
         for field, value in changes.items():
@@ -542,6 +558,14 @@ class WatchService:
                     if item.responsable_id else None
                 ),
                 "priorite": item.priorite,
+                "rappels_email_actifs": item.rappels_email_actifs is not False,
+                "rappel_jours_avant": (
+                    item.rappel_jours_avant
+                    if item.rappel_jours_avant is not None else 2
+                ),
+                "escalade_administrateurs_jour_j": (
+                    item.escalade_administrateurs_jour_j is not False
+                ),
             },
         )
 
@@ -1626,10 +1650,22 @@ class WatchService:
             if days_remaining < 0:
                 continue
 
+            # Compatibilité des échéances antérieures à la politique de
+            # rappel : NULL signifie « règle HAUQE par défaut », jamais
+            # « désactivé ». Une valeur False enregistrée reste prioritaire.
+            reminders_enabled = deadline.rappels_email_actifs is not False
+            escalation_enabled = (
+                deadline.escalade_administrateurs_jour_j is not False
+            )
+            reminder_days = (
+                deadline.rappel_jours_avant
+                if deadline.rappel_jours_avant is not None else 2
+            )
+
             if (
-                deadline.rappels_email_actifs
+                reminders_enabled
                 and deadline.responsable_id
-                and days_remaining <= deadline.rappel_jours_avant
+                and days_remaining <= reminder_days
             ):
                 recipient = await WatchRepository.get_user(
                     db, deadline.responsable_id
@@ -1654,7 +1690,7 @@ class WatchService:
 
             if (
                 days_remaining == 0
-                and deadline.escalade_administrateurs_jour_j
+                and escalation_enabled
             ):
                 excluded_admin_ids = set(
                     await WatchRepository.deadline_reminder_admin_exclusions(
