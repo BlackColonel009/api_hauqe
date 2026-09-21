@@ -83,6 +83,9 @@ from app.routes.api.v1.missions_collecte import (
 from app.routes.api.v1.fiches_collecte import (
     router as fiches_collecte_router,
 )
+from app.routes.api.v1.dossier_parcours import (
+    router as dossier_parcours_router,
+)
 
 # ============================================================
 # MODULE VERIFICATIONS
@@ -294,6 +297,10 @@ api_router.include_router(
 
 api_router.include_router(
     fiches_collecte_router
+)
+
+api_router.include_router(
+    dossier_parcours_router
 )
 
 api_router.include_router(

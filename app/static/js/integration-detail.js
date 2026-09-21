@@ -393,6 +393,13 @@
       ]);
       hideState();
       renderAll();
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      await renderDossierParcours({
+        target: "#integrationDossierParcours",
+        source: "integration",
+        resourceId: integrationId,
+        apiGet,
+      });
     } catch (error) {
       showState(error?.message || "Impossible de charger le dossier d’intégration.", true);
     }

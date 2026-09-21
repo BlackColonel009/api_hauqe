@@ -1,10 +1,10 @@
 # Plan de développement - Guide global d'utilisation SNGSC / HAUQE
 
-**Statut :** guide opérationnel V2 produit ; en attente des captures HAUQE et de la recette métier finale
-**Dernière mise à jour :** 7 août 2026
+**Statut :** guide opérationnel V2 illustré et détaillé pour la formation ; recette métier finale à poursuivre
+**Dernière mise à jour :** 21 septembre 2026
 **Livrable cible :** document Word `.docx` modifiable et prêt pour impression
 
-## Avancement documentaire - 7 août 2026
+## Avancement documentaire - 21 septembre 2026
 
 - une version rédigée du guide global a été produite dans
   `docs_md/guide_global_utilisation_SNGSC_HAUQE_version_redigee.docx` ;
@@ -16,8 +16,11 @@
   `output/docx/Guide_global_utilisation_SNGSC_HAUQE_v2.docx` ; il contient
   des procédures pas à pas, les rôles concernés, les prérequis, les résultats
   attendus, les points d'attention et un cadre de figure par chapitre ;
-- le document ne contient volontairement aucune donnée personnelle ni capture
-  réelle. Les images devront être ajoutées par la HAUQE après anonymisation.
+- les captures ajoutées par l'équipe sont intégrées au guide ;
+- chaque chapitre comporte désormais une introduction fonctionnelle et les
+  légendes décrivent les actions visibles dans les captures ;
+- la gestion des campagnes, le classement SNCC, l'exemple fictif de collecte
+  et la matrice RACI des rôles ont été ajoutés pour la formation.
 
 ## 1. Objectif
 
@@ -103,12 +106,12 @@ gabarits de procédure.
 Rédiger les parties par lots cohérents, en commençant par la prise en main,
 le profil et le tableau de bord.
 
-### Phase 3 - Insertion des captures par la HAUQE — à faire
+### Phase 3 - Insertion des captures par la HAUQE — réalisée
 
-L'équipe insère ses screenshots dans les cadres prévus et renseigne les
-légendes si besoin.
+Les captures ont été insérées dans la version illustrée et les légendes ont
+été rapprochées des écrans correspondants.
 
-### Phase 4 - Contrôle et livraison — à faire après insertion des captures
+### Phase 4 - Contrôle et livraison — en cours
 
 Vérifier les renvois, la table des matières, les rôles, l'impression et le
 rendu de chaque page ; livrer le Word modifiable puis, si souhaité, le PDF
@@ -116,7 +119,31 @@ officiel.
 
 ## 7. Prochaine action exacte
 
-Ouvrir le guide V2 dans Word, mettre à jour la table des matières, relire les
-procédures avec les référents HAUQE, puis insérer les captures anonymisées dans
-les cadres prévus. Après cette recette, contrôler chaque page avant impression
-et produire le PDF officiel si nécessaire.
+Ouvrir le guide détaillé dans Word, mettre à jour tous les champs avec
+`Ctrl+A`, puis `F9`, et relire les procédures avec les agents pendant la
+formation. Corriger ensuite les éventuels écarts constatés lors de la recette
+métier avant la livraison définitive.
+
+## 8. Mise à jour ciblée - Guide SNCC (21/09/2026)
+
+Le guide PDF accessible depuis l'écran **Classement SNCC** est enrichi afin de
+lever les ambiguïtés de vocabulaire. Il présente désormais :
+
+- les définitions opérationnelles des classes A+ à D ;
+- les statuts administratifs VA, RE, SU, RT, EX et VE ;
+- les niveaux de risque R1 à R5 ;
+- les familles d'anomalies, exemples de constats et réponses attendues ;
+- la distinction impérative entre classe, statut administratif et risque.
+
+Le fichier produit est `output/pdf/guide-sncc-hauqe.pdf`, puis recopié dans
+`app/static/docs/guide-sncc-hauqe.pdf` pour être consultable dans l'application.
+
+## 9. Mise à jour ciblée - Parcours de traitement d'un dossier (21/09/2026)
+
+Ajouter au guide une capture du bloc **Parcours de traitement** visible dans
+la fiche de collecte puis dans les écrans Vérification, Contrôle FUCCS,
+Validation et Intégration BNEC. Le bloc présente les six étapes réelles :
+collecte, vérification documentaire, contrôle FUCCS, validation N1,
+validation N2 et intégration BNEC. Il met en évidence l'étape en cours, la
+prochaine action, les blocages éventuels et les étapes restantes, sans exposer
+d'identifiant technique.

@@ -81,6 +81,10 @@
 .rules-page .rules-nav nav button.active{
   background:#eaf6f0;
 }
+/* Correctif transversal : actions statiques et actions recréées après rendu. */
+.rules-page .rules-action-button{position:relative;z-index:1;cursor:pointer;pointer-events:auto}
+.rules-page .rules-action-button svg{pointer-events:none}
+.rules-page .rules-action-button:focus-visible{outline:3px solid rgba(44,139,99,.22);outline-offset:2px}
 .rules-page .rule-card{
   padding:15px;
   border-radius:14px;

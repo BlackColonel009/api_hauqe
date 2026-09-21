@@ -15,6 +15,42 @@
   }
   const statusLabel = (s) => String(s || "ACTIF").toUpperCase() === "ACTIF" ? "Actif" : "Inactif";
 
+  // Les lignes du tableau sont recréées après chaque filtre. Le crayon est donc
+  // fabriqué après ce rendu, avec son propre écouteur direct : même patron que
+  // la correction validée sur Gestion des campagnes et Entreprises.
+  function serializeReferenceValue(value) {
+    return encodeURIComponent(JSON.stringify(value));
+  }
+  function referenceValueFromActionSlot(slot) {
+    try {
+      return JSON.parse(decodeURIComponent(slot.dataset.referenceValuePayload || ""));
+    } catch {
+      return null;
+    }
+  }
+  function createReferenceEditButton(value) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "reference-edit-button";
+    button.setAttribute("aria-label", `Modifier ${value.libelle || value.code || "cet élément"}`);
+    button.setAttribute("title", "Modifier");
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = '<i data-lucide="pencil"></i>';
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openValue(value);
+    });
+    return button;
+  }
+  function hydrateReferenceEditButtons() {
+    document.querySelectorAll("[data-reference-value-action-slot]").forEach((slot) => {
+      const value = referenceValueFromActionSlot(slot);
+      if (!value?.id) return;
+      slot.replaceChildren(createReferenceEditButton(value));
+    });
+  }
+
   async function loadRefs(keep = true) {
     const selected = keep ? current?.id : null;
     const payload = await api.apiRequest("/api/v1/referentiels");
@@ -71,9 +107,9 @@
         <td>${esc(v.description || "—")}</td>
         <td>${esc(v.date_debut_validite || "—")} ${v.date_fin_validite ? `→ ${esc(v.date_fin_validite)}` : ""}</td>
         <td><span class="reference-status ${statusLabel(v.statut) === "Actif" ? "active" : "inactive"}">${statusLabel(v.statut)}</span></td>
-        <td><button class="icon-button" data-edit="${v.id}" title="Modifier"><i data-lucide="pencil"></i></button></td>
+        <td><span class="reference-row-action-slot" data-reference-value-action-slot data-reference-value-payload="${esc(serializeReferenceValue(v))}"></span></td>
       </tr>`).join("")}</tbody></table></div>` : `<div class="reference-empty"><i data-lucide="inbox"></i><strong>Aucune valeur</strong><span>Ajoutez le premier élément de cette nomenclature.</span></div>`;
-    document.querySelectorAll("[data-edit]").forEach((b) => b.onclick = (event) => { event.preventDefault(); event.stopPropagation(); openValue(values.find((v) => v.id === b.dataset.edit)); });
+    hydrateReferenceEditButtons();
     icons();
   }
   function openValue(value = null) {

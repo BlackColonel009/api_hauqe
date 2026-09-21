@@ -380,6 +380,9 @@
       && maximum >= 1
       && maximum <= 5
     ) {
+      const labels = maximum === 2
+        ? ["Non conforme", "Partiellement conforme", "Conforme"]
+        : [];
       return `
         <div class="fuccs-score-choices">
           ${Array.from(
@@ -392,8 +395,10 @@
                 ${Number(current) === value ? "selected" : ""}
               "
               data-score-choice="${value}"
+              aria-label="Note ${value}${labels[value] ? ` : ${labels[value]}` : ""} sur ${maximum}"
+              title="${labels[value] ? `${value} : ${labels[value]}` : `Note ${value} sur ${maximum}`}"
             >
-              ${value}
+              <b>${value}</b>${labels[value] ? `<small>${labels[value]}</small>` : ""}
             </button>
           `).join("")}
         </div>
@@ -1017,6 +1022,13 @@
       renderRubricNav();
       renderActiveRubric();
       renderFindings();
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      await renderDossierParcours({
+        target: "#controleDossierParcours",
+        source: "controle",
+        resourceId: controlId,
+        apiGet,
+      });
 
       showState(
         "Contrôle FUCCS finalisé. Le score reste distinct de l’INFC et du classement SNCC."

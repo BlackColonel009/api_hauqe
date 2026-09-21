@@ -1,0 +1,25 @@
+.dossier-parcours {
+  margin: 1.15rem 0 1.35rem;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid var(--border, #dfe7ec);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+.dossier-parcours-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.1rem; }
+.dossier-parcours-heading h2 { margin:0.08rem 0 .25rem; font-size:1.05rem; }
+.dossier-parcours-heading p:not(.eyebrow) { margin:0; color:var(--text-muted, #667085); font-size:.88rem; }
+.dossier-parcours-count { white-space:nowrap; border-radius:999px; padding:.42rem .7rem; background:#edf7f0; color:#187343; font-size:.78rem; font-weight:800; }
+.dossier-parcours-count.blocked { background:#fff1f1; color:#b42318; }
+.dossier-parcours-steps { display:grid; grid-template-columns:repeat(6, minmax(135px, 1fr)); gap:.6rem; padding:0; margin:0; list-style:none; }
+.dossier-parcours-steps li { position:relative; min-width:0; padding:.75rem .65rem .7rem; border:1px solid #e4e9ee; border-radius:12px; background:#fafbfd; }
+.dossier-parcours-marker { position:absolute; top:.5rem; right:.55rem; color:#98a2b3; font-size:.72rem; font-weight:800; }
+.dossier-parcours-icon { width:29px; height:29px; display:grid; place-items:center; border-radius:9px; margin-bottom:.55rem; background:#eef2f6; color:#667085; }
+.dossier-parcours-copy { display:grid; gap:.22rem; }
+.dossier-parcours-copy strong { font-size:.82rem; color:#263548; }
+.dossier-parcours-copy small { min-height:3.2em; color:#667085; font-size:.74rem; line-height:1.35; }
+.dossier-parcours-steps em { display:inline-flex; margin-top:.58rem; border-radius:999px; padding:.22rem .45rem; font-style:normal; font-size:.69rem; font-weight:800; background:#edf1f5; color:#667085; }
+.dossier-parcours-steps li.termine { border-color:#b7dfc5; background:#f7fcf8; }.dossier-parcours-steps li.termine .dossier-parcours-icon { background:#e3f6e8; color:#187343; }.dossier-parcours-steps li.termine em { background:#e3f6e8; color:#187343; }
+.dossier-parcours-steps li.en_cours { border-color:#9dc4f3; background:#f6faff; }.dossier-parcours-steps li.en_cours .dossier-parcours-icon { background:#e5f0ff; color:#175cd3; }.dossier-parcours-steps li.en_cours em { background:#e5f0ff; color:#175cd3; }
+.dossier-parcours-steps li.a_faire { border-style:dashed; }.dossier-parcours-steps li.bloque { border-color:#f2b8b5; background:#fff8f7; }.dossier-parcours-steps li.bloque .dossier-parcours-icon { background:#ffebe9; color:#b42318; }.dossier-parcours-steps li.bloque em { background:#ffebe9; color:#b42318; }
+@media (max-width:1180px) { .dossier-parcours-steps { grid-template-columns:repeat(3, minmax(160px, 1fr)); } }
+@media (max-width:700px) { .dossier-parcours { padding:1rem; }.dossier-parcours-heading { display:block; }.dossier-parcours-count { display:inline-flex; margin-top:.75rem; }.dossier-parcours-steps { grid-template-columns:1fr; }.dossier-parcours-copy small { min-height:0; } }

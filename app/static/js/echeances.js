@@ -120,6 +120,86 @@
     return displayText(item.titre || item.type_echeance, "Échéance");
   }
 
+  // Règle de fiabilité des boutons dynamiques : une ligne injectée dans la
+  // page ne porte jamais elle-même un ancien gestionnaire HTML. On y place un
+  // emplacement neutre, puis on crée le bouton et son écouteur directement.
+  // C'est le modèle qui a stabilisé « Gérer les campagnes » et Entreprises.
+  function serializeDeadline(item) {
+    return encodeURIComponent(JSON.stringify({ id: item.id }));
+  }
+
+  function deadlineFromActionSlot(slot) {
+    try {
+      const payload = JSON.parse(decodeURIComponent(slot.dataset.deadlinePayload || ""));
+      const id = String(payload?.id || "");
+      return items.find((item) => String(item.id) === id)
+        || allItems.find((item) => String(item.id) === id)
+        || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function createDeadlineActionButton({ label, className, content, handler }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `${className} deadline-action-button`;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = content;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    });
+    return button;
+  }
+
+  function hydrateDeadlineActionButtons(container = document) {
+    container.querySelectorAll("[data-deadline-action-slot]").forEach((slot) => {
+      const item = deadlineFromActionSlot(slot);
+      if (!item?.id) return;
+
+      const kind = slot.dataset.deadlineActionSlot;
+      const openDetail = () => {
+        selected = item;
+        showDetail();
+      };
+      let button;
+      if (kind === "calendar") {
+        button = createDeadlineActionButton({
+          label: `Ouvrir l’échéance : ${calendarTitle(item)}`,
+          className: `deadline-calendar-event ${urgency(item)}`,
+          content: `<i></i><span>${e(calendarTitle(item))}</span>`,
+          handler: openDetail,
+        });
+      } else if (kind === "upcoming") {
+        button = createDeadlineActionButton({
+          label: `Ouvrir l’échéance : ${displayText(item.titre, "Échéance")}`,
+          className: "upcoming-deadline-row",
+          content: `<span class="${urgency(item)}"><i data-lucide="calendar-clock"></i></span><div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></div><em>${e(remaining(item))}</em>`,
+          handler: openDetail,
+        });
+      } else if (kind === "registry") {
+        button = createDeadlineActionButton({
+          label: "Ouvrir les détails de l’échéance",
+          className: "registry-open",
+          content: '<i data-lucide="chevron-right"></i>',
+          handler: openDetail,
+        });
+      } else {
+        button = createDeadlineActionButton({
+          label: `Ouvrir l’échéance : ${displayText(item.titre, "Échéance")}`,
+          className: "deadline-list-action-button",
+          content: '<i data-lucide="chevron-right"></i>',
+          handler: openDetail,
+        });
+      }
+      slot.replaceChildren(button);
+    });
+  }
+
   function params() {
     const p = new URLSearchParams({ limit: "300", offset: "0" });
 
@@ -190,11 +270,7 @@
         <div class="calendar-day ${iso(new Date()) === key ? "today" : ""}" data-date="${key}">
           <span class="calendar-day-number">${day}</span>
           <div class="calendar-day-events">
-            ${dayItems.slice(0, 3).map((item) => `
-              <button class="deadline-calendar-event ${urgency(item)}" type="button" data-deadline="${e(item.id)}">
-                <i></i><span>${e(calendarTitle(item))}</span>
-              </button>
-            `).join("")}
+            ${dayItems.slice(0, 3).map((item) => `<span data-deadline-action-slot="calendar" data-deadline-payload="${e(serializeDeadline(item))}"></span>`).join("")}
             ${dayItems.length > 3 ? `<small>+${dayItems.length - 3} autre(s)</small>` : ""}
           </div>
         </div>
@@ -203,12 +279,7 @@
 
     $("#calendarGrid").innerHTML = cells.join("");
 
-    $$("#calendarGrid [data-deadline]").forEach((button) => {
-      button.onclick = () => {
-        selected = items.find((x) => String(x.id) === String(button.dataset.deadline));
-        showDetail();
-      };
-    });
+    hydrateDeadlineActionButtons($("#calendarGrid"));
   }
 
   function renderYearCalendar() {
@@ -304,17 +375,12 @@
             <div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))} · ${e(displayText(item.type_echeance, "—"))}</small></div>
             <div class="deadline-row-meta"><strong>${e(remaining(item))}</strong><small>${e(item.responsable_name || "Non affectée")}</small></div>
             <span class="deadline-status-pill">${e(statusLabel(item.statut))}</span>
-            <button class="more-button" type="button" data-deadline="${e(item.id)}"><i data-lucide="chevron-right"></i></button>
+            <span class="deadline-row-action-slot" data-deadline-action-slot="list" data-deadline-payload="${e(serializeDeadline(item))}"></span>
           </article>
         `).join("")
       : `<div class="priority-empty">Aucune échéance dans la période.</div>`;
 
-    $$("#deadlineList [data-deadline]").forEach((button) => {
-      button.onclick = () => {
-        selected = items.find((x) => String(x.id) === String(button.dataset.deadline));
-        showDetail();
-      };
-    });
+    hydrateDeadlineActionButtons($("#deadlineList"));
     icons();
   }
 
@@ -404,26 +470,12 @@
         <td><span class="registry-source"><i data-lucide="link-2"></i>${e(displayText(sourceLabel(item), "Source non renseignée"))}</span><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></td>
         <td>${e(item.responsable_name || "Non affectée")}</td>
         <td><span class="registry-status ${e(String(item.statut || "PLANIFIEE").toLowerCase())}">${e(statusLabel(item.statut))}</span>${String(item.statut || "").toUpperCase() === "ANNULEE" ? `<small class="registry-closure">Motif : ${e(displayText(item.motif_cloture, "consigné dans le journal"))}</small>` : ""}</td>
-        <td><span class="registry-action-slot" data-global-deadline-slot="${e(item.id)}"></span></td>
+        <td><span class="registry-action-slot" data-deadline-action-slot="registry" data-deadline-payload="${e(serializeDeadline(item))}"></span></td>
       </tr>
     `).join("");
     $("#globalDeadlineEmpty").hidden = visible.length > 0;
 
-    $$("[data-global-deadline-slot]").forEach((slot) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "registry-open";
-      button.dataset.noActionLoader = "true";
-      button.setAttribute("aria-label", "Ouvrir les détails");
-      button.innerHTML = '<i data-lucide="chevron-right"></i>';
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        selected = allItems.find((item) => String(item.id) === String(slot.dataset.globalDeadlineSlot));
-        showDetail();
-      });
-      slot.replaceChildren(button);
-    });
+    hydrateDeadlineActionButtons($("#globalDeadlineRows"));
     icons();
   }
 
@@ -459,20 +511,11 @@
 
     $("#upcomingList").innerHTML = active.length
       ? active.map((item) => `
-          <button class="upcoming-deadline-row" type="button" data-deadline="${e(item.id)}">
-            <span class="${urgency(item)}"><i data-lucide="calendar-clock"></i></span>
-            <div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></div>
-            <em>${e(remaining(item))}</em>
-          </button>
+          <span data-deadline-action-slot="upcoming" data-deadline-payload="${e(serializeDeadline(item))}"></span>
         `).join("")
       : `<div class="priority-empty">Aucune échéance prioritaire.</div>`;
 
-    $$("#upcomingList [data-deadline]").forEach((button) => {
-      button.onclick = () => {
-        selected = items.find((x) => String(x.id) === String(button.dataset.deadline));
-        showDetail();
-      };
-    });
+    hydrateDeadlineActionButtons($("#upcomingList"));
 
     const counts = new Map();
     items

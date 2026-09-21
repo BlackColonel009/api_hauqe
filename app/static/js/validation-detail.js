@@ -928,6 +928,13 @@
       hideState();
       renderHeader();
       showTab("overview");
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      await renderDossierParcours({
+        target: "#validationDossierParcours",
+        source: "fiche",
+        resourceId: ficheId,
+        apiGet,
+      });
     };
 
     try {

@@ -231,6 +231,12 @@
   display:flex;align-items:center;gap:5px;width:100%;min-width:0;padding:4px 5px;
   border:0;border-radius:7px;background:#f4f7f5;color:#52645b;font-size:7px;text-align:left;
 }
+.deadline-action-button{position:relative;z-index:1;cursor:pointer;pointer-events:auto}
+.deadline-action-button svg{pointer-events:none}
+.calendar-day-events [data-deadline-action-slot],.deadline-row-action-slot,.registry-action-slot,#upcomingList [data-deadline-action-slot]{display:block;min-width:0}
+.deadline-list-action-button{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:7px;background:transparent;color:#74817c}
+.deadline-list-action-button:hover{background:#f1f6f3;color:var(--green-700)}
+.deadline-list-action-button svg{width:14px}
 .deadline-calendar-event i{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:currentColor}
 .deadline-calendar-event span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .deadline-calendar-event.expired,.deadline-calendar-event.critical{background:#fff0f0;color:#a14848}
@@ -291,7 +297,7 @@
 @media(max-width:700px){
   .deadlines-page .deadline-kpis{grid-template-columns:1fr 1fr}
   .deadline-real-row{grid-template-columns:42px minmax(0,1fr)}
-  .deadline-row-meta,.deadline-status-pill,.deadline-real-row>.more-button{
+  .deadline-row-meta,.deadline-status-pill,.deadline-real-row>.deadline-row-action-slot{
     grid-column:2;justify-self:start;text-align:left;
   }
 }

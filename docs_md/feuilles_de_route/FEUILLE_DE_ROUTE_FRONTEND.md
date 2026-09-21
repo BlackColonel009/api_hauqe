@@ -3917,6 +3917,41 @@ Grille et actions de ligne de la page Entreprises a été confirmé fonctionnel
 par l'utilisateur. Cette validation fait de ce patron la base obligatoire de
 l'audit et des corrections des autres pages.
 
+**Application en cours — Échéances :** les actions injectées dans le calendrier,
+la liste de la période, les échéances prioritaires et le registre consolidé ont
+été converties au même patron. Chaque zone rend un emplacement neutre avec
+l'identifiant sérialisé, puis `hydrateDeadlineActionButtons()` fabrique le
+bouton local, son écouteur direct et son style propre. La classe générique
+`more-button` n'est plus utilisée pour ces actions. À contrôler en recette au
+premier clic après chargement, recherche, filtre et changement de période.
+
+**Application — Référentiels et nomenclatures (21/09/2026) :** les crayons de
+modification des valeurs de référentiel sont rendus dans un emplacement neutre.
+`hydrateReferenceEditButtons()` désérialise la valeur de la ligne et crée le
+bouton `reference-edit-button` avec un seul écouteur `click` direct. La version
+du JavaScript et de la feuille de style est incrémentée pour empêcher le cache
+du navigateur de conserver l'ancienne logique. Recette attendue : ouverture de
+la modification au premier clic, après recherche, filtre, changement de
+catégorie et enregistrement d'une valeur.
+
+**Application — Zones administratives (21/09/2026) :** les boutons de ligne
+« Modifier » et « Changer le statut » sont rendus dans des emplacements neutres.
+`hydrateZoneActionButtons()` crée leurs boutons locaux et leurs écouteurs
+directs après chaque chargement ou filtre. Les commandes fixes Nouvelle zone,
+Actualiser, Réinitialiser et Fermer sont également liées avec un écouteur direct
+et `data-no-action-loader="true"`. Les versions CSS/JavaScript sont incrémentées.
+Recette attendue : toutes les actions répondent au premier clic, y compris après
+recherche, filtre par type/statut et actualisation du référentiel.
+
+**Application — Règles et codification (21/09/2026) :** une protection commune
+est appliquée à chaque bouton de la page, y compris aux actions créées après
+chargement d'une règle, d'un modèle de scoring ou d'une grille FUCCS.
+`stabilizeRuleButtons()` ajoute `data-no-action-loader="true"`, un style local
+avec surface cliquable et focus visible ; un observateur couvre immédiatement
+les boutons ajoutés par les rendus dynamiques. Les versions CSS/JavaScript sont
+incrémentées. Recette attendue : chaque commande et action de ligne répond au
+premier clic dans les six onglets.
+
 ### Audit obligatoire du menu
 
 Auditer chaque entrée de la barre latérale et ses sous-écrans selon ces blocs :
@@ -3998,3 +4033,79 @@ n’a pas été contrôlé au premier clic, puis après fermeture et réouvertur
 | Connexion / MFA | afficher mot de passe, retour, soumettre, erreurs | 🟡 écouteurs synchrones — recette avec cas réel requise |
 | Mot de passe oublié | envoyer, renvoyer, enregistrer le nouveau mot de passe, retours | 🟡 formulaires liés avant API — recette avec cas réel requise |
 | Session sécurisée | afficher code, déverrouiller, déconnexion | 🟡 écouteurs synchrones — recette avec cas réel requise |
+
+### Ergonomie des notations FUCCS, classification, INFC et SNCC (21/09/2026)
+
+Objectif : guider l'utilisateur dans sa saisie sans introduire de règle métier,
+de seuil, de pondération ou de décision qui ne serait pas publié et validé par
+la HAUQE. Cette évolution est strictement frontend : **Base PostgreSQL
+modifiée : non ; migration : aucune.**
+
+- **FUCCS** : chaque critère conserve sa description, ses exigences de preuve
+  et son maximum issu de la grille publiée. Pour les critères notés sur 2, les
+  choix 0, 1 et 2 sont désormais explicités respectivement par « Non conforme
+  », « Partiellement conforme » et « Conforme ». Les autres échelles ne sont
+  pas interprétées par l'interface.
+- **Classification entreprise et INFC** : le formulaire rappelle le mode du
+  modèle actif, les bornes de saisie disponibles et l'état d'avancement de la
+  saisie. La prévisualisation affiche le score, le maximum lorsqu'il est
+  déterminable par le modèle, la progression et la version du modèle. Une
+  saisie directe reste disponible uniquement si le modèle publié l'autorise.
+- **SNCC** : l'écran et le formulaire distinguent clairement classe, statut
+  administratif et risque. Les libellés A+ à D, VA à VE et R1 à R5 servent de
+  repères opérationnels ; ils doivent être confirmés par la HAUQE si une
+  définition institutionnelle différente est publiée. Le SNCC reste saisi et
+  justifié, sans conversion automatique depuis l'INFC.
+
+Recette attendue : ouvrir un dossier FUCCS, une évaluation entreprise, un
+calcul INFC et un classement SNCC ; vérifier que les textes d'aide, limites,
+aperçus et sélections restent lisibles sur ordinateur et mobile, et que le
+résultat final provient toujours du backend et du modèle publié.
+
+**Correctif critique — cache et boutons Scoring/INFC (21/09/2026) :** tout
+script de page qui appelle une nouvelle fonction d'un module JavaScript partagé
+doit versionner également l'import de ce module. Versionner seulement la route
+de la page peut laisser le navigateur charger une ancienne copie du module et
+faire échouer le clic avec une fonction absente. Les boutons dynamiques
+« Évaluer », « Calculer » et « Recalculer » suivent aussi le patron validé de
+Gestion des campagnes : emplacement neutre, création du vrai bouton après le
+rendu, `data-no-action-loader`, écouteur direct unique et propagation arrêtée.
+Recette obligatoire au premier clic, puis après actualisation de la liste.
+
+**Guidage par règle publiée — Scoring et INFC (21/09/2026) :** les blocs
+d'aide de `#/scoring` et `#/infc` doivent être produits depuis le modèle
+publié réellement actif, jamais depuis un seuil figé dans le frontend. La
+classification affiche les classes et leurs plages issues de `classes` ; l'INFC
+explique le mode de calcul, les bornes de saisie, les pondérations et les
+niveaux lorsqu'ils sont présents. Pour le modèle INFC pondéré, chaque domaine
+est saisi sur 100 ; une valeur telle que 15 correspond à son poids relatif et
+non à une note maximale. L'aperçu de saisie calcule alors la moyenne pondérée
+de manière informative ; le résultat officiel reste celui du backend.
+
+Le modèle actif au contrôle du 21/09/2026 est `INFC-03` v1.3 : moyenne pondérée
+sur 100, six domaines obligatoires (poids 20, 20, 20, 15, 15, 10) et niveaux
+1 : 85–100, 2 : 70–84,99, 3 : 50–69,99, 4 : 0–49,99. La règle de
+classification active est `CONFORME` à partir de 85, `A_SURVEILLER` de 60 à
+moins de 85, et `NON_CONFORME` sous 60. Ces valeurs sont affichées depuis les
+règles publiées et changeront avec une nouvelle version de modèle.
+
+Pour préserver la lisibilité opérationnelle, les pages affichent uniquement
+des cartes colorées de seuils/niveaux, avec une lueur légère (vert, ambre,
+rouge selon la position dans la règle). Les explications de méthode, de poids,
+de prévisualisation et de validation sont regroupées dans les guides PDF
+Scoring et INFC accessibles depuis chaque page. Ces guides rappellent que les
+cartes restent la source dynamique de la version publiée.
+
+### Parcours de dossier Collecte → BNEC (21/09/2026)
+
+Les fiches de collecte et les écrans de détail **Vérification**, **Contrôle
+FUCCS**, **Validation** et **Intégration BNEC** affichent le même parcours
+opérationnel en six étapes : collecte, vérification, contrôle FUCCS, validation
+N1, validation N2 et intégration BNEC. Chaque étape est déterminée par l'état
+réel enregistré côté serveur et porte l'un des statuts lisibles : terminée, en
+cours, à faire ou bloquée.
+
+La carte en tête indique la prochaine action attendue et le nombre d'étapes
+restantes. Un ajournement ou rejet N1/N2, ou un contrôle/intégration bloqué,
+est explicitement signalé sans afficher d'UUID. Cette fonction est de lecture
+seule : **Base PostgreSQL modifiée : non ; migration : aucune.**

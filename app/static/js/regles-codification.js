@@ -45,7 +45,18 @@
       .replaceAll("'", "&#039;");
   }
 
+  // La page reconstruit de nombreux boutons (règles, modèles, pondérations et
+  // FUCCS) après recherche ou changement d'onglet. Chaque bouton est isolé du
+  // chargeur global afin que son écouteur local réponde au premier clic.
+  function stabilizeRuleButtons(root = document) {
+    root.querySelectorAll(".rules-page button").forEach((button) => {
+      button.setAttribute("data-no-action-loader", "true");
+      button.classList.add("rules-action-button");
+    });
+  }
+
   function icons() {
+    stabilizeRuleButtons();
     window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
   }
 
@@ -2916,6 +2927,26 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     $$("[data-close-inst-dialog]").forEach((button) => {
       button.onclick = () => document.getElementById(button.dataset.closeInstDialog)?.close();
     });
+
+    // Les boutons créés par les rendus successifs ne doivent jamais attendre
+    // le prochain appel à icons() pour devenir immédiatement cliquables.
+    window.__HAUQE_RULES_BUTTON_OBSERVER__?.disconnect?.();
+    const root = $(".rules-page");
+    if (root) {
+      const observer = new MutationObserver((records) => {
+        records.forEach((record) => record.addedNodes.forEach((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          if (node.matches?.("button")) {
+            node.setAttribute("data-no-action-loader", "true");
+            node.classList.add("rules-action-button");
+          }
+          stabilizeRuleButtons(node);
+        }));
+      });
+      observer.observe(root, { childList: true, subtree: true });
+      window.__HAUQE_RULES_BUTTON_OBSERVER__ = observer;
+      stabilizeRuleButtons(root);
+    }
   }
 
   try {

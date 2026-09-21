@@ -2059,6 +2059,16 @@ async function saveQuickEnterprise(event) {
       await loadFicheSubresources();
       updateActionState();
       render();
+
+      if (fiche?.id) {
+        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+        await renderDossierParcours({
+          target: "#collecteDossierParcours",
+          source: "fiche",
+          resourceId: fiche.id,
+          apiGet,
+        });
+      }
     };
 
     try {
@@ -2423,6 +2433,16 @@ async function saveQuickEnterprise(event) {
 
       updateActionState();
       render();
+
+      if (fiche?.id) {
+        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+        await renderDossierParcours({
+          target: "#collecteDossierParcours",
+          source: "fiche",
+          resourceId: fiche.id,
+          apiGet,
+        });
+      }
     };
 
     try {

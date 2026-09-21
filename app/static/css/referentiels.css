@@ -103,6 +103,11 @@
 .references-page .reference-table tbody tr:hover td{
   background:#fafcfb;
 }
+.references-page .reference-row-action-slot{display:inline-flex;justify-content:flex-end}
+.references-page .reference-edit-button{position:relative;z-index:1;display:grid;width:30px;height:30px;place-items:center;border:1px solid #d7e5de;border-radius:8px;background:#fff;color:#2a7055;cursor:pointer;pointer-events:auto;transition:background .16s,border-color .16s,color .16s,transform .16s}
+.references-page .reference-edit-button:hover{border-color:#83bca3;background:#edf8f3;color:#155c40;transform:translateY(-1px)}
+.references-page .reference-edit-button:focus-visible{outline:3px solid rgba(44,139,99,.22);outline-offset:2px}
+.references-page .reference-edit-button svg{width:15px;height:15px;pointer-events:none}
 
 
 .references-page .reference-toolbar{

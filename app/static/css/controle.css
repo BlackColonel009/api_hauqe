@@ -456,8 +456,8 @@
 }
 
 .fuccs-score-choice{
-  min-width:34px;
-  height:32px;
+  min-width:42px;
+  min-height:36px;
   padding:0 10px;
   border:1px solid #dce5e0;
   border-radius:9px;
@@ -466,6 +466,19 @@
   font-size:10px;
   font-weight:900;
   transition:all .15s ease;
+}
+
+.fuccs-score-choice b,
+.fuccs-score-choice small{
+  display:block;
+  line-height:1.1;
+}
+
+.fuccs-score-choice small{
+  margin-top:2px;
+  font-size:7px;
+  font-weight:700;
+  white-space:nowrap;
 }
 
 .fuccs-score-choice:hover:not(:disabled){
@@ -493,6 +506,32 @@
   border-radius:9px;
   outline:none;
 }
+
+.fuccs-entry-guide{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid #dfe9e4;
+  border-radius:13px;
+  background:#f7faf8;
+}
+
+.fuccs-entry-guide>span{
+  display:grid;
+  place-items:center;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  background:#fff;
+  color:#28795b;
+}
+
+.fuccs-entry-guide strong,.fuccs-entry-guide small{display:block}
+.fuccs-entry-guide strong{color:#365047;font-size:10px}
+.fuccs-entry-guide small{margin-top:3px;color:#71817a;font-size:8px;line-height:1.5}
 
 .fuccs-criterion-fields{
   display:grid;
