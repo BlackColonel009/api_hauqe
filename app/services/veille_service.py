@@ -290,6 +290,84 @@ class WatchService:
         return sorted(cleaned, key=lambda x: x["days"], reverse=True)
 
     @staticmethod
+    def normalize_certification_expiration_alert_days(
+        values: list[int] | tuple[int, ...] | Any,
+    ) -> list[int]:
+        """Valide le paramétrage local sans laisser disparaître l'alerte J0."""
+        if not isinstance(values, (list, tuple)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Les jours d'alerte doivent être une liste de nombres entiers.",
+            )
+        try:
+            days = {int(value) for value in values}
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Chaque jour d'alerte doit être un nombre entier.",
+            ) from exc
+        if not days or len(days) > 12 or any(day < 0 or day > 3650 for day in days):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Indiquez entre 1 et 12 jours distincts, compris entre 0 et 3 650."
+                ),
+            )
+        if 0 not in days:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Le jour J (0) est obligatoire pour signaler l'expiration.",
+            )
+        return sorted(days, reverse=True)
+
+    @staticmethod
+    def certification_expiration_thresholds(days: list[int]) -> list[dict[str, Any]]:
+        """Transforme des jours libres en niveaux cohérents pour le moteur."""
+        normalized = WatchService.normalize_certification_expiration_alert_days(days)
+        before_expiration = [day for day in normalized if day > 0]
+        count = len(before_expiration)
+        thresholds: list[dict[str, Any]] = []
+        for index, day in enumerate(before_expiration):
+            # Du délai le plus lointain (information) vers le plus proche
+            # (urgence), indépendamment du nombre de jalons choisi.
+            niveau = 1 if count <= 1 else 1 + min(2, (index * 3) // count)
+            thresholds.append(
+                {
+                    "days": day,
+                    "niveau": niveau,
+                    "code": f"CERT_J{day}",
+                    "label": f"Alerte avant expiration (J-{day})",
+                }
+            )
+        thresholds.append(
+            {
+                "days": 0,
+                "niveau": 4,
+                "code": "CERT_J0",
+                "label": "Expiration aujourd’hui",
+            }
+        )
+        return thresholds
+
+    @staticmethod
+    async def default_expiration_alert_days(db: AsyncSession) -> list[int]:
+        return sorted(
+            {int(row["days"]) for row in await WatchService.get_thresholds(db)},
+            reverse=True,
+        )
+
+    @staticmethod
+    async def certification_expiration_thresholds_for(
+        db: AsyncSession,
+        certification: Certification,
+    ) -> list[dict[str, Any]]:
+        if certification.seuils_alerte_expiration_jours is not None:
+            return WatchService.certification_expiration_thresholds(
+                certification.seuils_alerte_expiration_jours
+            )
+        return await WatchService.get_thresholds(db)
+
+    @staticmethod
     def due_threshold(
         thresholds: list[dict[str, Any]],
         days_remaining: int,
@@ -1332,6 +1410,51 @@ class WatchService:
         return True
 
     @staticmethod
+    async def refresh_certification_expiration_alert(
+        db: AsyncSession,
+        *,
+        certification: Certification,
+    ) -> bool:
+        """Applique immédiatement le plan local au jalon d'expiration officiel."""
+        if certification.date_expiration is None:
+            return False
+        label = (
+            certification.identifiant_national
+            or certification.numero_certificat
+            or "Certification sans référence renseignée"
+        )
+        deadline, _ = await WatchService.ensure_generated_deadline(
+            db,
+            resource_type="CERTIFICATION",
+            resource_id=certification.id,
+            deadline_type="EXPIRATION_CERTIFICATION",
+            title=f"Expiration certification {label}",
+            due_date=certification.date_expiration,
+        )
+        await WatchRepository.cancel_active_expiration_alerts_for_deadline(
+            db,
+            deadline_id=deadline.id,
+            rule_prefix=(
+                f"{RULE_CODE_EXPIRATION}:EXPIRATION_CERTIFICATION:"
+            ),
+        )
+        threshold = WatchService.due_threshold(
+            await WatchService.certification_expiration_thresholds_for(
+                db,
+                certification,
+            ),
+            (certification.date_expiration - date.today()).days,
+        )
+        return bool(
+            threshold
+            and await WatchService.ensure_threshold_alert(
+                db,
+                deadline=deadline,
+                threshold=threshold,
+            )
+        )
+
+    @staticmethod
     def _anniversary(value: date, years: int) -> date:
         try:
             return value.replace(year=value.year + years)
@@ -1360,6 +1483,12 @@ class WatchService:
             return counters
 
         thresholds = await WatchService.get_thresholds(db)
+        certification_thresholds = (
+            await WatchService.certification_expiration_thresholds_for(
+                db,
+                certification,
+            )
+        )
 
         async def register_deadline(
             *,
@@ -1368,6 +1497,7 @@ class WatchService:
             deadline_type: str,
             title: str,
             due_date: date,
+            alert_thresholds: list[dict[str, Any]],
         ) -> None:
             deadline, created = await WatchService.ensure_generated_deadline(
                 db,
@@ -1379,7 +1509,7 @@ class WatchService:
             )
             counters["deadlines_created"] += int(created)
             threshold = WatchService.due_threshold(
-                thresholds,
+                alert_thresholds,
                 (due_date - date.today()).days,
             )
             if threshold and await WatchService.ensure_threshold_alert(
@@ -1400,6 +1530,7 @@ class WatchService:
             deadline_type="EXPIRATION_CERTIFICATION",
             title=f"Expiration certification {label}",
             due_date=expiration,
+            alert_thresholds=certification_thresholds,
         )
 
         renewal = await WatchRepository.find_certification_renewal(
@@ -1427,6 +1558,7 @@ class WatchService:
             deadline_type="RENOUVELLEMENT_CERTIFICATION",
             title=f"Renouvellement certification {label}",
             due_date=expiration,
+            alert_thresholds=thresholds,
         )
 
         situation = (declared_situation or "PRESENTE").strip().upper()
@@ -1471,6 +1603,7 @@ class WatchService:
                     deadline_type="AUDIT_CERTIFICATION",
                     title=f"Audit de surveillance {number} — {label}",
                     due_date=audit_date,
+                    alert_thresholds=thresholds,
                 )
 
         return counters
@@ -1738,7 +1871,7 @@ class WatchService:
         audits = await WatchRepository.audits_with_due_date(db)
         renewals = await WatchRepository.renewals_with_due_date(db)
 
-        sources: list[tuple[str, UUID, str, str, date]] = []
+        sources: list[tuple[str, UUID, str, str, date, list[dict[str, Any]]]] = []
 
         for cert in certifications:
             sources.append(
@@ -1751,6 +1884,7 @@ class WatchService:
                         f"{cert.identifiant_national or cert.numero_certificat or 'sans référence renseignée'}"
                     ),
                     cert.date_expiration,
+                    await WatchService.certification_expiration_thresholds_for(db, cert),
                 )
             )
 
@@ -1761,7 +1895,8 @@ class WatchService:
                     audit.id,
                     "AUDIT_CERTIFICATION",
                     f"Audit de certification {audit.type_audit or 'planifié'}",
-                    audit.date_prevue,
+                audit.date_prevue,
+                thresholds,
                 )
             )
 
@@ -1772,7 +1907,8 @@ class WatchService:
                     renewal.id,
                     "RENOUVELLEMENT_CERTIFICATION",
                     "Renouvellement de certification",
-                    renewal.date_limite,
+                renewal.date_limite,
+                thresholds,
                 )
             )
 
@@ -1782,6 +1918,7 @@ class WatchService:
             deadline_type,
             title,
             due_date,
+            alert_thresholds,
         ) in sources:
             deadline, was_created = (
                 await WatchService.ensure_generated_deadline(
@@ -1798,7 +1935,7 @@ class WatchService:
 
             days_remaining = (due_date - date.today()).days
             threshold = WatchService.due_threshold(
-                thresholds,
+                alert_thresholds,
                 days_remaining,
             )
             if threshold:

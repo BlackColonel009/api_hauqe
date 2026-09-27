@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -14,6 +17,7 @@ from app.tasks.run_background_services import serve, stop
 
 BASE_DIR = Path(__file__).resolve().parent
 configure_logging()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -34,6 +38,32 @@ app = FastAPI(
     description="API BNEC / HAUQE Certif",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    """Trace les champs invalides sans journaliser le contenu sensible."""
+    if (
+        request.method == "POST"
+        and request.url.path.endswith("/relances")
+        and "/veille/dossiers/" in request.url.path
+    ):
+        fields = [
+            {
+                "field": ".".join(str(part) for part in error.get("loc", ())),
+                "type": error.get("type"),
+                "message": error.get("msg"),
+            }
+            for error in exc.errors()
+        ]
+        logger.warning(
+            "Validation relance de veille refusée : champs=%s",
+            fields,
+        )
+    return await request_validation_exception_handler(request, exc)
 
 
 # ============================================================

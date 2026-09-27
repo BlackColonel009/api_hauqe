@@ -12,7 +12,9 @@ PAGES FRONTEND
 - `regles-codification.html` :
   administration des modèles de scoring et pondérations.
 
-Aucun endpoint ne convertit automatiquement le score FUCCS en INFC.
+Les calculs automatiques utilisent l'ensemble du parcours, les modèles publiés
+et, pour le SNCC, une matrice de risque publiée ; un score FUCCS seul ne peut
+jamais produire une décision.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.permissions.auth import require_permission
 from app.schemas.scoring import (
+    AutomaticEvaluationResponse,
     EnterpriseClassificationListResponse,
     EnterpriseClassificationResponse,
     InfcResultListResponse,
@@ -49,6 +52,7 @@ from app.schemas.scoring import (
 )
 from app.services.auth_service import AuthContext
 from app.services.scoring_service import ScoringService
+from app.services.automatic_scoring_service import AutomaticScoringService
 
 
 # ============================================================
@@ -387,6 +391,24 @@ async def evaluate_enterprise(
     )
 
 
+@enterprise_classification_router.post(
+    "/automatic-evaluate",
+    response_model=AutomaticEvaluationResponse,
+)
+async def automatic_evaluate_enterprise(
+    enterprise_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CLASSIFICATION.CALCULER_VALIDER")
+    ),
+):
+    """Analyse et enregistre la classification si tout le parcours est prêt."""
+    return await AutomaticScoringService.evaluate_enterprise(
+        db, enterprise_id=enterprise_id, actor=actor, request=request
+    )
+
+
 # ============================================================
 # INFC
 # ============================================================
@@ -499,6 +521,22 @@ async def calculate_infc(
         payload=payload,
         actor=actor,
         request=request,
+    )
+
+
+@cert_infc_router.post(
+    "/automatic-calculate",
+    response_model=AutomaticEvaluationResponse,
+)
+async def automatic_calculate_infc(
+    certification_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("INFC.CALCULER")),
+):
+    """Calcule l'INFC depuis les données tracées du parcours métier."""
+    return await AutomaticScoringService.calculate_infc(
+        db, certification_id=certification_id, actor=actor, request=request
     )
 
 
@@ -638,4 +676,20 @@ async def reclassify_sncc(
         payload=payload,
         actor=actor,
         request=request,
+    )
+
+
+@cert_sncc_router.post(
+    "/automatic-classify",
+    response_model=AutomaticEvaluationResponse,
+)
+async def automatic_classify_sncc(
+    certification_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("SNCC.CLASSER")),
+):
+    """Classe depuis l'INFC calculé et la matrice SNCC publiée active."""
+    return await AutomaticScoringService.classify_sncc(
+        db, certification_id=certification_id, actor=actor, request=request
     )

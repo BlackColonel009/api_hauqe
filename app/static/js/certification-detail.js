@@ -18,6 +18,10 @@
   let documents = [];
   let history = [];
   let selectedRenewal = null;
+  let alertPolicy = null;
+  let statusAnalysis = null;
+  let canManageAlertPolicy = false;
+  let alertPolicyDays = [];
 
   function icon(name) {
     return `<i data-lucide="${name}"></i>`;
@@ -196,6 +200,12 @@
   }
 
   function renderOverview() {
+    const statusFindings = statusAnalysis?.constats || [];
+    const statusActions = [...new Map(
+      statusFindings
+        .filter((finding) => finding.action_tab && finding.action_label)
+        .map((finding) => [finding.action_tab, finding])
+    ).values()];
     $("#certTabContent").innerHTML = `
       <div class="cert-overview">
         <article class="panel">
@@ -230,6 +240,42 @@
             `).join("")}
           </div>
 
+          <section class="cert-status-reasons" aria-label="Pourquoi ce statut">
+            <div>
+              <span>${icon("circle-help")}</span>
+              <div>
+                <strong>Pourquoi ce statut ?</strong>
+                <small>
+                  ${statusAnalysis
+                    ? "Analyse automatique des données du dossier."
+                    : "Analyse des manquements indisponible pour le moment."}
+                </small>
+              </div>
+            </div>
+            ${statusAnalysis?.statut_sncc_prioritaire
+              ? `<p class="cert-status-priority">Priorité SNCC détectée : <strong>${escapeHtml(statusAnalysis.statut_sncc_prioritaire)}</strong></p>`
+              : ""}
+            <ul>${(statusFindings.length
+              ? statusFindings.map((finding) => `
+                <li class="status-finding-${escapeHtml(String(finding.niveau || "").toLowerCase())}">
+                  <strong>${escapeHtml(finding.libelle)}</strong>
+                  <span>${escapeHtml(finding.detail)}</span>
+                </li>
+              `)
+              : ["Aucun détail disponible. Rechargez le dossier pour relancer l'analyse."]
+                .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+            ).join("")}</ul>
+            ${statusActions.length ? `
+              <div class="cert-status-actions">
+                ${statusActions.map((finding) => `
+                  <button type="button" data-status-action-tab="${escapeHtml(finding.action_tab)}">
+                    ${icon("arrow-up-right")}${escapeHtml(finding.action_label)}
+                  </button>
+                `).join("")}
+              </div>
+            ` : ""}
+          </section>
+
           <div class="scope-box">
             <strong>Portée :</strong>
             ${escapeHtml(context.portee || "Aucune portée renseignée.")}
@@ -237,6 +283,30 @@
         </article>
 
         <aside>
+          <article class="panel cert-expiration-alerts-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Alertes d’expiration</h2>
+                <p>Jalons appliqués à ce certificat</p>
+              </div>
+              ${canManageAlertPolicy ? '<span id="configureCertificationAlertPolicySlot"></span>' : ""}
+            </div>
+            <div class="cert-expiration-alerts-content">
+              <div class="cert-alert-days">
+                ${(alertPolicy?.jours_avant || []).map((day) => `
+                  <span class="${Number(day) === 0 ? "critical" : ""}">
+                    ${Number(day) === 0 ? "Jour J" : `J-${escapeHtml(day)}`}
+                  </span>
+                `).join("") || "<small>Aucun jalon configuré.</small>"}
+              </div>
+              <small class="cert-alert-policy-source">
+                ${alertPolicy?.source === "CERTIFICATION"
+                  ? "Plan propre à cette certification"
+                  : "Règle générale appliquée tant qu’aucun plan propre n’est enregistré"}
+              </small>
+            </div>
+          </article>
+
           <article class="panel">
             <div class="panel-heading">
               <div>
@@ -297,7 +367,160 @@
       </div>
     `;
 
+    hydrateCertificationAlertPolicyButtons();
+    document.querySelectorAll("[data-status-action-tab]").forEach((button) => {
+      button.addEventListener("click", () => showTab(button.dataset.statusActionTab));
+    });
+
     refreshIcons();
+  }
+
+  function createCertificationAlertActionButton({
+    label,
+    iconName,
+    className = "",
+    handler,
+  }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.setAttribute("data-no-action-loader", "true");
+    button.setAttribute("data-certification-alert-action", "true");
+    button.innerHTML = iconName ? `${icon(iconName)}${label}` : label;
+    // L'affectation directe est volontaire : les boutons du plan sont
+    // remplacés à chaque ouverture/rendu du modal. Ils ne doivent dépendre
+    // ni d'une délégation sur le DOM, ni du chargeur global d'actions.
+    button.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    };
+    return button;
+  }
+
+  function hydrateCertificationAlertPolicyButtons() {
+    const configureSlot = $("#configureCertificationAlertPolicySlot");
+    if (configureSlot) {
+      configureSlot.replaceChildren(
+        createCertificationAlertActionButton({
+          label: "Paramétrer",
+          iconName: "sliders-horizontal",
+          className: "btn btn-outline-secondary app-btn cert-alert-policy-edit",
+          handler: openCertificationAlertPolicy,
+        })
+      );
+    }
+
+    const addSlot = $("#addCertificationAlertDaySlot");
+    if (addSlot) {
+      addSlot.replaceChildren(
+        createCertificationAlertActionButton({
+          label: "Ajouter",
+          iconName: "plus",
+          className: "btn btn-outline-secondary app-btn",
+          handler: addCertificationAlertDay,
+        })
+      );
+    }
+  }
+
+  function renderCertificationAlertPolicyDays() {
+    const container = $("#certificationAlertPolicyDays");
+    container.innerHTML = alertPolicyDays.map((day) => `
+      <span class="certification-alert-policy-day ${day === 0 ? "locked" : ""}">
+        <strong>${day === 0 ? "Jour J" : `J-${escapeHtml(day)}`}</strong>
+        <small>${day === 0 ? "expiration" : `${escapeHtml(day)} jours avant`}</small>
+        ${day === 0 ? "" : `<span data-remove-certification-alert-day-slot="${escapeHtml(day)}"></span>`}
+      </span>
+    `).join("");
+    container.querySelectorAll("[data-remove-certification-alert-day-slot]").forEach((slot) => {
+      const day = Number(slot.dataset.removeCertificationAlertDaySlot);
+      slot.replaceChildren(
+        createCertificationAlertActionButton({
+          label: `Retirer J-${day}`,
+          iconName: "x",
+          className: "certification-alert-policy-remove",
+          handler: () => {
+            alertPolicyDays = alertPolicyDays.filter((item) => item !== day);
+            renderCertificationAlertPolicyDays();
+          },
+        })
+      );
+    });
+    refreshIcons();
+  }
+
+  function addCertificationAlertDay() {
+    const input = $("#certificationAlertDayInput");
+    const day = Number(input.value);
+    if (!Number.isInteger(day) || day < 1 || day > 3650) {
+      showState("Indiquez un nombre entier compris entre 1 et 3 650 jours.", { error: true });
+      input.focus();
+      return;
+    }
+    if (alertPolicyDays.includes(day)) {
+      showState(`Le jalon J-${day} existe déjà pour cette certification.`, { error: true });
+      input.focus();
+      return;
+    }
+    if (alertPolicyDays.length >= 12) {
+      showState("Le plan peut contenir au maximum 12 jalons, jour J inclus.", { error: true });
+      return;
+    }
+    alertPolicyDays = [...alertPolicyDays, day].sort((a, b) => b - a);
+    input.value = "";
+    renderCertificationAlertPolicyDays();
+  }
+
+  function openCertificationAlertPolicy() {
+    alertPolicyDays = [...(alertPolicy?.jours_avant || [])]
+      .map(Number)
+      .filter(Number.isInteger)
+      .sort((a, b) => b - a);
+    if (!alertPolicyDays.includes(0)) alertPolicyDays.push(0);
+    $("#certificationAlertDayInput").value = "";
+    renderCertificationAlertPolicyDays();
+    hydrateCertificationAlertPolicyButtons();
+    $("#certificationAlertPolicyDialog").showModal();
+    refreshIcons();
+  }
+
+  async function saveCertificationAlertPolicy(event) {
+    event.preventDefault();
+    const days = [...new Set(alertPolicyDays)].sort((a, b) => b - a);
+    if (!days.includes(0)) {
+      showState("Le jour J doit rester présent dans le plan d’alerte.", { error: true });
+      return;
+    }
+    const task = async () => {
+      alertPolicy = await apiRequest(
+        `/api/v1/certifications/${certificationId}/expiration-alerts`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ jours_avant: days }),
+        }
+      );
+      cert = await apiGet(`/api/v1/certifications/${certificationId}`);
+      $("#certificationAlertPolicyDialog").close();
+      showTab("overview");
+      showState("Le plan d’alerte est appliqué immédiatement à cette certification.");
+    };
+    try {
+      if (window.HAUQE_ACTION_LOADER) {
+        await window.HAUQE_ACTION_LOADER.run(task, {
+          button: $("#saveCertificationAlertPolicy"),
+          title: "Plan d’alerte de la certification",
+          message: "Application des jalons",
+          detail: "Les alertes automatiques actives sont recalculées.",
+        });
+      } else {
+        await task();
+      }
+    } catch (error) {
+      showState(error?.message || "Impossible d’enregistrer le plan d’alerte.", { error: true });
+    }
   }
 
   function renderAudits() {
@@ -588,11 +811,12 @@
         `/api/v1/certifications/${certificationId}/renewals/${selectedRenewal.id}/complete`,
         payload
       );
-      [cert, context, renewals, history] = await Promise.all([
+      [cert, context, renewals, history, statusAnalysis] = await Promise.all([
         apiGet(`/api/v1/certifications/${certificationId}`),
         apiGet(`/api/v1/certifications/${certificationId}/context`),
         apiGet(`/api/v1/certifications/${certificationId}/renewals`),
         apiGet(`/api/v1/certifications/${certificationId}/history`),
+        apiGet(`/api/v1/certifications/${certificationId}/status-analysis`).catch(() => null),
       ]);
       $("#renewalCompletionDialog").close();
       selectedRenewal = null;
@@ -750,9 +974,10 @@
         }
       );
 
-      context = await apiGet(
-        `/api/v1/certifications/${certificationId}/context`
-      );
+      [context, statusAnalysis] = await Promise.all([
+        apiGet(`/api/v1/certifications/${certificationId}/context`),
+        apiGet(`/api/v1/certifications/${certificationId}/status-analysis`).catch(() => null),
+      ]);
 
       renderHeader();
       showTab("overview");
@@ -835,13 +1060,15 @@
     }
 
     const api = await import("/static/js/core/api.js");
+    const auth = await import("/static/js/core/auth.js");
     apiGet = api.apiGet;
     apiPost = api.apiPost;
     apiBlob = api.apiBlob;
     apiRequest = api.apiRequest;
+    canManageAlertPolicy = auth.hasPermission("VEILLE.GERER");
 
     const task = async () => {
-      [cert, context, audits, renewals, documents, history] =
+      [cert, context, audits, renewals, documents, history, alertPolicy, statusAnalysis] =
         await Promise.all([
           apiGet(`/api/v1/certifications/${certificationId}`),
           apiGet(`/api/v1/certifications/${certificationId}/context`),
@@ -851,6 +1078,8 @@
             `/api/v1/documents?ressource_type=CERTIFICATION&ressource_id=${encodeURIComponent(certificationId)}&limit=100&offset=0`
           ).then((payload) => payload.items || []),
           apiGet(`/api/v1/certifications/${certificationId}/history`),
+          apiGet(`/api/v1/certifications/${certificationId}/expiration-alerts`),
+          apiGet(`/api/v1/certifications/${certificationId}/status-analysis`).catch(() => null),
         ]);
 
       if (context.accreditation_id) {
@@ -908,6 +1137,19 @@
       "change",
       renderRenewalFiles
     );
+    $("#certificationAlertDayInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addCertificationAlertDay();
+      }
+    });
+    $("#certificationAlertPolicyForm").addEventListener(
+      "submit",
+      saveCertificationAlertPolicy
+    );
+    document.querySelectorAll("[data-close-certification-alert-policy]").forEach((button) => {
+      button.addEventListener("click", () => $("#certificationAlertPolicyDialog").close());
+    });
     document.querySelectorAll("[data-close-renewal-dialog]").forEach((button) => {
       button.addEventListener("click", () => {
         $("#renewalCompletionDialog").close();

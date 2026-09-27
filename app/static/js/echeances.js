@@ -57,6 +57,17 @@
     }[status] || status.replaceAll("_", " ");
   }
 
+  function displayStatus(item) {
+    const status = String(item?.statut || "PLANIFIEE").toUpperCase();
+    if (
+      !["TERMINEE", "ANNULEE"].includes(status)
+      && Number(item?.jours_restants) < 0
+    ) {
+      return "EN_RETARD";
+    }
+    return status;
+  }
+
   function perm(code) {
     return Array.isArray(user?.permissions)
       && user.permissions.includes(code);
@@ -374,7 +385,7 @@
             </span>
             <div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))} · ${e(displayText(item.type_echeance, "—"))}</small></div>
             <div class="deadline-row-meta"><strong>${e(remaining(item))}</strong><small>${e(item.responsable_name || "Non affectée")}</small></div>
-            <span class="deadline-status-pill">${e(statusLabel(item.statut))}</span>
+            <span class="deadline-status-pill">${e(statusLabel(displayStatus(item)))}</span>
             <span class="deadline-row-action-slot" data-deadline-action-slot="list" data-deadline-payload="${e(serializeDeadline(item))}"></span>
           </article>
         `).join("")
@@ -439,7 +450,7 @@
     sourceSelect.innerHTML = `<option value="">Toutes les sources</option>`
       + sources.map((value) => `<option value="${e(value)}">${e(value)}</option>`).join("");
     statusSelect.innerHTML = `<option value="">Tous les statuts</option>`
-      + statuses.map((value) => `<option value="${e(value)}">${e(value.replaceAll("_", " "))}</option>`).join("");
+      + statuses.map((value) => `<option value="${e(value)}">${e(statusLabel(value))}</option>`).join("");
     sourceSelect.value = currentSource;
     statusSelect.value = currentStatus;
   }
@@ -469,7 +480,7 @@
         <td><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.type_echeance, "Type non renseigné"))}</small></td>
         <td><span class="registry-source"><i data-lucide="link-2"></i>${e(displayText(sourceLabel(item), "Source non renseignée"))}</span><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))}</small></td>
         <td>${e(item.responsable_name || "Non affectée")}</td>
-        <td><span class="registry-status ${e(String(item.statut || "PLANIFIEE").toLowerCase())}">${e(statusLabel(item.statut))}</span>${String(item.statut || "").toUpperCase() === "ANNULEE" ? `<small class="registry-closure">Motif : ${e(displayText(item.motif_cloture, "consigné dans le journal"))}</small>` : ""}</td>
+        <td><span class="registry-status ${e(displayStatus(item).toLowerCase())}">${e(statusLabel(displayStatus(item)))}</span>${String(item.statut || "").toUpperCase() === "ANNULEE" ? `<small class="registry-closure">Motif : ${e(displayText(item.motif_cloture, "consigné dans le journal"))}</small>` : ""}</td>
         <td><span class="registry-action-slot" data-deadline-action-slot="registry" data-deadline-payload="${e(serializeDeadline(item))}"></span></td>
       </tr>
     `).join("");
@@ -597,9 +608,15 @@
   async function openCreate() {
     try {
       options ||= await api.apiGet("/api/v1/veille/workspace/deadline-options");
+      const certifications = options.certifications || [];
 
-      $("#deadlineCertification").innerHTML = options.certifications
-        .map((x) => `<option value="${e(x.id)}">${e(x.label)}</option>`).join("");
+      if (!certifications.length) {
+        state("Aucune certification n’est disponible. Enregistrez d’abord une certification avant de planifier une échéance.", true);
+        return;
+      }
+
+      $("#deadlineCertification").innerHTML = `<option value="">Sélectionner une certification…</option>`
+        + certifications.map((x) => `<option value="${e(x.id)}">${e(x.label)}</option>`).join("");
 
       $("#deadlineResponsible").innerHTML = `<option value="">Non affectée</option>`
         + options.users.map((x) => `<option value="${e(x.id)}">${e(x.label)}</option>`).join("");
@@ -617,6 +634,11 @@
 
   async function create(event) {
     event.preventDefault();
+
+    if (!$("#deadlineCertification").value) {
+      state("Sélectionnez la certification concernée avant de planifier l’échéance.", true);
+      return;
+    }
 
     try {
       await api.apiPost("/api/v1/echeances", {
@@ -641,7 +663,7 @@
   function showDetail() {
     if (!selected) return;
 
-    const status = String(selected.statut || "PLANIFIEE").toUpperCase();
+    const status = displayStatus(selected);
     const closed = ["TERMINEE","ANNULEE"].includes(status);
     const dueDate = selected.date_echeance
       ? new Date(`${String(selected.date_echeance).slice(0, 10)}T12:00:00`)
@@ -676,7 +698,7 @@
           <strong>${e(dateLabel(selected.date_echeance))}</strong>
           <span class="deadline-resource-line"><i data-lucide="building-2"></i>${e(displayText(selected.resource_label || selected.ressource_type, "Ressource non renseignée"))}</span>
         </div>
-        <span class="deadline-status-pill"><i data-lucide="${closed ? "check-circle-2" : "activity"}"></i>${e(statusLabel)}</span>
+        <span class="deadline-status-pill"><i data-lucide="${closed ? "check-circle-2" : "activity"}"></i>${e(statusLabel(selected.statut))}</span>
       </section>
 
       <div class="deadline-detail-layout">

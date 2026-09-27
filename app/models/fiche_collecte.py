@@ -35,6 +35,21 @@ class FicheCollecte(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
     )
 
+    # Dossier métier : une mission peut accueillir plusieurs entreprises ; les
+    # révisions d'une même entreprise partagent ce dossier.
+    dossier_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("fiches_collecte.id"),
+        nullable=True,
+    )
+
+    # Responsable initial de la collecte. Il ne change pas à chaque saisie.
+    responsable_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("utilisateurs.id"),
+        nullable=False,
+    )
+
     version_formulaire: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -119,6 +134,11 @@ class FicheCollecte(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     collecte_par = relationship(
         "Utilisateur",
         foreign_keys=[collecte_par_id],
+    )
+
+    responsable = relationship(
+        "Utilisateur",
+        foreign_keys=[responsable_id],
     )
 
     offres_declarees: Mapped[list["OffreDeclaree"]] = relationship(

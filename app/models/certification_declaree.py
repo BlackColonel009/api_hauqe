@@ -40,6 +40,14 @@ class CertificationDeclaree(
         nullable=True,
     )
 
+    # Liaison explicite vers le registre : le libellé historique est conservé
+    # mais ne sert plus de seule source de rapprochement BNEC.
+    organisme_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("organismes.id"),
+        nullable=True,
+    )
+
     norme_declaree: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -95,3 +103,5 @@ class CertificationDeclaree(
         "Certification",
         foreign_keys=[certification_officielle_id],
     )
+
+    organisme = relationship("Organisme", foreign_keys=[organisme_id])

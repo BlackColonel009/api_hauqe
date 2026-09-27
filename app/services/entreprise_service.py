@@ -170,6 +170,9 @@ def build_response(
         rccm=entreprise.rccm,
         nif=entreprise.nif,
         ifu=entreprise.ifu,
+        autre_identifiant_juridique=(
+            entreprise.autre_identifiant_juridique
+        ),
 
         date_creation=entreprise.date_creation,
         nationalite=entreprise.nationalite,
@@ -403,6 +406,9 @@ class EntrepriseService:
             rccm=normalized_rccm,
             nif=normalize_code(payload.nif),
             ifu=normalize_code(payload.ifu),
+            autre_identifiant_juridique=normalize_code(
+                payload.autre_identifiant_juridique
+            ),
 
             date_creation=payload.date_creation,
 
@@ -474,6 +480,9 @@ class EntrepriseService:
                         entreprise.raison_sociale,
                     "nom_commercial":
                         entreprise.nom_commercial,
+                    "autre_identifiant_juridique": (
+                        entreprise.autre_identifiant_juridique
+                    ),
                     "zone_siege_id":
                         str(entreprise.zone_siege_id),
                     "statut":
@@ -653,6 +662,9 @@ class EntrepriseService:
                 entreprise.nif,
             "ifu":
                 entreprise.ifu,
+            "autre_identifiant_juridique": (
+                entreprise.autre_identifiant_juridique
+            ),
             "zone_siege_id":
                 str(entreprise.zone_siege_id),
             "activite_principale":
@@ -670,6 +682,7 @@ class EntrepriseService:
             "rccm",
             "nif",
             "ifu",
+            "autre_identifiant_juridique",
             "nationalite",
             "email_principal",
             "telephone_principal",
@@ -681,7 +694,12 @@ class EntrepriseService:
         for field, value in changes.items():
 
             if field in text_fields:
-                if field in {"rccm", "nif", "ifu"}:
+                if field in {
+                    "rccm",
+                    "nif",
+                    "ifu",
+                    "autre_identifiant_juridique",
+                }:
                     value = normalize_code(value)
                 else:
                     value = clean_text(value)
@@ -718,6 +736,9 @@ class EntrepriseService:
                     entreprise.nif,
                 "ifu":
                     entreprise.ifu,
+                "autre_identifiant_juridique": (
+                    entreprise.autre_identifiant_juridique
+                ),
                 "zone_siege_id":
                     str(entreprise.zone_siege_id),
                 "activite_principale":

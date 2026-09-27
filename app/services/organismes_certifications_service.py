@@ -27,6 +27,7 @@ from app.models.accreditation import Accreditation
 from app.models.audit_certification import AuditCertification
 from app.models.alerte import Alerte
 from app.models.certification import Certification
+from app.models.certification_declaree import CertificationDeclaree
 from app.models.couverture_certification import CouvertureCertification
 from app.models.document import Document
 from app.models.evenement_certification import EvenementCertification
@@ -53,8 +54,12 @@ from app.schemas.organismes_certifications import (
     AuditCertificationResponse,
     AuditCertificationUpdateRequest,
     CertificationCreateRequest,
+    CertificationExpirationAlertPolicyResponse,
+    CertificationExpirationAlertPolicyUpdateRequest,
     CertificationListResponse,
     CertificationResponse,
+    CertificationStatusAnalysisResponse,
+    CertificationStatusFinding,
     CertificationStatusRequest,
     CertificationUpdateRequest,
     CertificationVerificationRequest,
@@ -200,6 +205,7 @@ def certification_response(item: Certification) -> CertificationResponse:
         date_obtention=item.date_obtention,
         date_effet=item.date_effet,
         date_expiration=item.date_expiration,
+        seuils_alerte_expiration_jours=item.seuils_alerte_expiration_jours,
         statut=item.statut,
         motif_statut=item.motif_statut,
         classification=item.classification,
@@ -850,6 +856,73 @@ class CertificationService:
         return certification_response(await CertificationService.require(db, certification_id))
 
     @staticmethod
+    async def expiration_alert_policy(
+        db: AsyncSession,
+        certification_id: UUID,
+    ) -> CertificationExpirationAlertPolicyResponse:
+        item = await CertificationService.require(db, certification_id)
+        from app.services.veille_service import WatchService
+
+        if item.seuils_alerte_expiration_jours is not None:
+            days = WatchService.normalize_certification_expiration_alert_days(
+                item.seuils_alerte_expiration_jours
+            )
+            source = "CERTIFICATION"
+        else:
+            days = await WatchService.default_expiration_alert_days(db)
+            source = "REGLE_GENERALE"
+
+        return CertificationExpirationAlertPolicyResponse(
+            certification_id=item.id,
+            jours_avant=days,
+            source=source,
+        )
+
+    @staticmethod
+    async def update_expiration_alert_policy(
+        db: AsyncSession,
+        *,
+        certification_id: UUID,
+        payload: CertificationExpirationAlertPolicyUpdateRequest,
+        actor: AuthContext,
+        request: Request,
+    ) -> CertificationExpirationAlertPolicyResponse:
+        item = await CertificationService.require(db, certification_id)
+        from app.services.veille_service import WatchService
+
+        days = WatchService.normalize_certification_expiration_alert_days(
+            payload.jours_avant
+        )
+        before = item.seuils_alerte_expiration_jours
+        item.seuils_alerte_expiration_jours = days
+
+        # Recalcule immédiatement l'alerte active afin qu'une modification ne
+        # reste pas sans effet jusqu'au prochain passage du worker quotidien.
+        await WatchService.refresh_certification_expiration_alert(
+            db,
+            certification=item,
+        )
+        await write_audit_event(
+            db,
+            action="CERTIFICATION_EXPIRATION_ALERT_POLICY_UPDATE",
+            categorie="VEILLE",
+            resultat="SUCCES",
+            utilisateur_id=actor.user.id,
+            ressource_type="certification",
+            ressource_id=item.id,
+            adresse_ip=client_ip(request),
+            valeurs_avant={"jours_avant": before},
+            valeurs_apres={"jours_avant": days},
+        )
+        await db.commit()
+        await db.refresh(item)
+        return CertificationExpirationAlertPolicyResponse(
+            certification_id=item.id,
+            jours_avant=days,
+            source="CERTIFICATION",
+        )
+
+    @staticmethod
     async def create(
         db: AsyncSession, *, payload: CertificationCreateRequest,
         actor: AuthContext, request: Request,
@@ -1069,6 +1142,158 @@ class CertificationService:
         await db.commit()
         await db.refresh(item)
         return certification_response(item)
+
+
+class CertificationStatusAnalysisService:
+    """Analyse explicable des causes métier qui influencent un certificat.
+
+    Cette lecture est volontairement calculée à partir des données réelles du
+    dossier. Elle ne modifie ni le certificat, ni le classement SNCC : elle
+    rend visibles les manquements qui seront pris en compte par le moteur.
+    """
+
+    @staticmethod
+    async def analyse(
+        db: AsyncSession,
+        certification_id: UUID,
+    ) -> CertificationStatusAnalysisResponse:
+        item = await CertificationService.require(db, certification_id)
+        today = date.today()
+        constats: list[CertificationStatusFinding] = []
+
+        source_result = await db.execute(
+            select(CertificationDeclaree)
+            .where(
+                CertificationDeclaree.certification_officielle_id == item.id,
+            )
+            .order_by(
+                CertificationDeclaree.updated_at.desc(),
+                CertificationDeclaree.created_at.desc(),
+            )
+            .limit(1)
+        )
+        source = source_result.scalar_one_or_none()
+        has_document = await CertificationRepository.has_active_document(db, item.id)
+        renewals = await RenouvellementRepository.list(db, item.id)
+        has_open_renewal = any(
+            renewal.date_decision is None
+            and (renewal.statut or "").strip().upper()
+            not in {"ANNULE", "ANNULEE", "CLOTURE", "CLOTUREE", "TERMINE", "TERMINEE"}
+            for renewal in renewals
+        )
+
+        if item.date_expiration and item.date_expiration < today:
+            constats.append(CertificationStatusFinding(
+                code="EXPIRATION_DEPASSEE",
+                niveau="CRITIQUE",
+                libelle="Certificat expiré",
+                detail=(
+                    f"La date d'expiration ({item.date_expiration.strftime('%d/%m/%Y')}) "
+                    "est dépassée. Le statut SNCC prioritaire est EX."
+                ),
+                action_label="Gérer le renouvellement",
+                action_tab="renewals",
+            ))
+        elif item.date_expiration is None:
+            constats.append(CertificationStatusFinding(
+                code="EXPIRATION_NON_RENSEIGNEE",
+                niveau="MAJEUR",
+                libelle="Date d'expiration absente",
+                detail=(
+                    "Le contrôle de validité ne peut pas être établi tant que "
+                    "la date d'expiration n'est pas renseignée."
+                ),
+                action_label="Voir les informations du certificat",
+                action_tab="overview",
+            ))
+
+        if item.authenticite_verifiee is not True:
+            if not has_document:
+                detail = (
+                    "Aucun document actif n'est rattaché au certificat ; "
+                    "l'authenticité ne peut pas être confirmée."
+                )
+            elif source and source.copie_disponible is not True:
+                detail = (
+                    "La copie déclarée n'est pas confirmée dans la collecte ; "
+                    "l'authenticité documentaire reste à vérifier."
+                )
+            else:
+                detail = "L'authenticité documentaire n'a pas encore été confirmée."
+            constats.append(CertificationStatusFinding(
+                code="AUTHENTICITE_NON_CONFIRMEE",
+                niveau="MAJEUR",
+                libelle="Copie documentaire non confirmée",
+                detail=detail,
+                action_label="Voir les documents",
+                action_tab="documents",
+            ))
+
+        if item.date_expiration and item.date_expiration < today and not has_open_renewal:
+            constats.append(CertificationStatusFinding(
+                code="RENOUVELLEMENT_NON_OUVERT",
+                niveau="MAJEUR",
+                libelle="Renouvellement à initier",
+                detail=(
+                    "Aucune procédure de renouvellement ouverte n'a été trouvée "
+                    "pour ce certificat expiré."
+                ),
+                action_label="Ouvrir un renouvellement",
+                action_tab="renewals",
+            ))
+
+        statut = (item.statut or "").strip().upper()
+        if any(token in statut for token in ("RETIRE", "RETIREE", "RETIRED")):
+            constats.append(CertificationStatusFinding(
+                code="CERTIFICAT_RETIRE",
+                niveau="CRITIQUE",
+                libelle="Certificat retiré",
+                detail="Le statut SNCC prioritaire est RT.",
+                action_label="Consulter l'historique",
+                action_tab="history",
+            ))
+        elif "SUSPEND" in statut:
+            constats.append(CertificationStatusFinding(
+                code="CERTIFICAT_SUSPENDU",
+                niveau="CRITIQUE",
+                libelle="Certificat suspendu",
+                detail="Le statut SNCC prioritaire est SU.",
+                action_label="Consulter l'historique",
+                action_tab="history",
+            ))
+
+        if item.motif_statut:
+            constats.append(CertificationStatusFinding(
+                code="MOTIF_STATUT_ENREGISTRE",
+                niveau="INFORMATION",
+                libelle="Motif de statut enregistré",
+                detail=item.motif_statut,
+                action_label="Historique des décisions et vérifications",
+                action_tab="history",
+            ))
+
+        from app.services.automatic_scoring_service import AutomaticScoringService
+
+        priority_status, _ = AutomaticScoringService._sncc_priority_status(item)
+        if not constats:
+            constats.append(CertificationStatusFinding(
+                code="AUCUN_MANQUEMENT_DETECTE",
+                niveau="CONFORME",
+                libelle="Aucun manquement bloquant détecté",
+                detail=(
+                    "Les données de validité, l'authenticité documentaire et le "
+                    "statut enregistré ne font pas apparaître de priorité SNCC."
+                ),
+                action_label="Historique des décisions et vérifications",
+                action_tab="history",
+            ))
+
+        return CertificationStatusAnalysisResponse(
+            certification_id=item.id,
+            statut_certificat=item.statut,
+            statut_sncc_prioritaire=priority_status,
+            constats=constats,
+        )
 
 
 # ============================================================

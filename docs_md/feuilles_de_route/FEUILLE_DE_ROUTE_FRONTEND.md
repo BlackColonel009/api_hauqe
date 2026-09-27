@@ -4109,3 +4109,515 @@ La carte en tête indique la prochaine action attendue et le nombre d'étapes
 restantes. Un ajournement ou rejet N1/N2, ou un contrôle/intégration bloqué,
 est explicitement signalé sans afficher d'UUID. Cette fonction est de lecture
 seule : **Base PostgreSQL modifiée : non ; migration : aucune.**
+
+### Saisie de collecte limitée aux affectations (23/09/2026)
+
+La restriction est appliquée par l'API, donc elle protège également un appel
+direct hors interface. Dans les formulaires de collecte, une tentative de
+création, modification, réinitialisation, soumission, révision ou ajout d'une
+offre/certification par un agent non affecté doit afficher le message `403`
+renvoyé par le serveur : une affectation active à la mission est requise.
+
+L'amélioration UX ultérieure consiste à ne proposer à l'agent collecteur que
+ses missions affectées ; elle ne doit jamais remplacer le contrôle côté
+serveur. **Base PostgreSQL modifiée : non ; migration : aucune.**
+
+### Catalogue des rôles à la création d'utilisateur (24/09/2026)
+
+La fenêtre **Utilisateurs → Nouvel utilisateur** affiche tous les rôles dont
+le statut est actif, y compris les données historiques écrites `ACTIVE` au
+lieu de `ACTIF`. Le nombre de rôles disponibles est affiché dans la section
+afin de rendre une absence ou un filtre visible. Un rôle inactif demeure
+volontairement non attribuable. Le script et la feuille de style sont
+versionnés pour empêcher qu'une copie navigateur ancienne masque le correctif.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Cellule de veille — relance : validation texte fiable (25/09/2026)
+
+Le formulaire **Nouvelle relance** lit directement ses champs par leurs
+identifiants stables avant l'appel API. Les données `destinataire`, `adresse
+e-mail`, `canal`, `objet` et `contenu` sont donc toujours des chaînes de texte
+primitives, même si une ancienne copie du modèle HTML est encore en mémoire.
+
+Les champs obligatoires vides sont signalés avant l'envoi. Si l'API répond
+malgré tout `422`, la page identifie le libellé du champ concerné au lieu
+d'afficher seulement « Input should be a valid string ». Le script Veille est
+versionné dans le routeur : un rechargement forcé charge impérativement la
+correction.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Cellule de veille — un seul propriétaire de soumission (25/09/2026)
+
+Le formulaire **Nouvelle relance** est soumis uniquement par `veille.js`. Le
+script global d’ajout d’informations partagées peut enrichir l’interface mais
+ne doit jamais intercepter, empêcher ou réémettre ce formulaire. Cette règle
+évite qu’un mapping ancien de noms de champs transmette des valeurs vides alors
+que les champs visibles sont remplis.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Matrice SNCC — continuité au centième (25/09/2026)
+
+Les bornes du préremplissage SNCC sont au centième (`39,99 → 40`, `59,99 →
+60`, `74,99 → 75`, `89,99 → 90`). La vérification navigateur arrondit la
+différence au centième avant de rechercher une lacune. Ainsi, les imprécisions
+binaires de JavaScript ne peuvent plus empêcher la création du brouillon ; une
+vraie plage non couverte reste signalée.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Matrice SNCC — reprise d’un brouillon existant (25/09/2026)
+
+À l'ouverture de l’onglet **Classement SNCC**, la page recherche désormais un
+brouillon de matrice existant et recharge ses libellés, ses plages et ses
+associations classe/statut/risque. Le bouton devient **Enregistrer le
+brouillon SNCC** et met à jour cette version au lieu de tenter de recréer le
+même code/version. Le bouton de publication devient immédiatement disponible.
+
+La version est volontairement verrouillée pendant l’édition d’un brouillon,
+car elle participe au code physique de la règle. Une nouvelle version est à
+créer après publication.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Règles et codification — matrice SNCC guidée (25/09/2026)
+
+L’onglet **Classement SNCC** est ajouté à la page **Règles et codification**.
+Il remplace la saisie technique d’un JSON par un tableau lisible des cinq
+classes : **A+** très favorable, **A** favorable, **B** à suivre, **C** fragile
+et **D** critique.
+
+Le bouton **Charger le préremplissage** propose des plages modifiables, une
+association initiale statut/risque et tous les choix institutionnels :
+
+- statuts `VA`, `RE`, `SU`, `RT`, `EX`, `VE` ;
+- risques `R1` à `R5` ;
+- classes `A+`, `A`, `B`, `C`, `D`.
+
+L’utilisateur vérifie d’abord la matrice, crée un brouillon, puis utilise le
+modal HAUQE de publication avec une référence d’approbation. Les boutons sont
+liés avec le patron réactif direct de Gestion des campagnes afin de répondre au
+premier clic.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte soumise → offres de l'entreprise (24/09/2026)
+
+À la soumission, chaque offre déclarée nommée est reprise dans
+**Entreprise → Offres / produits**. Le rapprochement utilise le type, le nom
+et la catégorie : une ligne déjà existante est mise à jour, elle n'est pas
+dupliquée. Les marchés visés de la collecte deviennent les **Marchés cibles**
+et les **Destinations** de l'offre entreprise. Les brouillons et les offres
+sans nom ne sont jamais synchronisés.
+
+**Base PostgreSQL modifiée : oui, données des offres uniquement ; migration :
+aucune ; seed : aucun.**
+
+### Offres de collecte — doublons bloqués (24/09/2026)
+
+Une offre est désormais identifiée dans une fiche par **type + nom +
+catégorie**. L'interface masque les anciennes lignes répétées même si leurs
+volumes ou capacités divergent. L'API retourne l'offre existante en cas de
+double envoi ; l'utilisateur ne voit donc pas deux cartes après
+l'enregistrement.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`h3d9e4f1a607_declared_offer_duplicate_protection.py` ; seed : aucun.**
+
+### Collecte soumise → offres de l'entreprise (24/09/2026)
+
+À la soumission, chaque offre déclarée nommée est reprise dans
+**Entreprise → Offres / produits**. Le rapprochement utilise le type, le nom
+et la catégorie : une ligne déjà existante est mise à jour, elle n'est pas
+dupliquée. Les marchés visés de la collecte deviennent les **Marchés cibles**
+et les **Destinations** de l'offre entreprise. Les brouillons et les offres
+sans nom ne sont jamais synchronisés.
+
+**Base PostgreSQL modifiée : oui, données des offres uniquement ; migration :
+aucune ; seed : aucun.**
+
+### Journal d'audit et fiches de collecte — recherche et actions stables (24/09/2026)
+
+- **Journal d'audit** : la recherche retrouve désormais un auteur par nom,
+  prénoms ou e-mail, y compris lorsqu'il ne figurait pas dans les 500 lignes
+  initialement chargées. Les boutons Réinitialiser, Fermer, Vérifier
+  l'intégrité et Exporter sont recréés avec le patron d'action directe.
+- **Fiche de collecte soumise** : les offres et certifications affichées sont
+  normalisées par identifiant puis par contenu. Les sauvegardes simultanées de
+  ces deux listes partagent maintenant une requête unique afin d'empêcher la
+  création involontaire de doublons par clics rapprochés.
+- **Collectes & contrôles** : le bouton vert **Ouvrir la collecte** est créé
+  après rendu avec son écouteur direct, protège sa navigation et présente un
+  libellé explicite. Lorsqu'un bouton est corrigé, auditer les autres actions
+  de son bloc et employer ce même patron plutôt que `onclick` sur du HTML
+  remplacé.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Stabilité des boutons et thème nuit du suivi de dossier (24/09/2026)
+
+Cause racine documentée : l'actualisation automatique remplaçait le DOM de
+pages opérationnelles toutes les trente secondes. Pendant ce remplacement,
+les boutons injectés pouvaient être visibles sans leur écouteur courant ou
+accumuler des écouteurs après réexécution du script. Les pages
+**Gestion des campagnes** et **Profil** ne présentaient pas le défaut car
+elles étaient déjà exclues de ce mécanisme.
+
+L'actualisation silencieuse est maintenant limitée au **Tableau de bord**,
+qui est une vue consultative. Tous les écrans opérationnels utilisent le
+bouton **Actualiser** explicite : aucune saisie, modal ni action ne sera
+remplacé en arrière-plan. Cette règle est prioritaire pour tout nouveau
+bouton ou formulaire dynamique.
+
+Le composant partagé **Suivi du dossier / Parcours de traitement** reçoit une
+palette complète en thème nuit : Collecte, Vérification, Contrôle FUCCS,
+Validation et Intégration BNEC utilisent les mêmes contrastes pour étapes à
+faire, en cours, terminées et bloquées.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Fiabilité des actions structurées et lecture Collecte → Entreprise (24/09/2026)
+
+Dans les formulaires **Entreprise** (création et modification), les boutons
+Ajouter / corbeille des contacts, sites et produits-services sont désormais
+créés après chaque rendu par `document.createElement`, avec écouteur direct,
+`preventDefault`, `stopPropagation` et `data-no-action-loader="true"`.
+Le même patron est appliqué aux offres, certifications déclarées et fichiers
+en attente dans la **Nouvelle collecte**. Une ligne déjà enregistrée peut être
+retirée uniquement dans une fiche brouillon ; la suppression est refusée dès
+la soumission afin de préserver le parcours de contrôle.
+
+Les données de collecte restent des données déclarées : elles ne remplacent
+pas automatiquement les données institutionnelles de l'entreprise avant
+vérification. `marchés visés` dans la collecte décrit le marché commercial
+déclaré ; `destinations` dans l'entreprise décrit les destinations
+géographiques. L'activité principale peut être initialisée par la première
+offre collectée sans écraser une valeur existante. Toute synchronisation des
+marchés vers le dossier entreprise doit être une règle métier explicite,
+validée et traçable — elle ne doit pas être assimilée à une destination.
+
+La vue **Collectes & contrôles** renforce la hiérarchie visuelle : campagne
+comme cadre principal, missions comme paliers et collectes entreprises comme
+fiches distinctes. Le thème nuit est appliqué à l'intégralité du détail
+**Intégration BNEC** (cartes, plan, informations d'entreprise et modal).
+
+Dans **Règles et codification**, les listes et actions dynamiques de règles,
+modèles, pondérations, codification et grille FUCCS sont reconstruites avant
+leur écouteur direct afin que les icônes Ajouter, Modifier et Supprimer
+répondent au premier clic.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Fiabilité des actions structurées et lecture Collecte → Entreprise (24/09/2026)
+
+Dans les formulaires **Entreprise** (création et modification), les boutons
+Ajouter / corbeille des contacts, sites et produits-services sont désormais
+créés après chaque rendu par `document.createElement`, avec écouteur direct,
+`preventDefault`, `stopPropagation` et `data-no-action-loader="true"`.
+Le même patron est appliqué aux offres, certifications déclarées et fichiers
+en attente dans la **Nouvelle collecte**. Une ligne déjà enregistrée peut être
+retirée uniquement dans une fiche brouillon ; la suppression est refusée dès
+la soumission afin de préserver le parcours de contrôle.
+
+Les données de collecte restent des données déclarées : elles ne remplacent
+pas automatiquement les données institutionnelles de l'entreprise avant
+vérification. `marchés visés` dans la collecte décrit le marché commercial
+déclaré ; `destinations` dans l'entreprise décrit les destinations
+géographiques. L'activité principale peut être initialisée par la première
+offre collectée sans écraser une valeur existante. Toute synchronisation des
+marchés vers le dossier entreprise doit être une règle métier explicite,
+validée et traçable — elle ne doit pas être assimilée à une destination.
+
+La vue **Collectes & contrôles** renforce la hiérarchie visuelle : campagne
+comme cadre principal, missions comme paliers et collectes entreprises comme
+fiches distinctes. Le thème nuit est appliqué à l'intégralité du détail
+**Intégration BNEC** (cartes, plan, informations d'entreprise et modal).
+
+Dans **Règles et codification**, les listes et actions dynamiques de règles,
+modèles, pondérations, codification et grille FUCCS sont reconstruites avant
+leur écouteur direct afin que les icônes Ajouter, Modifier et Supprimer
+répondent au premier clic.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Échéances — libellé de statut et planification (24/09/2026)
+
+Dans le modal de détail d'une échéance, un défaut de rendu pouvait convertir
+la fonction JavaScript de traduction des statuts en texte visible. Règle à
+préserver : toute valeur affichée dans un template doit être le **résultat**
+d'une fonction (ex. `statusLabel(item.statut)`), jamais la fonction elle-même.
+
+Le statut affiche désormais uniquement un libellé métier lisible : Planifiée,
+En cours, Terminée, Annulée ou En retard. Le filtre de statut utilise les mêmes
+libellés. La planification impose une sélection explicite de certification et
+informe l'utilisateur si aucune certification n'est encore disponible. Le
+message de veille indique que les seuils peuvent être configurés par
+certification, avec repli sur la règle publiée.
+
+Le modal de détail conserve son motif HAUQE, mais son en-tête adopte la couleur
+du statut affiché : **orange** pour Planifiée, **bleu** pour En cours, **vert**
+pour Terminée, **rouge** pour En retard/expirée et gris violacé pour Annulée.
+Une date passée est rendue « En retard » même si l'enregistrement historique
+porte encore `PLANIFIEE` ; cette couleur ne modifie pas la base.
+
+Le modal de détail d'une **alerte** utilise le même motif et suit son statut :
+**orange** pour Nouvelle ou Affectée, **bleu** pour En cours et **vert** pour
+Résolue ou Clôturée. La criticité de l'alerte reste affichée séparément dans
+sa pastille et ne change pas artificiellement le statut.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte & contrôle — arborescence mission / collectes / responsable (24/09/2026)
+
+La liste opérationnelle suit explicitement la structure **Campagne → Mission
+→ Collectes entreprises**. Une mission n'est affichée qu'une fois ; elle
+contient ensuite toutes ses fiches d'entreprise courantes. Chaque collecte
+montre son entreprise, son statut, sa complétude et le **responsable de la
+fiche**, c'est-à-dire l'agent qui l'a créée. Les agents affectés à la mission
+restent visibles séparément : ils ne sont pas confondus avec le responsable
+d'une collecte particulière.
+
+Le bouton **Nouvelle collecte** d'une mission ouvre une fiche vierge pour
+cette mission précise (`#/collectes/nouveau/{mission_id}`), même si d'autres
+entreprises possèdent déjà une fiche. Les boutons restent créés après rendu,
+avec écouteur direct et `data-no-action-loader="true"`.
+
+La réinitialisation d'un brouillon ne vide désormais que les données de cette
+fiche. Elle ne modifie jamais la campagne, la mission, la zone, la période ou
+les agents affectés, car ces informations sont partagées par les autres
+collectes de la mission.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+#### Étape préparatoire — dossiers de collecte par entreprise (24/09/2026)
+
+Le backend distingue maintenant le dossier de collecte et son responsable
+stable. L’interface de création et la liste « Mes collectes » seront branchées
+sur ce socle dans l’étape suivante. Cette séparation ne doit pas être rendue
+partiellement visible avant que les contrôles d’accès par fiche soient actifs.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`e1b7c4d9a206_collection_case_ownership.py` ; seed : aucun.**
+
+### Plan d’alerte d’expiration d’une certification (24/09/2026)
+
+Dans **Certifications → fiche d’une certification → Vue d’ensemble**, la carte
+« Alertes d’expiration » affiche les jalons applicables sous une forme lisible
+(`J-120`, `J-45`, `J-15`, `Jour J`). Le bouton **Paramétrer** est visible aux
+détenteurs de `VEILLE.GERER` : la Cellule de veille et l’administrateur HAUQE
+peuvent ajouter ou retirer des jours entre 1 et 3 650, sans doublon et dans la
+limite de douze jalons. Le jour J est affiché, verrouillé et ne peut pas être
+retiré.
+
+Le dialogue utilise le thème modal HAUQE : en-tête vert, corps défilant et
+actions fixes. Après enregistrement, la carte se met à jour et le backend
+recalcule l’alerte active immédiatement. La mention « règle générale » reste
+visible sur les certifications historiques non encore personnalisées.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`b4c8d1e2f3a6_certification_expiration_alert_policy.py` ; seed : aucun.**
+
+#### Réactivité des actions du plan d’alerte (24/09/2026)
+
+Les commandes **Paramétrer**, **Ajouter** et **Retirer J-n** suivent le patron
+validé de **Gestion des campagnes** : un emplacement neutre est rendu, puis le
+vrai bouton est créé avec `document.createElement` après le rendu, reçoit un
+écouteur direct unique qui annule la propagation, ainsi que
+`data-no-action-loader="true"`. Ce mécanisme est obligatoire pour les actions
+redessinées dans le modal ; il évite les clics ignorés ou nécessitant un
+rafraîchissement. Le bouton de sauvegarde conserve son chargeur métier manuel,
+mais est également exclu du chargeur global.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte & contrôle — arborescence opérationnelle campagne / mission (24/09/2026)
+
+La page **Collectes & contrôles** présente désormais d’abord les campagnes du
+registre courant. Chaque ligne de campagne possède un bouton **Voir les
+missions** qui ouvre sous cette ligne la liste de ses missions, avec la zone,
+les agents affectés, l’entreprise liée, l’état de la fiche, la période prévue
+et une action **Ouvrir**. Le paramétrage reste dans **Gérer les campagnes** ;
+cette arborescence est l’espace de consultation opérationnelle.
+
+Les boutons d’ouverture sont obligatoirement créés après le rendu de la liste
+avec `document.createElement`, `data-no-action-loader="true"`,
+`preventDefault`, `stopPropagation` et un écouteur direct unique. Un bouton
+recréé par un filtre, une recherche ou une pagination doit ainsi répondre dès
+le premier clic.
+
+Cette évolution organise l’affichage. La future évolution métier
+**Mission → plusieurs fiches de collecte d’entreprises** reste distincte : elle
+nécessitera des règles d’accès par fiche et une migration dédiée ; elle ne doit
+pas être simulée par l’interface seule.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+#### Création autonome des missions et affectation multiple (24/09/2026)
+
+Depuis chaque ligne de campagne de **Collectes & contrôles**, le bouton
+**Créer une mission** ouvre le modal HAUQE dédié. Il demande la référence,
+la zone, les dates et l’objet de mission ; la sélection des agents se fait par
+cases à cocher et ne possède aucune limite fonctionnelle de cinq agents. La
+mission est enregistrée sans créer de fiche entreprise. Les collecteurs
+affectés pourront ensuite ouvrir la mission pour démarrer la collecte qui leur
+sera attribuée dans la prochaine évolution par fiche.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Précréation terrain, contacts et cartographie des sites (24/09/2026)
+
+Dans **Collectes & contrôle → Nouvelle collecte → Entreprise → Précréer
+l’entreprise**, le formulaire inclut désormais une adresse terrain, latitude,
+longitude et le bouton **Utiliser ma position**. Le navigateur demande le
+consentement de l’agent ; un refus ou une indisponibilité laisse les champs
+manuels utilisables. La position nécessite un contexte sécurisé (HTTPS) ou
+`localhost`, selon les règles du navigateur.
+
+Après précréation, le site « Siège / site collecté » est disponible dans la
+fiche entreprise. Si latitude et longitude sont renseignées, le bouton
+**Voir la carte** ouvre Google Maps dans un nouvel onglet. Les informations de
+déclarant d’une fiche alimentent les **Contacts → Interlocuteurs actifs** et
+la première description d’offre complète une **Activité principale** vide sans
+écraser une valeur déjà présente.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Autre identifiant juridique d'entreprise (24/09/2026)
+
+Dans **Nouvelle entreprise** et **Modifier entreprise**, le champ facultatif
+« Autre identifiant juridique » est rangé avec RCCM, NIF et IFU sous
+l'interrupteur **Identifiants juridiques**. Sa valeur est reprise dans l'étape
+de vérification avant enregistrement. Le formulaire active automatiquement ce
+bloc lorsqu'une valeur juridique historique existe et son script est versionné.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`f7a1e2c3d4b5_other_legal_identifier.py` ; seed : aucun.**
+
+### Libellés des certifications déclarées dans la collecte (24/09/2026)
+
+Dans la fiche de collecte, les noms présentés à l'agent sont désormais
+« Numéro du certificat », « Organisme certificateur » et « Norme / référentiel
+du certificat ». Les clés API et les colonnes existantes restent inchangées
+afin de préserver les données et l'intégration BNEC. Le script est versionné
+dans le routeur pour assurer le rechargement de ces libellés.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte par entreprise dans une mission et gestion des affectations (24/09/2026)
+
+Le bouton **Nouvelle collecte** ne crée plus ni campagne ni mission. Il ouvre
+une fiche qui demande d'abord une **mission existante à laquelle l'agent est
+affecté**, présente ses informations en lecture seule, puis laisse l'agent
+choisir ou précréer l'entreprise et créer sa fiche indépendante.
+
+Dans **Collectes & contrôles**, chaque mission propose à l'administrateur
+HAUQE le bouton **Agents**. Le modal HAUQE permet d'ajouter autant d'agents
+actifs que nécessaire à une mission déjà enregistrée, y compris si des fiches
+de cette mission sont clôturées. Cette action ne réouvre aucune fiche et ne
+crée aucune révision. Le modal **Créer une mission** propose également le
+bouton **Créer** près de la zone administrative ; la zone est créée puis
+sélectionnée immédiatement.
+
+Les actions utilisent le patron réactif de Gestion des campagnes : boutons
+créés après rendu avec `document.createElement`, écouteur direct unique,
+`preventDefault`, `stopPropagation` et `data-no-action-loader="true"`.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`e1b7c4d9a206_collection_case_ownership.py` ; seed : aucun.**
+
+### Vérifications — consultation des collectes sans affectation (27/09/2026)
+
+Un utilisateur portant uniquement le rôle **Vérificateur** peut consulter les
+collectes grâce à `COLLECTE.LIRE`, sans bouton ni API de création, modification
+ou soumission. Il traite les dossiers de vérification, mais les actions
+d'affectation et de réaffectation restent invisibles et refusées par l'API : le
+rôle ne possède pas `VERIFICATION.AFFECTER`.
+
+L'affectation des vérificateurs relève du **Point focal BNEC** ou de
+l'**Administrateur HAUQE**. Après le changement des droits, l'utilisateur doit
+actualiser sa session afin que l'interface recharge ses permissions.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; script : `python -m app.scripts.sync_verificateur_collecte_read`.**
+
+### Scoring, INFC et SNCC automatiques avec rapport (25/09/2026)
+
+Les boutons **Évaluer automatiquement**, **Calculer automatiquement** et
+**Calculer automatiquement** du SNCC appellent les endpoints métier sans
+ouvrir de formulaire de saisie de notes. Le modal de rapport indique le score,
+la classe ou le niveau, la règle publiée utilisée, les informations conformes,
+les alertes et les blocages. Un résultat est rechargé seulement après la
+fermeture de ce rapport afin de rendre l'opération lisible.
+
+Le SNCC reste volontairement bloqué tant que la matrice de classement publiée
+`SNCC_CLASSIFICATION_MATRIX` n'a pas été paramétrée et publiée par la HAUQE.
+Cette protection évite d'afficher une classe ou un risque non approuvé.
+
+Les écrans Scoring, INFC et SNCC doivent charger le moteur de calcul
+automatique avant leur script propre. Un bouton ne doit jamais appeler une
+fonction optionnelle silencieuse : si le moteur ne peut pas être chargé, l'état
+de page affiche l'erreur ; sinon le clic ouvre systématiquement le rapport de
+calcul ou de blocage. Les boutons sont créés après le rendu avec un écouteur
+direct, selon le patron réactif de Gestion des campagnes.
+
+Pour le SNCC, le rapport automatique présente le **score**, la **classe**, le
+**statut administratif** et le **niveau de risque** retournés par la ligne
+applicable de `SNCC_CLASSIFICATION_MATRIX`. Aucune de ces valeurs ne doit être
+demandée à l'utilisateur lorsque le bouton **Calculer automatiquement** est
+utilisé.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Vérification — résolution fiable des anomalies (25/09/2026)
+
+Dans le dossier **Vérifications > Anomalies**, l'action **Résoudre** ne doit
+jamais utiliser une fenêtre native `prompt()`. Elle ouvre le modal opérationnel
+HAUQE, exige la mesure de résolution et recrée son bouton après chaque rendu de
+la liste avec un écouteur direct unique. Ainsi, l'action reste disponible au
+premier clic après un changement d'onglet, une erreur ou le redessin de la
+liste.
+
+Un observateur DOM ne doit cibler que le conteneur métier concerné et ne doit
+relancer les icônes que lorsqu'il a réellement recréé une action. Observer
+`document.body` puis appeler le moteur d'icônes à chaque mutation crée une
+boucle de rendu susceptible de bloquer la page.
+
+Après validation, la ligne affiche immédiatement le statut **Résolue** et la
+mesure saisie. Toute erreur est affichée dans le modal sans fermer celui-ci.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Administration — copie des identifiants initiaux (24/09/2026)
+
+Après création d'un utilisateur, les icônes de copie du courriel et du mot de
+passe initial utilisent d'abord `navigator.clipboard` en HTTPS/localhost,
+puis un secours par sélection temporaire et `document.execCommand("copy")`.
+La copie reste donc utilisable via une adresse HTTP du réseau local, où l'API
+moderne du presse-papiers est volontairement bloquée par le navigateur. Une
+valeur vide ou indisponible affiche un message clair.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — statuts métier prioritaires et explication de statut (26/09/2026)
+
+Dans **Règles et codification > Classement SNCC**, le préremplissage ne propose
+plus que les statuts normaux de score **VA** et **RE**. La page explique que la
+matrice fixe la classe et le risque, tandis que **EX** (expiré), **VE** (en
+vérification), **SU** (suspendu) et **RT** (retiré) sont appliqués par le
+moteur selon la situation effective de la certification.
+
+La fiche d'une certification affiche désormais le bloc **« Pourquoi ce
+statut ? »** à partir d'une analyse côté serveur : expiration, document actif,
+authenticité, collecte liée, renouvellement ouvert et motif enregistré. Chaque
+constat expose une action directe vers **Documents**, **Renouvellement** ou
+**Historique des décisions et vérifications**. Il ne s'agit donc pas d'un
+texte fixe ou d'une interprétation faite par le navigateur.
+
+Le tableau de bord compte toute certification ayant une date d'expiration,
+indépendamment de son statut documentaire : un certificat à vérifier mais déjà
+expiré apparaît bien dans le compteur **Expirées** et dans les échéances à
+surveiller.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**

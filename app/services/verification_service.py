@@ -251,8 +251,17 @@ class VerificationService:
         points,_,pending,_ = await VerificationRepository.counts(db,dossier_id)
         if points == 0: raise HTTPException(409,"Au moins un point de vérification est requis.")
         unresolved = await VerificationRepository.unresolved_anomaly_count(db,dossier_id)
-        if payload.avis == "verified_compliant" and (unresolved or pending):
-            raise HTTPException(409,"Avis conforme impossible avec anomalie non résolue ou confirmation en attente.")
+        if payload.avis == "verified_compliant" and unresolved:
+            raise HTTPException(
+                409,
+                f"Avis conforme impossible : {unresolved} anomalie(s) reste(nt) non résolue(s). "
+                "Ouvrez l’onglet Anomalies et vérifiez que chacune porte le statut Résolue.",
+            )
+        if payload.avis == "verified_compliant" and pending:
+            raise HTTPException(
+                409,
+                f"Avis conforme impossible : {pending} confirmation(s) externe(s) reste(nt) en attente de réponse.",
+            )
         x.statut="TERMINE"; x.avis=payload.avis; x.synthese=payload.synthese.strip()
         x.niveau_risque=txt(payload.niveau_risque); x.date_fin=date.today()
         await write_audit_event(db,action="VERIFICATION_DOSSIER_CLOSE",categorie="VERIFICATION",
@@ -405,7 +414,14 @@ class VerificationService:
     async def resolve_anomaly(db, *, dossier_id, anomaly_id, payload, actor, request):
         x=await VerificationRepository.get_anomaly(db,dossier_id=dossier_id,anomaly_id=anomaly_id)
         if x is None: raise HTTPException(404,"Anomalie introuvable.")
-        x.resolution=payload.resolution.strip(); x.date_resolution=date.today(); x.statut=payload.statut.strip()
+        resolution=payload.resolution.strip()
+        if not resolution:
+            raise HTTPException(422,"La mesure de résolution est obligatoire.")
+        # Le statut est métier et ne doit jamais dépendre d'une valeur libre
+        # provenant du navigateur. Une seconde validation est idempotente.
+        if x.date_resolution:
+            return anomaly_response(x)
+        x.resolution=resolution; x.date_resolution=date.today(); x.statut="RESOLUE"
         await write_audit_event(db,action="VERIFICATION_ANOMALY_RESOLVE",categorie="VERIFICATION",resultat="SUCCES",
             utilisateur_id=actor.user.id,ressource_type="anomalie_verification",ressource_id=x.id,
             adresse_ip=ip(request),valeurs_apres={"statut":x.statut,"date_resolution":x.date_resolution.isoformat()})

@@ -6,7 +6,8 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_USER="${SNGSC_APP_USER:-sngsc}"
-EXPECTED_HEAD="c8f6a0b3d425"
+# Tête Alembic de la livraison consolidée du 24–25/09/2026.
+EXPECTED_HEAD="h3d9e4f1a607"
 FAILURES=0
 
 ok() { printf 'OK    %s\n' "$1"; }

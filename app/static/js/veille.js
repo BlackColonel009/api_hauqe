@@ -48,6 +48,35 @@
     icons();
   }
 
+  function inputText(selector, label, { required = false } = {}) {
+    const input = $(selector);
+    const value = typeof input?.value === "string" ? input.value.trim() : "";
+    if (required && !value) {
+      throw new Error(`${label} est obligatoire.`);
+    }
+    return value;
+  }
+
+  function validationMessage(error, fallback) {
+    if (error?.status !== 422 || !Array.isArray(error?.detail)) {
+      return error?.message || fallback;
+    }
+
+    const labels = {
+      destinataire: "Destinataire",
+      adresse_email: "Adresse e-mail",
+      canal: "Canal",
+      objet: "Objet",
+      contenu: "Contenu du message",
+      date_envoi: "Date d’envoi",
+      date_echeance: "Échéance de réponse",
+    };
+    const issue = error.detail[0];
+    const field = issue?.loc?.at(-1);
+    const label = labels[field] || "Une information du formulaire";
+    return `${label} : ${issue?.msg || "valeur invalide."}`;
+  }
+
   function dateLabel(v) {
     if (!v) return "—";
     const d = new Date(v);
@@ -327,21 +356,26 @@
     if (!selected) return;
 
     try {
-      await api.apiPost(`/api/v1/veille/dossiers/${selected.id}/relances`, {
-        destinataire: $("#followupRecipient").value.trim(),
-        adresse_email: $("#followupEmail").value.trim(),
-        canal: $("#followupChannel").value.trim(),
-        objet: $("#followupSubject").value.trim(),
-        contenu: $("#followupMessage").value.trim(),
-        date_envoi: $("#followupSendDate").value || null,
-        date_echeance: $("#followupDueDate").value || null,
-      });
+      const payload = {
+        // Les identifiants sont stables même si une ancienne copie du modèle
+        // HTML est encore en mémoire côté serveur : la relance ne dépend donc
+        // jamais des attributs name du formulaire pour transmettre son texte.
+        destinataire: inputText("#followupRecipient", "Le destinataire", { required: true }),
+        adresse_email: inputText("#followupEmail", "L’adresse e-mail", { required: true }),
+        canal: inputText("#followupChannel", "Le canal", { required: true }),
+        objet: inputText("#followupSubject", "L’objet", { required: true }),
+        contenu: inputText("#followupMessage", "Le contenu du message", { required: true }),
+        date_envoi: inputText("#followupSendDate", "Date d’envoi") || null,
+        date_echeance: inputText("#followupDueDate", "Échéance de réponse") || null,
+      };
+
+      await api.apiPost(`/api/v1/veille/dossiers/${selected.id}/relances`, payload);
 
       $("#followupDialog").close();
       await Promise.all([loadDashboard(), loadCases()]);
       state("Relance enregistrée.");
     } catch (error) {
-      state(error?.message || "Relance impossible.", true);
+      state(validationMessage(error, "Relance impossible."), true);
     }
   }
 

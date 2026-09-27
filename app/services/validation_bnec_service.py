@@ -996,9 +996,7 @@ class ValidationBnecService:
             organisme = None
             norme = None
             if clean_text(declared.organisme_declare):
-                organisme = await ValidationBnecRepository.find_organism_by_label(
-                    db, declared.organisme_declare
-                )
+                organisme = await ValidationBnecRepository.get_organism(db, declared.organisme_id) if declared.organisme_id else await ValidationBnecRepository.find_organism_by_label(db, declared.organisme_declare)
                 if organisme is None:
                     blockers.append(
                         "organisme certificateur non rapproché dans le registre"
@@ -1372,9 +1370,7 @@ class ValidationBnecService:
                     )
 
                 organisme = (
-                    await ValidationBnecRepository.find_organism_by_label(
-                        db, source.organisme_declare
-                    )
+                    await ValidationBnecRepository.get_organism(db, source.organisme_id) if source.organisme_id else await ValidationBnecRepository.find_organism_by_label(db, source.organisme_declare)
                     if clean_text(source.organisme_declare)
                     else None
                 )
@@ -1857,13 +1853,16 @@ class ValidationBnecService:
             raise ValueError("La date d'obtention est obligatoire.")
         if source.date_expiration and source.date_expiration <= source.date_obtention:
             raise ValueError("Les dates de certification sont incohérentes.")
-        organisme = await ValidationBnecRepository.find_organism_by_label(
-            db, source.organisme_declare or ""
-        )
+        organisme = await ValidationBnecRepository.get_organism(db, source.organisme_id) if source.organisme_id else await ValidationBnecRepository.find_organism_by_label(db, source.organisme_declare or "")
         if organisme is None:
             raise ValueError(
                 "L'organisme déclaré doit être rapproché avant l'intégration."
             )
+        # Une fiche historique peut avoir été rapprochée par son libellé avant
+        # l'ajout de la clé explicite. Persister ce rapprochement pour que les
+        # prochaines validations et intégrations n'aient plus à le déduire.
+        if source.organisme_id is None:
+            source.organisme_id = organisme.id
         norm_resolution = await ValidationBnecService._resolve_norm_reference(
             db,
             source.norme_declaree,

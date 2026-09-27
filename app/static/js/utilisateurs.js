@@ -123,6 +123,16 @@
     return roleByCode(code)?.libelle || code;
   }
 
+  function isActiveRole(role) {
+    const status = String(role?.statut || "")
+      .trim()
+      .toUpperCase();
+
+    // Certaines anciennes données utilisent ACTIVE. Les deux écritures
+    // désignent le même état métier ; un rôle désactivé reste exclu.
+    return status === "ACTIF" || status === "ACTIVE";
+  }
+
   async function loadData() {
     const [me, userRows, roleRows] = await Promise.all([
       api.apiGet("/api/v1/me"),
@@ -133,9 +143,7 @@
     currentUser = me;
     users = Array.isArray(userRows) ? userRows : [];
     roles = (Array.isArray(roleRows) ? roleRows : [])
-      .filter((role) =>
-        String(role.statut || "").toUpperCase() === "ACTIF"
-      )
+      .filter(isActiveRole)
       .sort((a, b) =>
         Number(b.niveau || 0) - Number(a.niveau || 0)
       );
@@ -494,7 +502,11 @@
   }
 
   function renderModalRoles(selectedCodes = []) {
-    $("#modalRoleList").innerHTML = roles.map((role) => `
+    $("#initialRolesAvailability").textContent = roles.length
+      ? `${roles.length} rôle${roles.length > 1 ? "s" : ""} actif${roles.length > 1 ? "s" : ""} disponible${roles.length > 1 ? "s" : ""} à l'attribution.`
+      : "Aucun rôle actif disponible à l'attribution.";
+
+    $("#modalRoleList").innerHTML = roles.length ? roles.map((role) => `
       <label class="modal-role-option">
         <input
           type="checkbox"
@@ -509,7 +521,11 @@
           <small>${e(role.description || "—")}</small>
         </span>
       </label>
-    `).join("");
+    `).join("") : `
+      <div class="priority-empty compact">
+        Aucun rôle actif n'a été reçu. Vérifiez le catalogue des rôles.
+      </div>
+    `;
   }
 
   function openCreateDialog() {
@@ -668,12 +684,34 @@
   }
 
   async function copyText(value) {
+    const text = String(value || "").trim();
+    if (!text || text === "—") {
+      state("Aucune valeur à copier.", true);
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(value);
+      // API moderne : disponible seulement sur HTTPS ou localhost.
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Secours nécessaire sur un accès HTTP du réseau local et certains
+        // navigateurs d'entreprise : le clic reste une activation utilisateur.
+        const field = document.createElement("textarea");
+        field.value = text;
+        field.setAttribute("readonly", "");
+        field.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
+        document.body.appendChild(field);
+        field.select();
+        field.setSelectionRange(0, field.value.length);
+        const copied = document.execCommand("copy");
+        field.remove();
+        if (!copied) throw new Error("Presse-papiers refusé");
+      }
       state("Valeur copiée dans le presse-papiers.");
     } catch {
       state(
-        "Copie automatique impossible. Sélectionnez la valeur manuellement.",
+        "Copie impossible : sélectionnez la valeur manuellement.",
         true
       );
     }

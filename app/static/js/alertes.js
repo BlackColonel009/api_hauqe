@@ -179,6 +179,7 @@
       CLOTUREE: "Clôturée",
     }[status] || status.replaceAll("_", " ");
     const resource = publicText(selected.resource_label || selected.ressource_type, "Ressource non renseignée");
+    $("#alertDetailDialog").dataset.status = status;
 
     container.innerHTML = `
       <header class="alert-record-header">

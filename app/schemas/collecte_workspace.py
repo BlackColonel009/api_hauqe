@@ -43,6 +43,8 @@ class CollecteRegistryItem(BaseModel):
     assigned_names: str | None = None
 
     fiche_id: UUID | None = None
+    fiche_responsable_id: UUID | None = None
+    fiche_responsable_name: str | None = None
     fiche_status: str | None = None
     completeness: Decimal | None = None
     revision_number: int | None = None
@@ -73,6 +75,8 @@ class CollecteQuickEnterpriseCreateRequest(BaseModel):
     raison_sociale: str = Field(min_length=2, max_length=255)
     zone_siege_id: UUID
     adresse_siege: str | None = Field(default=None, max_length=255)
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180)
     telephone_principal: str | None = Field(default=None, max_length=255)
     email_principal: str | None = Field(default=None, max_length=255)
 
@@ -83,8 +87,9 @@ class CollecteQuickEnterpriseResponse(BaseModel):
     raison_sociale: str
     zone_siege_id: UUID
     adresse_siege: str | None = None
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
     telephone_principal: str | None = None
     email_principal: str | None = None
     statut: str
     source_donnee: str
-

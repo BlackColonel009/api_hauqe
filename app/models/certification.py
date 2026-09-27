@@ -4,7 +4,7 @@ from datetime import date
 from uuid import UUID
 
 from sqlalchemy import Boolean, Date, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -66,6 +66,13 @@ class Certification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     date_expiration: Mapped[date | None] = mapped_column(
         Date,
+        nullable=True,
+    )
+
+    # Paramétrage propre au certificat officiel.  NULL conserve la règle
+    # générale de veille publiée, ce qui préserve les dossiers historiques.
+    seuils_alerte_expiration_jours: Mapped[list[int] | None] = mapped_column(
+        JSONB,
         nullable=True,
     )
 

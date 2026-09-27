@@ -21,5 +21,35 @@
 .dossier-parcours-steps li.termine { border-color:#b7dfc5; background:#f7fcf8; }.dossier-parcours-steps li.termine .dossier-parcours-icon { background:#e3f6e8; color:#187343; }.dossier-parcours-steps li.termine em { background:#e3f6e8; color:#187343; }
 .dossier-parcours-steps li.en_cours { border-color:#9dc4f3; background:#f6faff; }.dossier-parcours-steps li.en_cours .dossier-parcours-icon { background:#e5f0ff; color:#175cd3; }.dossier-parcours-steps li.en_cours em { background:#e5f0ff; color:#175cd3; }
 .dossier-parcours-steps li.a_faire { border-style:dashed; }.dossier-parcours-steps li.bloque { border-color:#f2b8b5; background:#fff8f7; }.dossier-parcours-steps li.bloque .dossier-parcours-icon { background:#ffebe9; color:#b42318; }.dossier-parcours-steps li.bloque em { background:#ffebe9; color:#b42318; }
+/* Suivi du dossier : palette complète en thème nuit, commune aux quatre étapes. */
+html[data-theme="dark"] .dossier-parcours,body.dark-theme .dossier-parcours{border-color:#315247;background:#132d24;color:#ebf5ef}
+html[data-theme="dark"] .dossier-parcours-heading h2,html[data-theme="dark"] .dossier-parcours-copy strong,body.dark-theme .dossier-parcours-heading h2,body.dark-theme .dossier-parcours-copy strong{color:#edf7f2}
+html[data-theme="dark"] .dossier-parcours-heading p:not(.eyebrow),html[data-theme="dark"] .dossier-parcours-copy small,body.dark-theme .dossier-parcours-heading p:not(.eyebrow),body.dark-theme .dossier-parcours-copy small{color:#adc1b6}
+html[data-theme="dark"] .dossier-parcours-steps li,body.dark-theme .dossier-parcours-steps li{border-color:#34594b;background:#18362b}
+html[data-theme="dark"] .dossier-parcours-marker,body.dark-theme .dossier-parcours-marker{color:#94aca1}
+html[data-theme="dark"] .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps em,body.dark-theme .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps em{background:#29483d;color:#c1d8ce}
+html[data-theme="dark"] .dossier-parcours-steps li.termine,body.dark-theme .dossier-parcours-steps li.termine{border-color:#3f8061;background:#17382a}
+html[data-theme="dark"] .dossier-parcours-steps li.termine .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.termine em,body.dark-theme .dossier-parcours-steps li.termine .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.termine em{background:#245d42;color:#a8ecc4}
+html[data-theme="dark"] .dossier-parcours-steps li.en_cours,body.dark-theme .dossier-parcours-steps li.en_cours{border-color:#426d9b;background:#182f43}
+html[data-theme="dark"] .dossier-parcours-steps li.en_cours .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.en_cours em,body.dark-theme .dossier-parcours-steps li.en_cours .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.en_cours em{background:#234b71;color:#b9d8ff}
+html[data-theme="dark"] .dossier-parcours-steps li.bloque,body.dark-theme .dossier-parcours-steps li.bloque{border-color:#844f4f;background:#422728}
+html[data-theme="dark"] .dossier-parcours-steps li.bloque .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.bloque em,body.dark-theme .dossier-parcours-steps li.bloque .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.bloque em{background:#673434;color:#ffc4c4}
+html[data-theme="dark"] .dossier-parcours-count,body.dark-theme .dossier-parcours-count{background:#245d42;color:#aeefc8}
+html[data-theme="dark"] .dossier-parcours-count.blocked,body.dark-theme .dossier-parcours-count.blocked{background:#673434;color:#ffd0d0}
+/* Suivi du dossier : palette complète en thème nuit, commune aux quatre étapes. */
+html[data-theme="dark"] .dossier-parcours,body.dark-theme .dossier-parcours{border-color:#315247;background:#132d24;color:#ebf5ef}
+html[data-theme="dark"] .dossier-parcours-heading h2,html[data-theme="dark"] .dossier-parcours-copy strong,body.dark-theme .dossier-parcours-heading h2,body.dark-theme .dossier-parcours-copy strong{color:#edf7f2}
+html[data-theme="dark"] .dossier-parcours-heading p:not(.eyebrow),html[data-theme="dark"] .dossier-parcours-copy small,body.dark-theme .dossier-parcours-heading p:not(.eyebrow),body.dark-theme .dossier-parcours-copy small{color:#adc1b6}
+html[data-theme="dark"] .dossier-parcours-steps li,body.dark-theme .dossier-parcours-steps li{border-color:#34594b;background:#18362b}
+html[data-theme="dark"] .dossier-parcours-marker,body.dark-theme .dossier-parcours-marker{color:#94aca1}
+html[data-theme="dark"] .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps em,body.dark-theme .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps em{background:#29483d;color:#c1d8ce}
+html[data-theme="dark"] .dossier-parcours-steps li.termine,body.dark-theme .dossier-parcours-steps li.termine{border-color:#3f8061;background:#17382a}
+html[data-theme="dark"] .dossier-parcours-steps li.termine .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.termine em,body.dark-theme .dossier-parcours-steps li.termine .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.termine em{background:#245d42;color:#a8ecc4}
+html[data-theme="dark"] .dossier-parcours-steps li.en_cours,body.dark-theme .dossier-parcours-steps li.en_cours{border-color:#426d9b;background:#182f43}
+html[data-theme="dark"] .dossier-parcours-steps li.en_cours .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.en_cours em,body.dark-theme .dossier-parcours-steps li.en_cours .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.en_cours em{background:#234b71;color:#b9d8ff}
+html[data-theme="dark"] .dossier-parcours-steps li.bloque,body.dark-theme .dossier-parcours-steps li.bloque{border-color:#844f4f;background:#422728}
+html[data-theme="dark"] .dossier-parcours-steps li.bloque .dossier-parcours-icon,html[data-theme="dark"] .dossier-parcours-steps li.bloque em,body.dark-theme .dossier-parcours-steps li.bloque .dossier-parcours-icon,body.dark-theme .dossier-parcours-steps li.bloque em{background:#673434;color:#ffc4c4}
+html[data-theme="dark"] .dossier-parcours-count,body.dark-theme .dossier-parcours-count{background:#245d42;color:#aeefc8}
+html[data-theme="dark"] .dossier-parcours-count.blocked,body.dark-theme .dossier-parcours-count.blocked{background:#673434;color:#ffd0d0}
 @media (max-width:1180px) { .dossier-parcours-steps { grid-template-columns:repeat(3, minmax(160px, 1fr)); } }
 @media (max-width:700px) { .dossier-parcours { padding:1rem; }.dossier-parcours-heading { display:block; }.dossier-parcours-count { display:inline-flex; margin-top:.75rem; }.dossier-parcours-steps { grid-template-columns:1fr; }.dossier-parcours-copy small { min-height:0; } }

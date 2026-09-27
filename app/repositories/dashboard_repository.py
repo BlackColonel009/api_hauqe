@@ -475,9 +475,6 @@ class DashboardRepository:
         filters.extend(
             [
                 Certification.date_expiration.is_not(None),
-                func.upper(Certification.statut).in_(
-                    list(ACTIVE_CERT_STATUSES)
-                ),
             ]
         )
 
@@ -581,9 +578,6 @@ class DashboardRepository:
                 Certification.date_expiration.is_not(None),
                 Certification.date_expiration >= today,
                 Certification.date_expiration <= end_date,
-                func.upper(Certification.statut).in_(
-                    list(ACTIVE_CERT_STATUSES)
-                ),
             ]
         )
 

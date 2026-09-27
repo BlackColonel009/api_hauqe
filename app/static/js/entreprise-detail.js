@@ -240,7 +240,14 @@
       : emptyBox("Aucun contact", "Aucun contact actif n’est rattaché à cette entreprise.", "users");
 
     const sites = state.sites.length
-      ? state.sites.slice(0, 5).map((item) => `<div class="contact-row"><span class="contact-icon">${icon("map-pin")}</span><div><strong>${escapeHtml(item.nom || item.type_site || "Site")}</strong><small>${escapeHtml([item.adresse, item.type_site].filter(Boolean).join(" · ") || "Adresse non renseignée")}</small></div></div>`).join("")
+      ? state.sites.slice(0, 5).map((item) => {
+        const hasCoordinates = item.latitude !== null && item.latitude !== undefined
+          && item.longitude !== null && item.longitude !== undefined;
+        const mapUrl = hasCoordinates
+          ? `https://www.google.com/maps?q=${encodeURIComponent(`${item.latitude},${item.longitude}`)}`
+          : null;
+        return `<div class="contact-row company-site-row"><span class="contact-icon">${icon("map-pin")}</span><div><strong>${escapeHtml(item.nom || item.type_site || "Site")}</strong><small>${escapeHtml([item.adresse, item.type_site].filter(Boolean).join(" · ") || "Adresse non renseignée")}</small>${hasCoordinates ? `<small class="site-coordinates">${escapeHtml(item.latitude)}, ${escapeHtml(item.longitude)}</small>` : ""}</div>${mapUrl ? `<a class="site-map-link" href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer">${icon("map")}Voir la carte</a>` : ""}</div>`;
+      }).join("")
       : emptyBox("Aucun site", "Aucun site actif n’est enregistré.", "map-pin-off");
 
     return `<div class="tab-layout"><div>

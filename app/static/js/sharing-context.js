@@ -22,20 +22,11 @@
 
   document.addEventListener("submit", async (event) => {
     const form = event.target;
-    if (form.id === "followupForm" && location.hash === "#/veille") {
-      event.preventDefault(); event.stopImmediatePropagation();
-      const detail = $("#watchCaseDetail");
-      const data = new FormData(form), picked = selected(form), enterprise = detail?.querySelector("header h2")?.textContent?.trim(), certification = detail?.querySelector("header p")?.textContent?.trim();
-      const context = [picked.includes("ENTREPRISE") && enterprise ? `Entreprise : ${enterprise}` : null, picked.includes("CERTIFICATIONS") && certification ? `Certification : ${certification}` : null].filter(Boolean);
-      try {
-        const api = await import("/static/js/core/api.js");
-        const caseId = document.querySelector(".watch-case-row.active")?.dataset?.case;
-        if (!caseId) throw new Error("Dossier de veille non sélectionné.");
-        await api.apiPost(`/api/v1/veille/dossiers/${caseId}/relances`, { destinataire:data.get("followupRecipient"),adresse_email:data.get("followupEmail"),canal:data.get("followupChannel"),objet:data.get("followupSubject"),contenu:[data.get("followupMessage"),context.length?`\n\nInformations partagées :\n- ${context.join("\n- ")}`:""].join(""),date_envoi:data.get("followupSendDate")||null,date_echeance:data.get("followupDueDate")||null,statut:"EN_ATTENTE" });
-        location.reload();
-      } catch (error) { alert(error?.message || "Relance impossible."); }
-      return;
-    }
+    // La page Veille possède son propre gestionnaire de soumission : lui seul
+    // connaît les champs de la relance et le dossier sélectionné. Ne jamais
+    // intercepter ce formulaire ici, sinon un ancien mapping de noms peut
+    // vider les valeurs avant l'appel API.
+    if (form.id === "followupForm" && location.hash === "#/veille") return;
     if (form.id !== "stage13Form" || location.hash !== "#/echanges-organismes") return;
     event.preventDefault(); event.stopImmediatePropagation();
     const data = new FormData(form), dossierId = data.get("dossier_id");

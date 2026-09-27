@@ -6,7 +6,12 @@
   const hashParts = location.hash.replace(/^#\//, "").split("/");
   const editMode = hashParts[1] === "modifier";
 
-  let missionId = editMode ? hashParts[2] : null;
+  // Une nouvelle collecte peut être ouverte depuis une mission précise. Cela
+  // n'ouvre jamais la fiche d'une autre entreprise de cette mission.
+  let missionId = editMode
+    ? hashParts[2]
+    : (hashParts[1] === "nouveau" ? hashParts[2] || null : null);
+  let ficheId = editMode ? hashParts[3] : null;
   let campagneId = null;
   let fiche = null;
   let mission = null;
@@ -15,12 +20,14 @@
   let apiGet;
   let apiPost;
   let apiPatch;
+  let apiRequest;
 
   let currentUser = null;
   let workspace = {
     campaigns: [],
     zones: [],
     collectors: [],
+    missions: [],
   };
 
   let assignments = [];
@@ -29,6 +36,8 @@
   let documents = [];
   let ficheHistory = [];
   let selectedEnterprise = null;
+  let saveOffersPromise = null;
+  let saveCertificationsPromise = null;
   let pendingFiles = [];
 
   let step = 1;
@@ -288,14 +297,42 @@
   }
 
   function uniqueOffers(items) {
-    const seen = new Set();
+    const seenIds = new Set();
+    const seenBusinessKeys = new Set();
+    const seenFallbackKeys = new Set();
     return (items || []).filter((item) => {
+      const normalize = (value) => String(value ?? "").trim().toUpperCase();
+      const businessKey = [
+        item.type_offre, item.nom, item.categorie,
+      ].map(normalize).join("|");
+      const fallbackKey = [
+        businessKey, item.description, item.unite, item.marches_vises,
+      ].map(normalize).join("|");
+      const id = String(item.id || "").trim();
+      if (id && seenIds.has(id)) return false;
+      if (id) seenIds.add(id);
+      if (normalize(item.nom) && seenBusinessKeys.has(businessKey)) return false;
+      if (normalize(item.nom)) seenBusinessKeys.add(businessKey);
+      if (!normalize(item.nom) && seenFallbackKeys.has(fallbackKey)) return false;
+      if (!normalize(item.nom)) seenFallbackKeys.add(fallbackKey);
+      return true;
+    });
+  }
+
+  function uniqueDeclaredCertifications(items) {
+    const seenIds = new Set();
+    const seenContent = new Set();
+    return (items || []).filter((item) => {
+      const id = String(item.id || "").trim();
       const key = [
-        item.type_offre, item.nom, item.description, item.categorie,
-        item.volume, item.unite, item.capacite, item.marches_vises,
+        item.nom_certification, item.numero, item.organisme_declare,
+        item.norme_declaree, item.portee, item.date_obtention,
+        item.date_expiration,
       ].map((value) => String(value ?? "").trim().toUpperCase()).join("|");
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (id && seenIds.has(id)) return false;
+      if (id) seenIds.add(id);
+      if (key && seenContent.has(key)) return false;
+      if (key) seenContent.add(key);
       return true;
     });
   }
@@ -330,7 +367,39 @@
     ]);
   }
 
+  function missionOptions() {
+    return (workspace.missions || []).map((item) => [
+      item.id,
+      [item.code || "Mission sans référence", item.objet].filter(Boolean).join(" — "),
+    ]);
+  }
+
   function renderStep1() {
+    if (!editMode && !fiche) {
+      const selected = missionId
+        ? (workspace.missions || []).find((item) => String(item.id) === String(missionId))
+        : null;
+      return `
+        <article class="panel form-card">
+          <div class="form-card-head">
+            <h2>Choisir la mission de collecte</h2>
+            <p>Sélectionnez une mission à laquelle vous êtes affecté. La campagne et ses données sont consultées ici, sans être modifiées.</p>
+          </div>
+          <div class="form-grid">
+            ${select("selected_mission_id", "Mission affectée", missionOptions(), { current: missionId || "", required: true, placeholder: "Sélectionnez une mission" })}
+          </div>
+          ${selected ? `
+            <div class="review-section mission-readonly-summary">
+              <h3>${escapeHtml(selected.code || "Mission sélectionnée")}</h3>
+              <div class="review-row"><span>Campagne</span><strong>${escapeHtml(campaign?.code || campaign?.nom || "—")}</strong></div>
+              <div class="review-row"><span>Objet</span><strong>${escapeHtml(selected.objet || "Non renseigné")}</strong></div>
+              <div class="review-row"><span>Zone administrative</span><strong>${escapeHtml((workspace.zones || []).find((zone) => String(zone.id) === String(selected.zone_id))?.label || "—")}</strong></div>
+              <div class="review-row"><span>Période prévue</span><strong>${escapeHtml([formatDate(selected.date_debut_prevue), formatDate(selected.date_fin_prevue)].filter((value) => value !== "—").join(" → ") || "Non renseignée")}</strong></div>
+            </div>
+          ` : `<div class="review-warning"><i data-lucide="circle-info"></i><span>La liste contient les missions auxquelles votre compte est affecté. Demandez à l’administrateur HAUQE de vous affecter si la mission n’apparaît pas.</span></div>`}
+        </article>
+      `;
+    }
     const canPlan = hasPermission("COLLECTE.AFFECTER");
     const newCampaign = state.campaign_id === "__new__";
 
@@ -726,25 +795,7 @@
           >
         </div>
 
-        ${
-          item.id
-            ? `
-              <small class="field-help">
-                Offre déjà enregistrée. La suppression physique
-                n’est pas exposée par l’API actuelle.
-              </small>
-            `
-            : `
-              <button
-                type="button"
-                class="remove-entry"
-                data-remove-new-offer
-                aria-label="Retirer"
-              >
-                ${icon("trash-2")}
-              </button>
-            `
-        }
+        <span data-remove-new-offer-slot></span>
       </div>
     `;
   }
@@ -752,7 +803,7 @@
   function renderStep3() {
     const rows = offers.length
       ? offers.map(offerRow).join("")
-      : offerRow();
+      : `<div class="entry-list-empty">Aucune offre ajoutée. Utilisez « Ajouter une offre » pour commencer.</div>`;
 
     return `
       <article class="panel form-card">
@@ -767,14 +818,7 @@
           ${rows}
         </div>
 
-        <button
-          type="button"
-          class="btn btn-outline-secondary app-btn add-entry"
-          id="addOffer"
-        >
-          ${icon("plus")}
-          Ajouter une offre
-        </button>
+        <span id="addOfferSlot"></span>
       </article>
     `;
   }
@@ -811,7 +855,7 @@
 
         ${input(
           "decl_cert_number",
-          "Numéro déclaré",
+          "Numéro du certificat",
           {
             value: item.numero || "",
             className: "collect-field-cert-number",
@@ -820,7 +864,7 @@
 
         ${input(
           "decl_cert_body",
-          "Organisme déclaré",
+          "Organisme certificateur",
           {
             value: item.organisme_declare || "",
             className: "collect-field-cert-body",
@@ -829,7 +873,7 @@
 
         ${input(
           "decl_cert_standard",
-          "Norme / référentiel déclaré",
+          "Norme / référentiel du certificat",
           {
             value: item.norme_declaree || "",
             className: "collect-field-cert-standard",
@@ -910,25 +954,7 @@
             : ""
         }
 
-        ${
-          item.id
-            ? `
-              <small class="field-help">
-                Déclaration déjà enregistrée. L’API actuelle
-                n’expose pas de suppression.
-              </small>
-            `
-            : `
-              <button
-                type="button"
-                class="remove-entry"
-                data-remove-new-cert
-                aria-label="Retirer"
-              >
-                ${icon("trash-2")}
-              </button>
-            `
-        }
+        <span data-remove-new-cert-slot></span>
       </div>
     `;
   }
@@ -938,7 +964,7 @@
       ? declaredCertifications
           .map(declaredCertificationRow)
           .join("")
-      : declaredCertificationRow();
+      : `<div class="entry-list-empty">Aucune certification déclarée. Utilisez « Ajouter une certification déclarée » pour commencer.</div>`;
 
     return `
       <article class="panel form-card">
@@ -954,14 +980,7 @@
           ${rows}
         </div>
 
-        <button
-          type="button"
-          class="btn btn-outline-secondary app-btn add-entry"
-          id="addDeclaredCert"
-        >
-          ${icon("plus")}
-          Ajouter une certification déclarée
-        </button>
+        <span id="addDeclaredCertSlot"></span>
       </article>
     `;
   }
@@ -987,10 +1006,7 @@
               <strong>${escapeHtml(file.name)}</strong>
               <small>Sélectionné - ${escapeHtml(formatFileSize(file.size))}</small>
             </span>
-            <button type="button" class="pending-file-remove"
-              data-remove-pending-file="${index}"
-              aria-label="Retirer ${escapeHtml(file.name)}"
-              title="Retirer ce fichier">${icon("x")}</button>
+            <span data-remove-pending-file-slot="${index}"></span>
           </div>
         `).join("");
     const documentList = savedDocuments || selectedDocuments
@@ -1219,7 +1235,119 @@
     showState("Informations de la campagne reprises. Complétez ce premier formulaire avant de poursuivre.");
   }
 
+  function createDirectEntryButton({ label, iconName, className, onClick, title = "" }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.setAttribute("data-no-action-loader", "true");
+    if (title) button.title = title;
+    button.setAttribute("aria-label", title || label);
+    button.innerHTML = `${icon(iconName)}${label ? `<span>${escapeHtml(label)}</span>` : ""}`;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick(button);
+    });
+    return button;
+  }
+
+  async function removeNewEntry(button, rowSelector, getEntries, endpointFor) {
+    // L'index est calculé à partir des lignes réellement affichées, après
+    // capture des saisies : plusieurs ajouts et suppressions restent fiables.
+    capture();
+    const entries = getEntries();
+    const rows = Array.from(document.querySelectorAll(rowSelector));
+    const index = rows.indexOf(button.closest(rowSelector));
+    if (index < 0 || !entries[index]) return;
+    try {
+      if (entries[index].id) {
+        if (!fiche || !isDraft()) {
+          showState("Seules les lignes d’une fiche brouillon peuvent être retirées.", { error: true });
+          return;
+        }
+        await apiRequest(endpointFor(entries[index].id), { method: "DELETE" });
+      }
+      entries.splice(index, 1);
+      render(false);
+    } catch (error) {
+      showState(error?.message || "Suppression impossible.", { error: true });
+    }
+  }
+
+  function hydrateCollectionEntryActions() {
+    const offerSlot = $("#addOfferSlot");
+    if (offerSlot) {
+      offerSlot.replaceChildren(createDirectEntryButton({
+        label: "Ajouter une offre",
+        iconName: "plus",
+        className: "btn btn-outline-secondary app-btn add-entry",
+        onClick: () => { capture(); offers.push({}); render(false); },
+      }));
+    }
+    document.querySelectorAll("[data-remove-new-offer-slot]").forEach((slot) => {
+      slot.replaceChildren(createDirectEntryButton({
+        label: "", iconName: "trash-2", className: "remove-entry",
+        title: "Retirer cette offre",
+        onClick: (button) => removeNewEntry(
+          button, "[data-offer-row]", () => offers,
+          (id) => `/api/v1/missions/${missionId}/fiches/${fiche.id}/offres/${id}`,
+        ),
+      }));
+    });
+
+    const certificationSlot = $("#addDeclaredCertSlot");
+    if (certificationSlot) {
+      certificationSlot.replaceChildren(createDirectEntryButton({
+        label: "Ajouter une certification déclarée",
+        iconName: "plus",
+        className: "btn btn-outline-secondary app-btn add-entry",
+        onClick: () => { capture(); declaredCertifications.push({}); render(false); },
+      }));
+    }
+    document.querySelectorAll("[data-remove-new-cert-slot]").forEach((slot) => {
+      slot.replaceChildren(createDirectEntryButton({
+        label: "", iconName: "trash-2", className: "remove-entry",
+        title: "Retirer cette certification déclarée",
+        onClick: (button) => removeNewEntry(
+          button, "[data-declared-cert-row]", () => declaredCertifications,
+          (id) => `/api/v1/missions/${missionId}/fiches/${fiche.id}/certifications/${id}`,
+        ),
+      }));
+    });
+
+    document.querySelectorAll("[data-remove-pending-file-slot]").forEach((slot) => {
+      const index = Number(slot.dataset.removePendingFileSlot);
+      slot.replaceChildren(createDirectEntryButton({
+        label: "", iconName: "x", className: "pending-file-remove",
+        title: "Retirer ce fichier sélectionné",
+        onClick: () => {
+          pendingFiles.splice(index, 1);
+          render(false);
+        },
+      }));
+    });
+  }
+
   function bindStepContent() {
+    const missionSelect = document.querySelector('[name="selected_mission_id"]');
+    if (missionSelect && !editMode && !fiche) {
+      missionSelect.addEventListener("change", async (event) => {
+        if (!event.target.value) {
+          missionId = null;
+          campaign = null;
+          assignments = [];
+          render(false);
+          return;
+        }
+        try {
+          await selectExistingMission(event.target.value);
+          render(false);
+          showState("Mission sélectionnée. Continuez avec l’entreprise concernée par cette collecte.");
+        } catch (error) {
+          showState(error?.message || "Impossible de charger cette mission.", { error: true });
+        }
+      });
+    }
     const campaignSelect = document.querySelector(
       '[name="campaign_id"]'
     );
@@ -1293,64 +1421,7 @@
       }
     );
 
-    $("#addOffer")?.addEventListener("click", () => {
-      capture();
-      offers.push({});
-      render(false);
-    });
-
-    document
-      .querySelectorAll("[data-remove-new-offer]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          capture();
-
-          const rows = Array.from(
-            document.querySelectorAll("[data-offer-row]")
-          );
-
-          const index = rows.indexOf(
-            button.closest("[data-offer-row]")
-          );
-
-          if (index >= 0 && !offers[index]?.id) {
-            offers.splice(index, 1);
-          }
-
-          render(false);
-        });
-      });
-
-    $("#addDeclaredCert")?.addEventListener("click", () => {
-      capture();
-      declaredCertifications.push({});
-      render(false);
-    });
-
-    document
-      .querySelectorAll("[data-remove-new-cert]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          capture();
-
-          const rows = Array.from(
-            document.querySelectorAll("[data-declared-cert-row]")
-          );
-
-          const index = rows.indexOf(
-            button.closest("[data-declared-cert-row]")
-          );
-
-          if (
-            index >= 0
-            && !declaredCertifications[index]?.id
-          ) {
-            declaredCertifications.splice(index, 1);
-          }
-
-          render(false);
-        });
-      });
+    hydrateCollectionEntryActions();
 
     $("#collectFiles")?.addEventListener(
       "change",
@@ -1360,15 +1431,29 @@
       }
     );
 
-    document.querySelectorAll("[data-remove-pending-file]").forEach(
-      (button) => button.addEventListener("click", () => {
-        pendingFiles.splice(Number(button.dataset.removePendingFile), 1);
-        render();
-      })
-    );
-
     applyReadOnlyState();
     refreshIcons();
+  }
+
+  async function selectExistingMission(selectedMissionId) {
+    const selectedMission = await apiGet(`/api/v1/missions/${encodeURIComponent(selectedMissionId)}`);
+    const selectedCampaign = await apiGet(`/api/v1/campagnes/${encodeURIComponent(selectedMission.campagne_id)}`);
+    const selectedAssignments = await apiGet(`/api/v1/missions/${encodeURIComponent(selectedMissionId)}/affectations`);
+    missionId = selectedMission.id;
+    mission = selectedMission;
+    campaign = selectedCampaign;
+    campagneId = selectedMission.campagne_id;
+    assignments = selectedAssignments;
+    Object.assign(state, {
+      campaign_id: selectedMission.campagne_id,
+      mission_code: selectedMission.code || "",
+      mission_object: selectedMission.objet || "",
+      zone_id: selectedMission.zone_id || "",
+      planned_start: selectedMission.date_debut_prevue || "",
+      planned_end: selectedMission.date_fin_prevue || "",
+      priority: selectedMission.priorite || "",
+      assigned_user_id: "",
+    });
   }
 
   function render(captureCurrent = true) {
@@ -1527,6 +1612,8 @@ function openQuickEnterpriseDialog(defaultName = "") {
   $("#quickEnterpriseName").value = defaultName || $("#enterpriseSearch")?.value.trim() || "";
   $("#quickEnterpriseZoneLabel").value = zone?.label || zone?.nom || state.zone_id;
   $("#quickEnterpriseAddress").value = zone?.label || zone?.nom || "";
+  $("#quickEnterpriseLatitude").value = "";
+  $("#quickEnterpriseLongitude").value = "";
   $("#quickEnterprisePhone").value = state.telephone_declarant || "";
   $("#quickEnterpriseEmail").value = state.email_declarant || "";
   $("#quickEnterpriseDialog").showModal();
@@ -1540,6 +1627,8 @@ async function saveQuickEnterprise(event) {
       raison_sociale: $("#quickEnterpriseName").value.trim(),
       zone_siege_id: state.zone_id,
       adresse_siege: $("#quickEnterpriseAddress").value.trim() || null,
+      latitude: $("#quickEnterpriseLatitude").value || null,
+      longitude: $("#quickEnterpriseLongitude").value || null,
       telephone_principal: $("#quickEnterprisePhone").value.trim() || null,
       email_principal: $("#quickEnterpriseEmail").value.trim() || null,
     });
@@ -1563,6 +1652,37 @@ async function saveQuickEnterprise(event) {
   }
 }
 
+function locateQuickEnterprise() {
+  if (!navigator.geolocation) {
+    showState("La géolocalisation n’est pas disponible dans ce navigateur. Saisissez les coordonnées manuellement.", {error: true});
+    return;
+  }
+  const button = $("#quickEnterpriseLocate");
+  button.disabled = true;
+  button.innerHTML = `${icon("loader-circle")}Localisation…`;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      $("#quickEnterpriseLatitude").value = Number(position.coords.latitude).toFixed(6);
+      $("#quickEnterpriseLongitude").value = Number(position.coords.longitude).toFixed(6);
+      button.disabled = false;
+      button.innerHTML = `${icon("locate-fixed")}Position récupérée`;
+      refreshIcons();
+    },
+    (error) => {
+      button.disabled = false;
+      button.innerHTML = `${icon("locate-fixed")}Utiliser ma position`;
+      refreshIcons();
+      const messages = {
+        1: "L’accès à la position a été refusé. Vous pouvez saisir latitude et longitude manuellement.",
+        2: "La position est indisponible. Réessayez ou saisissez les coordonnées manuellement.",
+        3: "La localisation a expiré. Réessayez ou saisissez les coordonnées manuellement.",
+      };
+      showState(messages[error?.code] || "Localisation impossible.", {error: true});
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+  );
+}
+
   function validateDates(start, end, label) {
     if (start && end && end < start) {
       showState(
@@ -1580,6 +1700,16 @@ async function saveQuickEnterprise(event) {
     hideState();
 
     if (step === 1) {
+      if (!editMode && !fiche) {
+        if (!missionId) {
+          showState(
+            "Sélectionnez une mission affectée avant de commencer une collecte.",
+            { error: true }
+          );
+          return false;
+        }
+        return true;
+      }
       if (!hasPermission("COLLECTE.AFFECTER") && !missionId) {
         showState(
           "Vous n’avez pas la permission de créer une mission.",
@@ -1724,69 +1854,34 @@ async function saveQuickEnterprise(event) {
   }
 
   async function ensureMissionAndFiche() {
-    if (!missionId) {
-      await createCampaignIfNeeded();
-
-      mission = await apiPost(
-        `/api/v1/campagnes/${campagneId}/missions`,
-        missionPayload()
-      );
-
-      missionId = mission.id;
-
+    if (!fiche) {
+      if (!missionId) {
+        throw new Error(
+          "Sélectionnez d’abord une mission de collecte à laquelle vous êtes affecté."
+        );
+      }
+      if (!hasPermission("COLLECTE.CREER")) {
+        throw new Error("Permission COLLECTE.CREER requise pour démarrer la fiche.");
+      }
       fiche = await apiPost(
         `/api/v1/missions/${missionId}/fiches`,
         fichePayload()
       );
+      ficheId = fiche.id;
 
       window.history.replaceState(
         null,
         "",
-        `#/collectes/modifier/${missionId}`
+        `#/collectes/modifier/${missionId}/${fiche.id}`
       );
 
       $("#collectFormMode").textContent = "Modification";
       $("#collectFormTitle").textContent =
         `Mission ${mission.code || mission.id}`;
 
-      if (
-        state.assigned_user_id
-        && hasPermission("COLLECTE.AFFECTER")
-      ) {
-        await addAssignment(state.assigned_user_id);
-        state.assigned_user_id = "";
-      }
-
       return;
     }
-
-    if (
-      hasPermission("COLLECTE.AFFECTER")
-      && campagneId
-    ) {
-      mission = await apiPatch(
-        `/api/v1/campagnes/${campagneId}/missions/${missionId}`,
-        missionPayload()
-      );
-
-      if (state.assigned_user_id) {
-        await addAssignment(state.assigned_user_id);
-        state.assigned_user_id = "";
-      }
-    }
-
-    if (!fiche) {
-      if (!hasPermission("COLLECTE.CREER")) {
-        throw new Error(
-          "Permission COLLECTE.CREER requise pour démarrer la fiche."
-        );
-      }
-
-      fiche = await apiPost(
-        `/api/v1/missions/${missionId}/fiches`,
-        fichePayload()
-      );
-    } else if (isDraft()) {
+    if (isDraft()) {
       if (!hasPermission("COLLECTE.MODIFIER")) {
         throw new Error(
           "Permission COLLECTE.MODIFIER requise."
@@ -1844,10 +1939,12 @@ async function saveQuickEnterprise(event) {
 
   async function saveOffers() {
     if (!fiche || !isDraft()) return;
+    if (saveOffersPromise) return saveOffersPromise;
 
-    const saved = [];
+    saveOffersPromise = (async () => {
+      const saved = [];
 
-    for (const item of offers) {
+      for (const item of uniqueOffers(offers)) {
       const hasValue = [
         item.type_offre,
         item.nom,
@@ -1879,10 +1976,17 @@ async function saveQuickEnterprise(event) {
         );
       }
 
-      saved.push(result);
-    }
+        saved.push(result);
+      }
 
-    offers = saved;
+      offers = uniqueOffers(saved);
+    })();
+
+    try {
+      return await saveOffersPromise;
+    } finally {
+      saveOffersPromise = null;
+    }
   }
 
   function declaredCertificationPayload(item) {
@@ -1924,10 +2028,12 @@ async function saveQuickEnterprise(event) {
 
   async function saveDeclaredCertifications() {
     if (!fiche || !isDraft()) return;
+    if (saveCertificationsPromise) return saveCertificationsPromise;
 
-    const saved = [];
+    saveCertificationsPromise = (async () => {
+      const saved = [];
 
-    for (const item of declaredCertifications) {
+      for (const item of uniqueDeclaredCertifications(declaredCertifications)) {
       const hasValue = [
         item.nom_certification,
         item.numero,
@@ -1959,10 +2065,17 @@ async function saveQuickEnterprise(event) {
         );
       }
 
-      saved.push(result);
-    }
+        saved.push(result);
+      }
 
-    declaredCertifications = saved;
+      declaredCertifications = uniqueDeclaredCertifications(saved);
+    })();
+
+    try {
+      return await saveCertificationsPromise;
+    } finally {
+      saveCertificationsPromise = null;
+    }
   }
 
   async function uploadPendingDocuments() {
@@ -2005,7 +2118,7 @@ async function saveQuickEnterprise(event) {
     if (!missionId) return;
 
     fiche = await apiGet(
-      `/api/v1/missions/${missionId}/fiches/current`
+      `/api/v1/missions/${missionId}/fiches/${ficheId || fiche.id}`
     );
   }
 
@@ -2209,7 +2322,7 @@ async function saveQuickEnterprise(event) {
 
     const savedDraft = Boolean(fiche && missionId);
     const message = savedDraft
-      ? "Réinitialiser cette fiche brouillon ? Les saisies de mission, entreprise, offres et certifications seront effacées. Les documents déposés seront désactivés, sans suppression physique. La campagne, la zone et les affectations seront conservées."
+      ? "Réinitialiser cette fiche brouillon ? Seules les saisies de cette collecte (entreprise, déclarant, offres et certifications) seront effacées. La mission, sa campagne, sa zone et ses agents resteront inchangés. Les documents déposés seront désactivés, sans suppression physique."
       : "Réinitialiser toutes les saisies non enregistrées de ce formulaire ?";
 
     if (!window.confirm(message)) return;
@@ -2224,7 +2337,7 @@ async function saveQuickEnterprise(event) {
         step = 1;
         await loadExisting();
         showState(
-          "Brouillon réinitialisé. Reprenez la saisie à partir de la mission ; campagne, zone et affectations sont conservées."
+          "Brouillon réinitialisé. Reprenez la saisie de cette entreprise ; la mission, la campagne, la zone et les agents sont inchangés."
         );
       } else {
         resetUnsavedFormState();
@@ -2314,7 +2427,7 @@ async function saveQuickEnterprise(event) {
       : [];
 
     declaredCertifications = Array.isArray(certData)
-      ? certData
+      ? uniqueDeclaredCertifications(certData)
       : [];
 
     documents = documentData.items || [];
@@ -2352,9 +2465,11 @@ async function saveQuickEnterprise(event) {
     });
 
     try {
-      fiche = await apiGet(
-        `/api/v1/missions/${missionId}/fiches/current`
-      );
+      // Le mode « nouvelle collecte » démarre une fiche vierge même si la
+      // mission contient déjà des collectes d'autres entreprises.
+      fiche = editMode && ficheId
+        ? await apiGet(`/api/v1/missions/${missionId}/fiches/${ficheId}`)
+        : null;
     } catch (error) {
       if (error?.status !== 404) throw error;
       fiche = null;
@@ -2401,12 +2516,17 @@ async function saveQuickEnterprise(event) {
     if (event.target.id === "quickEnterpriseForm") saveQuickEnterprise(event);
   }, true);
 
+  document.addEventListener("click", event => {
+    if (event.target.closest("#quickEnterpriseLocate")) locateQuickEnterprise();
+  });
+
   async function bootstrap() {
     const api = await import("/static/js/core/api.js");
 
     apiGet = api.apiGet;
     apiPost = api.apiPost;
     apiPatch = api.apiPatch;
+    apiRequest = api.apiRequest;
 
     const task = async () => {
       const [me, filterData] = await Promise.all([
@@ -2417,17 +2537,26 @@ async function saveQuickEnterprise(event) {
       currentUser = me;
       workspace = filterData;
 
+      if (!editMode) {
+        const assignedFilter = hasPermission("COLLECTE.AFFECTER")
+          ? ""
+          : `?assigned_user_id=${encodeURIComponent(currentUser.id)}&`;
+        const missionsResponse = await apiGet(
+          `/api/v1/missions${assignedFilter}${assignedFilter ? "limit=200" : "?limit=200"}`
+        );
+        workspace.missions = Array.isArray(missionsResponse)
+          ? missionsResponse
+          : (missionsResponse.items || []);
+      }
+
       await loadExisting();
 
       if (
         !missionId
-        && !(
-          hasPermission("COLLECTE.AFFECTER")
-          && hasPermission("COLLECTE.CREER")
-        )
+        && !hasPermission("COLLECTE.CREER")
       ) {
         throw new Error(
-          "La création d’une mission et d’une fiche nécessite COLLECTE.AFFECTER et COLLECTE.CREER."
+          "La création d’une collecte nécessite COLLECTE.CREER et une affectation active à la mission."
         );
       }
 

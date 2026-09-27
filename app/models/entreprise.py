@@ -53,6 +53,11 @@ class Entreprise(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
     )
 
+    autre_identifiant_juridique: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     date_creation: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,

@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     hauqe_contact_email: str | None = None
     hauqe_contact_phone: str | None = None
 
+    # Adresse publique de l'application, ajoutée uniquement aux courriels
+    # d'alertes et d'échéances destinés aux utilisateurs HAUQE.
+    lien_vers_sngsc: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

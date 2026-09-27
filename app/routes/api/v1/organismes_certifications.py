@@ -25,8 +25,11 @@ from app.schemas.organismes_certifications import (
     AuditCertificationResponse,
     AuditCertificationUpdateRequest,
     CertificationCreateRequest,
+    CertificationExpirationAlertPolicyResponse,
+    CertificationExpirationAlertPolicyUpdateRequest,
     CertificationListResponse,
     CertificationResponse,
+    CertificationStatusAnalysisResponse,
     CertificationStatusRequest,
     CertificationUpdateRequest,
     CertificationVerificationRequest,
@@ -65,6 +68,7 @@ from app.services.organismes_certifications_service import (
     AuditCertificationService,
     CertificationEventService,
     CertificationService,
+    CertificationStatusAnalysisService,
     CouvertureService,
     NormeService,
     OrganismeService,
@@ -600,6 +604,25 @@ async def export_certifications_registry(
 
 
 @router.get(
+    "/certifications/{certification_id}/status-analysis",
+    response_model=CertificationStatusAnalysisResponse,
+    tags=["Certifications - Registre"],
+)
+async def certification_status_analysis(
+    certification_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(
+        require_permission("CERTIFICATIONS.LIRE")
+    ),
+):
+    """Retourne les manquements factuels expliquant le statut du dossier."""
+    return await CertificationStatusAnalysisService.analyse(
+        db,
+        certification_id,
+    )
+
+
+@router.get(
     "/certifications/{certification_id}/context",
     response_model=CertificationRegistryItem,
     tags=["Certifications - Registre"],
@@ -694,6 +717,43 @@ async def get_certification(
     actor: AuthContext = Depends(require_permission("CERTIFICATIONS.LIRE")),
 ):
     return await CertificationService.detail(db, certification_id)
+
+
+@router.get(
+    "/certifications/{certification_id}/expiration-alerts",
+    response_model=CertificationExpirationAlertPolicyResponse,
+    tags=["Certifications - Veille"],
+)
+async def get_certification_expiration_alert_policy(
+    certification_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("CERTIFICATIONS.LIRE")),
+):
+    return await CertificationService.expiration_alert_policy(
+        db,
+        certification_id,
+    )
+
+
+@router.patch(
+    "/certifications/{certification_id}/expiration-alerts",
+    response_model=CertificationExpirationAlertPolicyResponse,
+    tags=["Certifications - Veille"],
+)
+async def update_certification_expiration_alert_policy(
+    certification_id: UUID,
+    payload: CertificationExpirationAlertPolicyUpdateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("VEILLE.GERER")),
+):
+    return await CertificationService.update_expiration_alert_policy(
+        db,
+        certification_id=certification_id,
+        payload=payload,
+        actor=actor,
+        request=request,
+    )
 
 
 @router.post("/certifications", response_model=CertificationResponse, status_code=status.HTTP_201_CREATED, tags=["Certifications"])

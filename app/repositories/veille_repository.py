@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alerte import Alerte
@@ -555,6 +555,25 @@ class WatchRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def cancel_active_expiration_alerts_for_deadline(
+        db: AsyncSession,
+        *,
+        deadline_id: UUID,
+        rule_prefix: str,
+    ) -> int:
+        """Annule uniquement les alertes automatiques obsolètes d'une échéance."""
+        result = await db.execute(
+            update(Alerte)
+            .where(
+                Alerte.echeance_id == deadline_id,
+                Alerte.statut.in_(list(ACTIVE_ALERT_STATUSES)),
+                Alerte.regle_notification.like(f"{rule_prefix}%"),
+            )
+            .values(statut="ANNULEE", date_resolution=date.today())
+        )
+        return int(result.rowcount or 0)
 
     @staticmethod
     async def alert_notification_counts(

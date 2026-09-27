@@ -13,11 +13,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.permissions.auth import require_permission
+from app.models.dossier_verification import DossierVerification
+from app.permissions.auth import get_current_auth, require_permission
 from app.schemas.declarations_collecte import (
     CertificationDeclareeCreateRequest,
     CertificationDeclareeResponse,
@@ -109,10 +111,28 @@ async def get_fiche(
     mission_id: UUID,
     fiche_id: UUID,
     db: AsyncSession = Depends(get_db),
-    actor: AuthContext = Depends(
-        require_permission("COLLECTE.LIRE")
-    ),
+    actor: AuthContext = Depends(get_current_auth),
 ):
+    """Retourne une fiche de collecte selon son contexte d'utilisation.
+
+    Une fiche rattachée à un dossier de vérification est nécessaire à la
+    lecture du dossier par un vérificateur. Ce cas limité ne doit pas ouvrir
+    au rôle VERIFICATEUR la consultation générale du module Collecte.
+    """
+    if "COLLECTE.LIRE" not in actor.permissions:
+        dossier_id = None
+        if "VERIFICATION.LIRE" in actor.permissions:
+            dossier_id = await db.scalar(
+                select(DossierVerification.id)
+                .where(DossierVerification.fiche_collecte_id == fiche_id)
+                .limit(1)
+            )
+        if dossier_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission insuffisante.",
+            )
+
     from app.services.fiche_collecte_service import fiche_response
     return fiche_response(
         await FicheCollecteService.get(
@@ -289,6 +309,22 @@ async def update_offre(
     )
 
 
+@router.delete("/{fiche_id}/offres/{offre_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_offre(
+    mission_id: UUID,
+    fiche_id: UUID,
+    offre_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.MODIFIER")),
+):
+    await FicheCollecteService.delete_offre(
+        db, mission_id=mission_id, fiche_id=fiche_id, offre_id=offre_id,
+        actor=actor, request=request,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get(
     "/{fiche_id}/certifications",
     response_model=list[CertificationDeclareeResponse],
@@ -357,6 +393,23 @@ async def update_certification_declaree(
         actor=actor,
         request=request,
     )
+
+
+@router.delete("/{fiche_id}/certifications/{certification_declaree_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_certification_declaree(
+    mission_id: UUID,
+    fiche_id: UUID,
+    certification_declaree_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.MODIFIER")),
+):
+    await FicheCollecteService.delete_certification(
+        db, mission_id=mission_id, fiche_id=fiche_id,
+        certification_declaree_id=certification_declaree_id,
+        actor=actor, request=request,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

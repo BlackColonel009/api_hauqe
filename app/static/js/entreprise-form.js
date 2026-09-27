@@ -24,6 +24,7 @@
       rccm: "",
       nif: "",
       ifu: "",
+      autre_identifiant_juridique: "",
       date_creation: "",
       nationalite: "Togolaise",
       capital_social: "",
@@ -98,15 +99,15 @@
   }
 
   function renderContactsEditor() {
-    return `<div class="entry-list company-structured-list" id="contactList">${state.contacts.map((item, index) => `<div class="repeat-entry structured-contact" data-contact-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Prénoms / Nom</label><input data-field="name" value="${escapeHtml([item.prenoms, item.nom].filter(Boolean).join(" "))}"></div><div class="form-field"><label>Fonction</label><input data-field="fonction" value="${escapeHtml(item.fonction || "")}"></div><div class="form-field"><label>Téléphone</label><input data-field="telephone" type="tel" value="${escapeHtml(item.telephone || "")}"></div><div class="form-field"><label>Email</label><input data-field="email" type="email" value="${escapeHtml(item.email || "")}"></div><label class="structured-check"><input data-field="contact_principal" type="checkbox" ${item.contact_principal ? "checked" : ""}>Contact principal</label><button class="remove-entry" type="button" data-remove-contact="${index}">${icon("trash-2")}</button></div>`).join("")}</div><button type="button" class="btn btn-outline-secondary app-btn add-entry" id="addContact">${icon("plus")}Ajouter un contact</button>`;
+    return `<div class="entry-list company-structured-list" id="contactList">${state.contacts.map((item, index) => `<div class="repeat-entry structured-contact" data-contact-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Prénoms / Nom</label><input data-field="name" value="${escapeHtml([item.prenoms, item.nom].filter(Boolean).join(" "))}"></div><div class="form-field"><label>Fonction</label><input data-field="fonction" value="${escapeHtml(item.fonction || "")}"></div><div class="form-field"><label>Téléphone</label><input data-field="telephone" type="tel" value="${escapeHtml(item.telephone || "")}"></div><div class="form-field"><label>Email</label><input data-field="email" type="email" value="${escapeHtml(item.email || "")}"></div><label class="structured-check"><input data-field="contact_principal" type="checkbox" ${item.contact_principal ? "checked" : ""}>Contact principal</label><span data-remove-contact-slot="${index}"></span></div>`).join("")}</div><span id="addContactSlot"></span>`;
   }
 
   function renderSitesEditor() {
-    return `<div class="entry-list company-structured-list" id="siteList">${state.sites.map((item, index) => `<div class="repeat-entry structured-site" data-site-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Nom du site</label><input data-field="nom" value="${escapeHtml(item.nom || "")}"></div><div class="form-field"><label>Type</label><input data-field="type_site" value="${escapeHtml(item.type_site || "")}" placeholder="Siège, usine, entrepôt…"></div><div class="form-field"><label>Zone</label><select data-field="zone_id"><option value="">Sélectionner</option>${zoneOptions().map((option) => `<option value="${escapeHtml(option.value)}" ${String(item.zone_id || "") === String(option.value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div><div class="form-field"><label>Adresse</label><input data-field="adresse" value="${escapeHtml(item.adresse || "")}"></div><button class="remove-entry" type="button" data-remove-site="${index}">${icon("trash-2")}</button></div>`).join("")}</div><button type="button" class="btn btn-outline-secondary app-btn add-entry" id="addSite">${icon("plus")}Ajouter un site</button>`;
+    return `<div class="entry-list company-structured-list" id="siteList">${state.sites.map((item, index) => `<div class="repeat-entry structured-site" data-site-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Nom du site</label><input data-field="nom" value="${escapeHtml(item.nom || "")}"></div><div class="form-field"><label>Type</label><input data-field="type_site" value="${escapeHtml(item.type_site || "")}" placeholder="Siège, usine, entrepôt…"></div><div class="form-field"><label>Zone</label><select data-field="zone_id"><option value="">Sélectionner</option>${zoneOptions().map((option) => `<option value="${escapeHtml(option.value)}" ${String(item.zone_id || "") === String(option.value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div><div class="form-field"><label>Adresse</label><input data-field="adresse" value="${escapeHtml(item.adresse || "")}"></div><span data-remove-site-slot="${index}"></span></div>`).join("")}</div><span id="addSiteSlot"></span>`;
   }
 
   function renderOffersEditor() {
-    return `<div class="entry-list company-structured-list" id="offerList">${state.offers.map((item, index) => `<div class="repeat-entry structured-offer" data-offer-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Type</label><select data-field="type_offre"><option value="PRODUIT" ${item.type_offre === "PRODUIT" ? "selected" : ""}>Produit</option><option value="SERVICE" ${item.type_offre === "SERVICE" ? "selected" : ""}>Service</option></select></div><div class="form-field"><label>Nom</label><input data-field="nom" value="${escapeHtml(item.nom || "")}"></div><div class="form-field"><label>Catégorie</label><input data-field="categorie" value="${escapeHtml(item.categorie || "")}"></div><div class="form-field"><label>Marchés (séparés par virgule)</label><input data-field="marches_cibles" value="${escapeHtml((item.marches_cibles || []).join(", "))}"></div><div class="form-field"><label>Destinations (séparées par virgule)</label><input data-field="destinations" value="${escapeHtml((item.destinations || []).join(", "))}"></div><button class="remove-entry" type="button" data-remove-offer="${index}">${icon("trash-2")}</button></div>`).join("")}</div><button type="button" class="btn btn-outline-secondary app-btn add-entry" id="addOffer">${icon("plus")}Ajouter un produit / service</button>`;
+    return `<div class="entry-list company-structured-list" id="offerList">${state.offers.map((item, index) => `<div class="repeat-entry structured-offer" data-offer-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Type</label><select data-field="type_offre"><option value="PRODUIT" ${item.type_offre === "PRODUIT" ? "selected" : ""}>Produit</option><option value="SERVICE" ${item.type_offre === "SERVICE" ? "selected" : ""}>Service</option></select></div><div class="form-field"><label>Nom</label><input data-field="nom" value="${escapeHtml(item.nom || "")}"></div><div class="form-field"><label>Catégorie</label><input data-field="categorie" value="${escapeHtml(item.categorie || "")}"></div><div class="form-field"><label>Marchés (séparés par virgule)</label><input data-field="marches_cibles" value="${escapeHtml((item.marches_cibles || []).join(", "))}"></div><div class="form-field"><label>Destinations (séparées par virgule)</label><input data-field="destinations" value="${escapeHtml((item.destinations || []).join(", "))}"></div><span data-remove-offer-slot="${index}"></span></div>`).join("")}</div><span id="addOfferSlot"></span>`;
   }
 
   function reviewSection(title, rows) {
@@ -115,7 +116,7 @@
 
   function legalIdentifiersFields() {
     const visible = state.showLegalIdentifiers;
-    return `<section class="form-field full legal-identifiers-toggle"><div class="legal-identifiers-control"><div><strong>Identifiants juridiques</strong><small>RCCM, NIF et IFU facultatifs.</small></div><label class="legal-identifiers-switch" aria-label="Afficher les identifiants juridiques"><input id="toggleLegalIdentifiers" type="checkbox" ${visible ? "checked" : ""}><i aria-hidden="true"></i><em>${visible ? "Activé" : "Désactivé"}</em></label></div></section>${visible ? `<div class="form-field"><label>Numéro RCCM</label><div class="identifier-wrap"><input name="rccm" id="rccm" value="${escapeHtml(state.company.rccm || "")}"><button type="button" class="btn btn-outline-secondary app-btn" id="checkDuplicate">Vérifier</button></div><small class="field-help">Unicité contrôlée par le serveur lorsqu’il est renseigné.</small></div>${field("nif", "NIF")}${field("ifu", "IFU")}` : ""}`;
+    return `<section class="form-field full legal-identifiers-toggle"><div class="legal-identifiers-control"><div><strong>Identifiants juridiques</strong><small>RCCM, NIF, IFU ou autre numéro facultatifs.</small></div><label class="legal-identifiers-switch" aria-label="Afficher les identifiants juridiques"><input id="toggleLegalIdentifiers" type="checkbox" ${visible ? "checked" : ""}><i aria-hidden="true"></i><em>${visible ? "Activé" : "Désactivé"}</em></label></div></section>${visible ? `<div class="form-field"><label>Numéro RCCM</label><div class="identifier-wrap"><input name="rccm" id="rccm" value="${escapeHtml(state.company.rccm || "")}"><button type="button" class="btn btn-outline-secondary app-btn" id="checkDuplicate">Vérifier</button></div><small class="field-help">Unicité contrôlée par le serveur lorsqu’il est renseigné.</small></div>${field("nif", "NIF")}${field("ifu", "IFU")}${field("autre_identifiant_juridique", "Autre identifiant juridique", { help: "Numéro légal ou administratif non couvert par RCCM, NIF ou IFU." })}` : ""}`;
   }
 
   function nationalIdentifierField() {
@@ -129,7 +130,7 @@
     2: () => `<article class="panel form-card">${head("Localisation et siège", "Sélectionnez la zone administrative la plus précise disponible.")}<div class="form-grid">${companySelect("zone_siege_id", "Zone administrative du siège", zoneOptions(), { required: true, help: "Région, préfecture, commune ou localité selon le référentiel disponible." })}${field("adresse_siege", "Adresse / localité", { required: true })}${field("site_web", "Site web", { type: "url" })}</div><div class="subresource-head"><div><h3>Sites de l’entreprise</h3><p>Les sites sont enregistrés dans le sous-module Sites entreprise.</p></div></div>${renderSitesEditor()}</article>`,
     3: () => `<article class="panel form-card">${head("Activités, produits et marchés", "L’activité principale alimente les filtres du registre. Les produits/services sont conservés comme offres structurées.")}<div class="form-grid">${companySelect("activite_principale", "Activité principale", sectorOptions(), { required: true })}<div class="form-field full"><label>Secteurs secondaires</label><input name="secteurs_secondaires_text" value="${escapeHtml((state.company.secteurs_secondaires || []).join(", "))}" placeholder="Séparer par des virgules"><small class="field-help">Liste optionnelle.</small></div></div><div class="subresource-head"><div><h3>Produits et services</h3><p>Marchés et destinations sont stockés de manière structurée.</p></div></div>${renderOffersEditor()}</article>`,
     4: () => `<article class="panel form-card">${head("Contacts et coordonnées", "RM-13 : au moins un téléphone ou un courriel est obligatoire pour l’entreprise.")}<div class="form-grid">${field("telephone_principal", "Téléphone principal", { type: "tel" })}${field("email_principal", "Email principal", { type: "email" })}</div><div class="subresource-head"><div><h3>Contacts rattachés</h3><p>Le premier contact peut être marqué principal.</p></div></div>${renderContactsEditor()}</article>`,
-    5: () => `<article class="panel form-card">${head("Vérification avant enregistrement", "Le serveur reste souverain sur les contrôles d’unicité, les permissions et les règles métier.")}<div class="review-layout">${reviewSection("Identification", [["Identifiant national", state.company.identifiant_national], ["Raison sociale", state.company.raison_sociale], ...(state.showLegalIdentifiers ? [["RCCM", state.company.rccm], ["NIF", state.company.nif], ["IFU", state.company.ifu]] : [])])}${reviewSection("Localisation / activité", [["Zone", (state.filters.zones || []).find((z) => String(z.id) === String(state.company.zone_siege_id))?.nom], ["Adresse", state.company.adresse_siege], ["Activité", state.company.activite_principale], ["Effectif", state.company.effectif]])}${reviewSection("Coordonnées", [["Téléphone", state.company.telephone_principal], ["Email", state.company.email_principal], ["Contacts", String(state.contacts.length)], ["Sites", String(state.sites.length)]])}${reviewSection("Offres", [["Produits / services", String(state.offers.length)], ["Secteurs secondaires", (state.company.secteurs_secondaires || []).join(", ")]])}<div class="review-warning">${icon("info")}L’enregistrement d’une entreprise ne valide pas automatiquement ses certifications. Les certifications sont gérées dans leur module officiel.</div></div></article>`,
+    5: () => `<article class="panel form-card">${head("Vérification avant enregistrement", "Le serveur reste souverain sur les contrôles d’unicité, les permissions et les règles métier.")}<div class="review-layout">${reviewSection("Identification", [["Identifiant national", state.company.identifiant_national], ["Raison sociale", state.company.raison_sociale], ...(state.showLegalIdentifiers ? [["RCCM", state.company.rccm], ["NIF", state.company.nif], ["IFU", state.company.ifu], ["Autre identifiant juridique", state.company.autre_identifiant_juridique]] : [])])}${reviewSection("Localisation / activité", [["Zone", (state.filters.zones || []).find((z) => String(z.id) === String(state.company.zone_siege_id))?.nom], ["Adresse", state.company.adresse_siege], ["Activité", state.company.activite_principale], ["Effectif", state.company.effectif]])}${reviewSection("Coordonnées", [["Téléphone", state.company.telephone_principal], ["Email", state.company.email_principal], ["Contacts", String(state.contacts.length)], ["Sites", String(state.sites.length)]])}${reviewSection("Offres", [["Produits / services", String(state.offers.length)], ["Secteurs secondaires", (state.company.secteurs_secondaires || []).join(", ")]])}<div class="review-warning">${icon("info")}L’enregistrement d’une entreprise ne valide pas automatiquement ses certifications. Les certifications sont gérées dans leur module officiel.</div></div></article>`,
   };
 
   function captureCompanyFields() {
@@ -192,32 +193,69 @@
     });
   }
 
-  function bindStructured() {
-    $("#addContact")?.addEventListener("click", () => { captureCompanyFields(); state.contacts.push({ contact_principal: state.contacts.length === 0 }); renderStep(); });
-    $("#addSite")?.addEventListener("click", () => { captureCompanyFields(); state.sites.push({ zone_id: state.company.zone_siege_id || "" }); renderStep(); });
-    $("#addOffer")?.addEventListener("click", () => { captureCompanyFields(); state.offers.push({ type_offre: "PRODUIT", marches_cibles: [], destinations: [] }); renderStep(); });
+  function createStructuredActionButton({ label, iconName, className, title = "", onClick }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.setAttribute("data-no-action-loader", "true");
+    button.setAttribute("aria-label", title || label);
+    if (title) button.title = title;
+    button.innerHTML = `${icon(iconName)}${label ? `<span>${escapeHtml(label)}</span>` : ""}`;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick(button);
+    });
+    return button;
+  }
 
-    document.querySelectorAll("[data-remove-contact]").forEach((button) => button.addEventListener("click", () => {
-      captureCompanyFields();
-      const item = state.contacts[Number(button.dataset.removeContact)];
-      if (item?.id) state.removed.contacts.add(String(item.id));
-      state.contacts.splice(Number(button.dataset.removeContact), 1);
-      renderStep();
-    }));
-    document.querySelectorAll("[data-remove-site]").forEach((button) => button.addEventListener("click", () => {
-      captureCompanyFields();
-      const item = state.sites[Number(button.dataset.removeSite)];
-      if (item?.id) state.removed.sites.add(String(item.id));
-      state.sites.splice(Number(button.dataset.removeSite), 1);
-      renderStep();
-    }));
-    document.querySelectorAll("[data-remove-offer]").forEach((button) => button.addEventListener("click", () => {
-      captureCompanyFields();
-      const item = state.offers[Number(button.dataset.removeOffer)];
-      if (item?.id) state.removed.offers.add(String(item.id));
-      state.offers.splice(Number(button.dataset.removeOffer), 1);
-      renderStep();
-    }));
+  function removeStructuredEntry(kind, index) {
+    captureCompanyFields();
+    const entries = state[kind];
+    const item = entries[index];
+    if (!item) return;
+    if (item.id) state.removed[kind].add(String(item.id));
+    entries.splice(index, 1);
+    renderStep();
+  }
+
+  function bindStructured() {
+    const additions = [
+      ["#addContactSlot", "Ajouter un contact", "contacts", () => ({ contact_principal: state.contacts.length === 0 })],
+      ["#addSiteSlot", "Ajouter un site", "sites", () => ({ zone_id: state.company.zone_siege_id || "" })],
+      ["#addOfferSlot", "Ajouter un produit / service", "offers", () => ({ type_offre: "PRODUIT", marches_cibles: [], destinations: [] })],
+    ];
+    additions.forEach(([selector, label, kind, create]) => {
+      const slot = $(selector);
+      if (!slot) return;
+      slot.replaceChildren(createStructuredActionButton({
+        label,
+        iconName: "plus",
+        className: "btn btn-outline-secondary app-btn add-entry",
+        onClick: () => {
+          captureCompanyFields();
+          state[kind].push(create());
+          renderStep();
+        },
+      }));
+    });
+
+    [
+      ["contacts", "[data-remove-contact-slot]", "removeContactSlot", "Retirer ce contact"],
+      ["sites", "[data-remove-site-slot]", "removeSiteSlot", "Retirer ce site"],
+      ["offers", "[data-remove-offer-slot]", "removeOfferSlot", "Retirer ce produit ou service"],
+    ].forEach(([kind, selector, indexAttribute, title]) => {
+      document.querySelectorAll(selector).forEach((slot) => {
+        const index = Number(slot.dataset[indexAttribute]);
+        slot.replaceChildren(createStructuredActionButton({
+          label: "",
+          iconName: "trash-2",
+          className: "remove-entry",
+          title,
+          onClick: () => removeStructuredEntry(kind, index),
+        }));
+      });
+    });
   }
 
   async function checkDuplicate(button = null) {
@@ -345,6 +383,7 @@
       rccm: clean(c.rccm),
       nif: clean(c.nif),
       ifu: clean(c.ifu),
+      autre_identifiant_juridique: clean(c.autre_identifiant_juridique),
       date_creation: clean(c.date_creation),
       nationalite: clean(c.nationalite),
       capital_social: clean(c.capital_social) === null ? null : Number(c.capital_social),
@@ -536,7 +575,12 @@
         state.company.date_creation = company.date_creation || "";
         state.company.capital_social = company.capital_social ?? "";
         state.company.effectif = company.effectif ?? "";
-        state.showLegalIdentifiers = Boolean(company.rccm || company.nif);
+        state.showLegalIdentifiers = Boolean(
+          company.rccm
+          || company.nif
+          || company.ifu
+          || company.autre_identifiant_juridique
+        );
         state.contacts = (contacts || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         state.sites = (sites || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         state.offers = (offers || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");

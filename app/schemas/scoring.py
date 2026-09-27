@@ -7,7 +7,8 @@ PRINCIPES
    - classification globale de l'entreprise ;
    - INFC d'une certification ;
    - classement SNCC d'une certification.
-2. Aucun passage FUCCS -> INFC n'est automatique.
+2. Les calculs automatiques exploitent les données du parcours ; ils ne
+   transforment jamais un score FUCCS seul en décision finale.
 3. Les seuils, pondérations, arrondis et règles de calcul sont versionnés
    dans `modeles_scoring` + `ponderations_scoring`.
 4. Aucune valeur métier provisoire n'est codée en dur dans ce module.
@@ -138,6 +139,41 @@ class ScoreComputationPreviewResponse(BaseModel):
     contributions: dict[str, Any] = Field(default_factory=dict)
     classe: str | None = None
     niveau: int | None = None
+
+
+# ============================================================
+# RAPPORTS DE CALCUL AUTOMATIQUE
+# ============================================================
+
+class AutomaticEvaluationFinding(BaseModel):
+    code: str
+    libelle: str
+    statut: str
+    valeur: Decimal | None = None
+    detail: str
+
+
+class AutomaticEvaluationReport(BaseModel):
+    operation: str
+    pret: bool
+    modele_code: str | None = None
+    modele_version: str | None = None
+    regle_risque_code: str | None = None
+    regle_risque_version: str | None = None
+    score: Decimal | None = None
+    classe: str | None = None
+    statut_administratif: str | None = None
+    niveau: int | None = None
+    niveau_risque: str | None = None
+    constats: list[AutomaticEvaluationFinding] = Field(default_factory=list)
+    blocages: list[str] = Field(default_factory=list)
+    alertes: list[str] = Field(default_factory=list)
+
+
+class AutomaticEvaluationResponse(BaseModel):
+    execute: bool
+    resultat: dict[str, Any] | None = None
+    rapport: AutomaticEvaluationReport
 
 
 # ============================================================

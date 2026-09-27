@@ -70,6 +70,21 @@ de modals du chargeur global.
 |---|---|---|
 | 1. Pilotage | À auditer | Chaque action initiale répond au premier clic. |
 | 2. Registre et parcours de collecte | À auditer | Modals, menus de ligne et validations testés avant/après filtre. |
+
+> Mise à jour 23/09/2026 — l'API bloque toute saisie sur une mission sans
+> affectation active de l'agent. Lors de l'audit de ce bloc, vérifier que le
+> message métier renvoyé en `403` est visible à l'utilisateur ; le filtrage
+> visuel des missions personnelles reste une amélioration UX distincte.
+
+> Mise à jour 24/09/2026 — dans **Utilisateurs**, contrôler à l'ouverture de
+> « Nouvel utilisateur » que le compteur des rôles actifs est cohérent avec
+> le catalogue et que chaque rôle est sélectionnable. Refaire le test après
+> rechargement forcé du navigateur.
+
+> Mise à jour 24/09/2026 — dans **Entreprise — formulaire**, activer
+> « Identifiants juridiques », saisir et enregistrer un autre identifiant,
+> puis le vérifier à la réouverture de la fiche. Cette recette n'est valide
+> qu'après application de la migration `f7a1e2c3d4b5`.
 | 3. Analyse et veille | À auditer | Aucun bouton d’action ou de relance bloqué après fermeture de modal. |
 | 4. Pilotage avancé | À auditer | Filtres, exports et actions de détail stables au premier clic. |
 | 5. Administration et référentiels | À auditer | Création, modification, désactivation et publication stables. |
@@ -156,3 +171,95 @@ confirmées par un agent.
 - états de chargement, erreurs API, renvoi du lien et confirmation finale
   ajoutés ;
 - cache des scripts et styles actualisé.
+
+## Veille par certification — plan libre (24/09/2026)
+
+1. Ouvrir une **certification officielle** puis la **Vue d’ensemble**.
+2. La carte **Alertes d’expiration** indique les jalons effectivement
+   applicables ; si elle précise « règle générale », aucun réglage local n’a
+   encore été enregistré.
+3. Avec le rôle **Cellule de veille** ou **Administrateur HAUQE**, cliquer sur
+   **Paramétrer**, ajouter les jours avant expiration souhaités puis
+   enregistrer. Ne jamais retirer le **Jour J** : il est bloqué par
+   l’interface et l’API.
+4. Contrôler après l’enregistrement que les jalons affichés correspondent au
+   plan. Le changement concerne l’expiration de cette certification et non
+   les audits de surveillance ou les autres certifications.
+
+La migration `b4c8d1e2f3a6_certification_expiration_alert_policy.py` est
+requise avant utilisation sur un serveur.
+
+## Précréation d’entreprise géolocalisée (24/09/2026)
+
+1. Dans l’étape **Entreprise** d’une nouvelle collecte, rechercher d’abord le
+   registre pour éviter un doublon ; utiliser **Précréer** uniquement si aucune
+   entreprise n’est trouvée.
+2. Saisir l’adresse terrain puis, avec l’accord de la personne utilisant
+   l’appareil, cliquer sur **Utiliser ma position**. Latitude et longitude
+   restent modifiables manuellement.
+3. Après enregistrement, ouvrir la fiche entreprise : le site initial apparaît
+   dans **Sites → Implantations enregistrées**. **Voir la carte** n’est affiché
+   que lorsque les deux coordonnées sont présentes.
+4. Renseigner les coordonnées du déclarant et la description de l’offre : elles
+   enrichissent respectivement les contacts actifs et, seulement si vide,
+   l’activité principale de l’entreprise.
+
+**Base PostgreSQL modifiée : non ; migration : aucune.**
+
+## Collecter dans une mission affectée (24/09/2026)
+
+1. L'administrateur crée d'abord la campagne, puis la mission depuis
+   **Collectes & contrôles**. Il affecte tous les agents concernés ; le bouton
+   **Agents** permet d'en ajouter ultérieurement sans modifier les fiches.
+2. L'agent ouvre **Nouvelle collecte**, choisit une mission dans sa liste de
+   missions affectées et vérifie les informations affichées en lecture seule.
+3. Il sélectionne ou précrée l'entreprise, puis poursuit sa propre fiche. Une
+   même mission peut ainsi contenir plusieurs collectes d'entreprises.
+4. Dès qu'un agent a créé une fiche brouillon, cette fiche lui appartient. Les
+   autres agents affectés la consultent seulement ; l'administrateur HAUQE
+   peut intervenir si nécessaire.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`e1b7c4d9a206_collection_case_ownership.py` ; seed : aucun.**
+
+## Correctif transversal — recherches, listes répétées et boutons (24/09/2026)
+
+- Toute recherche d'un registre doit être effectuée côté API dès qu'elle doit
+  dépasser les éléments déjà visibles ; le filtre local seul est insuffisant.
+- Une liste d'éléments enfants de fiche doit être dédoublonnée par son `id`,
+  puis par une clé métier de secours, et sa sauvegarde doit être monoflux afin
+  qu'un clic rapproché ne crée pas deux enregistrements.
+- Pour toute action rendue dynamiquement : construire le bouton avec
+  `document.createElement`, attacher un écouteur direct unique,
+  `preventDefault`, `stopPropagation` et `data-no-action-loader="true"`.
+  Lors de la correction d'un bouton, auditer les autres boutons du même bloc.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+## Offre déclarée → offre entreprise (24/09/2026)
+
+- Déclencher la reprise seulement au moment de la soumission, jamais pendant
+  un brouillon.
+- Dédupliquer par type, nom et catégorie ; une fiche terrain peut contenir une
+  ligne répétée, mais le dossier entreprise ne doit afficher qu'une offre.
+- Convertir la saisie libre des marchés en liste et la renseigner dans
+  **Marchés cibles** comme dans **Destinations**.
+- Documenter toute reprise historique comme une modification de données,
+  même lorsqu'aucune migration Alembic n'est nécessaire.
+
+**Base PostgreSQL modifiée : oui, données des offres uniquement ; migration :
+aucune ; seed : aucun.**
+
+## Prévention obligatoire des doublons d'offres (24/09/2026)
+
+- Ne jamais dédupliquer seulement avec les champs numériques : volume `0` et
+  valeur vide ne rendent pas deux produits différents.
+- La clé métier est **type + nom + catégorie** dans une même fiche.
+- La protection doit exister dans les trois niveaux : interface, API et index
+  PostgreSQL. Les anciennes répétitions sont inactivées avec le statut
+  `DOUBLON_ANNULE`, jamais effacées sans autorisation.
+- Après une correction de ce type, contrôler à la fois l'affichage, la table
+  `offres_declarees` et la rubrique **Offres / produits** de l'entreprise.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`h3d9e4f1a607_declared_offer_duplicate_protection.py` ; seed : aucun.**

@@ -63,6 +63,8 @@ class FicheCollecteSubmitRequest(BaseModel):
 class FicheCollecteResponse(BaseModel):
     id: UUID
     mission_id: UUID
+    dossier_id: UUID | None = None
+    responsable_id: UUID
     entreprise_id: UUID | None = None
     version_formulaire: str | None = None
     numero_revision: int | None = None

@@ -247,6 +247,18 @@ class CertificationVerificationRequest(BaseModel):
     source: str | None = Field(default="VERIFICATION", max_length=255)
 
 
+class CertificationExpirationAlertPolicyUpdateRequest(BaseModel):
+    """Jours avant l'expiration auxquels le moteur doit alerter."""
+
+    jours_avant: list[int] = Field(min_length=1, max_length=12)
+
+
+class CertificationExpirationAlertPolicyResponse(BaseModel):
+    certification_id: UUID
+    jours_avant: list[int]
+    source: str
+
+
 class CertificationResponse(BaseModel):
     id: UUID
     identifiant_national: str
@@ -259,6 +271,7 @@ class CertificationResponse(BaseModel):
     date_obtention: date | None = None
     date_effet: date | None = None
     date_expiration: date | None = None
+    seuils_alerte_expiration_jours: list[int] | None = None
     statut: str | None = None
     motif_statut: str | None = None
     classification: str | None = None
@@ -267,6 +280,24 @@ class CertificationResponse(BaseModel):
     source_donnee: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CertificationStatusFinding(BaseModel):
+    """Manquement ou information déterminé côté serveur pour une certification."""
+
+    code: str
+    niveau: str
+    libelle: str
+    detail: str
+    action_label: str | None = None
+    action_tab: str | None = None
+
+
+class CertificationStatusAnalysisResponse(BaseModel):
+    certification_id: UUID
+    statut_certificat: str | None = None
+    statut_sncc_prioritaire: str | None = None
+    constats: list[CertificationStatusFinding] = Field(default_factory=list)
 
 
 class CertificationListResponse(BaseModel):

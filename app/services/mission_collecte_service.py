@@ -28,6 +28,7 @@ from app.repositories.mission_collecte_repository import (
     MissionCollecteRepository,
 )
 from app.schemas.mission_collecte import (
+    AffectationMissionBatchCreateRequest,
     AffectationMissionCreateRequest,
     AffectationMissionResponse,
     AffectationMissionUpdateRequest,
@@ -189,6 +190,33 @@ class MissionCollecteService:
         db.add(item)
         await db.flush()
 
+        # La mission peut être ouverte avec tous les agents nécessaires dès sa
+        # création. La table d'affectation existe déjà ; aucune limite de cinq
+        # agents n'est appliquée.
+        agent_ids = list(dict.fromkeys(payload.agent_ids))
+        for user_id in agent_ids:
+            user = await MissionCollecteRepository.get_user(db, user_id)
+            if user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Utilisateur à affecter introuvable.",
+                )
+            if (user.statut or "").strip().upper() != "ACTIF":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Un utilisateur inactif ne peut pas être affecté.",
+                )
+            db.add(AffectationMission(
+                mission_id=item.id,
+                utilisateur_id=user_id,
+                role_mission="AGENT_COLLECTE",
+                date_debut=item.date_debut_prevue,
+                date_fin=item.date_fin_prevue,
+                attribue_par_id=actor.user.id,
+                motif="Affectation à la création de la mission",
+                statut="ACTIF",
+            ))
+
         await write_audit_event(
             db,
             action="COLLECTE_MISSION_CREATE",
@@ -204,6 +232,7 @@ class MissionCollecteService:
                 "zone_id": str(item.zone_id),
                 "progression": item.progression,
                 "statut": item.statut,
+                "agents_affectes": [str(user_id) for user_id in agent_ids],
             },
         )
 
@@ -412,6 +441,76 @@ class MissionCollecteService:
         await db.commit()
         await db.refresh(item)
         return build_assignment(item)
+
+    @staticmethod
+    async def assign_many(
+        db: AsyncSession,
+        *,
+        mission_id: UUID,
+        payload: AffectationMissionBatchCreateRequest,
+        actor: AuthContext,
+        request: Request,
+    ) -> list[AffectationMissionResponse]:
+        """Ajoute les nouveaux agents demandés, sans réviser ni éditer une fiche."""
+        await MissionCollecteService.get(db, mission_id)
+        validate_period(payload.date_debut, payload.date_fin, "d'affectation")
+
+        user_ids = list(dict.fromkeys(payload.utilisateur_ids))
+        created: list[AffectationMission] = []
+        for user_id in user_ids:
+            user = await MissionCollecteRepository.get_user(db, user_id)
+            if user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Utilisateur à affecter introuvable.",
+                )
+            if (user.statut or "").strip().upper() != "ACTIF":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Un utilisateur inactif ne peut pas être affecté.",
+                )
+            existing = await MissionCollecteRepository.get_active_assignment_for_user(
+                db,
+                mission_id=mission_id,
+                utilisateur_id=user_id,
+            )
+            if existing is not None:
+                continue
+            item = AffectationMission(
+                mission_id=mission_id,
+                utilisateur_id=user_id,
+                role_mission=clean_text(payload.role_mission),
+                date_debut=payload.date_debut,
+                date_fin=payload.date_fin,
+                attribue_par_id=actor.user.id,
+                motif=clean_text(payload.motif),
+                statut=clean_text(payload.statut) or "ACTIF",
+            )
+            db.add(item)
+            created.append(item)
+
+        await db.flush()
+        for item in created:
+            await write_audit_event(
+                db,
+                action="COLLECTE_MISSION_ASSIGN",
+                categorie="AFFECTATION",
+                resultat="SUCCES",
+                utilisateur_id=actor.user.id,
+                ressource_type="affectation_mission",
+                ressource_id=item.id,
+                adresse_ip=client_ip(request),
+                valeurs_apres={
+                    "mission_id": str(mission_id),
+                    "utilisateur_id": str(item.utilisateur_id),
+                    "attribue_par_id": str(item.attribue_par_id),
+                    "statut": item.statut,
+                },
+            )
+        await db.commit()
+        for item in created:
+            await db.refresh(item)
+        return [build_assignment(item) for item in created]
 
     @staticmethod
     async def update_assignment(

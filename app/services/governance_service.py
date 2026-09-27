@@ -45,6 +45,7 @@ from app.rules.codification import (
     CODIFICATION_PREFIX,
     validate_codification_parameters,
 )
+from app.rules.sncc_matrix import validate_sncc_matrix_parameters
 from app.schemas.governance import *
 from app.services.auth_service import AuthContext
 
@@ -380,6 +381,21 @@ class GovernanceService:
             params["_logical_code"] = logical
             if validation.warnings:
                 params["_publication_warnings"] = validation.warnings
+            item.parametres = params
+
+        if logical == "SNCC_CLASSIFICATION_MATRIX":
+            params, errors = validate_sncc_matrix_parameters(
+                item.parametres or {},
+            )
+            if errors:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "La matrice SNCC ne peut pas être publiée : "
+                        + " | ".join(errors)
+                    ),
+                )
+            params["_logical_code"] = logical
             item.parametres = params
 
         # Clôture automatiquement une version publiée qui chevaucherait

@@ -75,6 +75,43 @@ def hauqe_html_signature() -> str:
     return f"Pour toute précision, contactez :<br>{safe_contact}"
 
 
+def sngsc_application_url() -> str | None:
+    """Retourne l'URL configurée sous une forme exploitable dans un e-mail."""
+    value = (settings.lien_vers_sngsc or "").strip()
+    if not value:
+        return None
+    if not value.lower().startswith(("http://", "https://")):
+        value = f"https://{value}"
+    return value.rstrip("/")
+
+
+def application_url_for_internal_alert(notification) -> str | None:
+    """Le lien SNGSC est réservé aux alertes/échéances internes HAUQE.
+
+    Une notification adressée à un utilisateur HAUQE et rattachée à une alerte
+    relève de ce périmètre. Les e-mails externes (organismes, relances,
+    confirmations) n'ont pas de destinataire utilisateur et restent inchangés.
+    """
+    if not (
+        getattr(notification, "alerte_id", None)
+        and getattr(notification, "destinataire_utilisateur_id", None)
+    ):
+        return None
+    return sngsc_application_url()
+
+
+def append_sngsc_application_link(body: str, application_url: str | None) -> str:
+    """Ajoute une seule fois le lien de traitement à la version texte."""
+    clean_body = (body or "").strip()
+    if not application_url or application_url in clean_body:
+        return clean_body
+    return (
+        f"{clean_body}\n\n"
+        "Accéder au SNGSC pour consulter et traiter cette alerte :\n"
+        f"{application_url}"
+    )
+
+
 def hauqe_subject(subject: str) -> str:
     """Préfixe uniforme, sans répéter HAUQE lorsque l'objet le contient déjà."""
     clean_subject = (subject or "Notification").strip()
@@ -95,9 +132,25 @@ def hauqe_plain_message(body: str) -> str:
     )
 
 
-def hauqe_html_message(body: str) -> str:
+def hauqe_html_message(body: str, *, application_url: str | None = None) -> str:
     """Habillage sobre et compatible pour les courriels émis par le worker."""
-    safe_body = html.escape((body or "").strip()).replace("\n", "<br>")
+    html_body = (body or "").strip()
+    application_cta = ""
+    if application_url:
+        # La version texte contient l'URL explicite ; dans le HTML, elle est
+        # remplacée par un bouton afin de ne pas l'afficher deux fois.
+        html_body = html_body.replace(
+            "\n\nAccéder au SNGSC pour consulter et traiter cette alerte:\n"
+            f"{application_url}",
+            "",
+        )
+        safe_url = html.escape(application_url, quote=True)
+        application_cta = f"""
+          <p style=\"margin:22px 0 0;\">
+            <a href=\"{safe_url}\" style=\"display:inline-block;padding:11px 16px;border-radius:8px;background:#087659;color:#ffffff;text-decoration:none;font-weight:700;\">Ouvrir le SNGSC</a>
+          </p>
+        """
+    safe_body = html.escape(html_body).replace("\n", "<br>")
     return f"""\
 <!doctype html>
 <html lang="fr"><body style="margin:0;background:#f3f7f5;font-family:Arial,sans-serif;color:#163d32;">
@@ -107,7 +160,7 @@ def hauqe_html_message(body: str) -> str:
       <div style="margin-top:7px;font-size:20px;font-weight:700;">Communication officielle</div>
       <div style="margin-top:4px;font-size:13px;opacity:.9;">Haute Autorité de la Qualité et de l'Environnement</div>
     </div>
-    <div style="padding:28px;font-size:15px;line-height:1.65;">{safe_body}</div>
+    <div style="padding:28px;font-size:15px;line-height:1.65;">{safe_body}{application_cta}</div>
     <div style="padding:16px 28px;background:#eef6f2;border-top:1px solid #d7e6df;font-size:12px;line-height:1.5;color:#527067;">
       {hauqe_html_signature()}
     </div>
@@ -120,6 +173,7 @@ def send_smtp(
     recipient: str,
     subject: str,
     body: str,
+    application_url: str | None = None,
 ) -> str:
     host = settings.hauqe_smtp_host
     sender = settings.hauqe_smtp_from
@@ -141,7 +195,10 @@ def send_smtp(
     message["Subject"] = hauqe_subject(subject)
     message["X-HAUQE-Message"] = "SNGSC"
     message.set_content(hauqe_plain_message(body))
-    message.add_alternative(hauqe_html_message(body), subtype="html")
+    message.add_alternative(
+        hauqe_html_message(body, application_url=application_url),
+        subtype="html",
+    )
 
     with smtplib.SMTP(host, port, timeout=30) as smtp:
         if use_tls:
@@ -205,10 +262,16 @@ async def run(limit: int = 100) -> None:
                 continue
 
             try:
+                application_url = application_url_for_internal_alert(item)
+                body = append_sngsc_application_link(
+                    item.contenu or "",
+                    application_url,
+                )
                 provider_result = send_smtp(
                     recipient=recipient,
                     subject=item.objet or "Notification HAUQE",
-                    body=item.contenu or "",
+                    body=body,
+                    application_url=application_url,
                 )
                 if (item.objet or "") == "Création de votre compte HAUQE":
                     item.contenu = (

@@ -201,3 +201,5 @@ html[data-theme="dark"] .company-detail-page .cert-detail-button:hover{
   border-color:#3a6256!important;
   background:#21453a!important;
 }
+
+.company-site-row{align-items:center}.site-coordinates{font-variant-numeric:tabular-nums}.site-map-link{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:7px 9px;border:1px solid #cfe0d8;border-radius:9px;background:#f4faf7;color:#267354;font-size:7.5px;font-weight:800;text-decoration:none;white-space:nowrap}.site-map-link svg{width:13px}.site-map-link:hover{border-color:#a8cfbb;background:#eaf6ef;color:#14563d}

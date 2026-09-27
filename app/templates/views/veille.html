@@ -271,13 +271,13 @@
           <div><strong>Traçabilité de la relance</strong><small>La relance et sa réponse éventuelle resteront rattachées au dossier de veille sélectionné.</small></div>
         </div>
         <div class="followup-dialog-fields">
-          <label><span>Destinataire <b>*</b></span><input id="followupRecipient" maxlength="255" placeholder="Nom, service ou organisme" required></label>
-          <label><span>Adresse e-mail <b>*</b></span><input id="followupEmail" type="email" maxlength="320" placeholder="destinataire@organisme.tg" autocomplete="email" required></label>
-          <label><span>Canal <b>*</b></span><input id="followupChannel" list="followupChannelOptions" maxlength="255" placeholder="Sélectionnez ou saisissez un canal" autocomplete="off" required><datalist id="followupChannelOptions"><option value="EMAIL"></option><option value="TELEPHONE"></option><option value="COURRIER"></option><option value="VISITE"></option><option value="AUTRE"></option></datalist></label>
-          <label><span>Date d’envoi</span><input id="followupSendDate" type="date"></label>
-          <label class="full"><span>Objet <b>*</b></span><input id="followupSubject" maxlength="255" placeholder="Objet précis de la relance" required></label>
-          <label class="full"><span>Contenu du message <b>*</b></span><textarea id="followupMessage" rows="6" placeholder="Bonjour,&#10;&#10;Dans le cadre du suivi de votre dossier, nous vous prions de bien vouloir…" required></textarea><small>Ce contenu sera envoyé tel quel à l’adresse indiquée lorsque la date d’envoi sera atteinte.</small></label>
-          <label class="full"><span>Échéance de réponse</span><input id="followupDueDate" type="date"><small>Facultatif si aucun délai formel n’a été fixé.</small></label>
+          <label><span>Destinataire <b>*</b></span><input id="followupRecipient" name="destinataire" maxlength="255" placeholder="Nom, service ou organisme" required></label>
+          <label><span>Adresse e-mail <b>*</b></span><input id="followupEmail" name="adresse_email" type="email" maxlength="320" placeholder="destinataire@organisme.tg" autocomplete="email" required></label>
+          <label><span>Canal <b>*</b></span><input id="followupChannel" name="canal" list="followupChannelOptions" maxlength="255" placeholder="Sélectionnez ou saisissez un canal" autocomplete="off" required><datalist id="followupChannelOptions"><option value="EMAIL"></option><option value="TELEPHONE"></option><option value="COURRIER"></option><option value="VISITE"></option><option value="AUTRE"></option></datalist></label>
+          <label><span>Date d’envoi</span><input id="followupSendDate" name="date_envoi" type="date"></label>
+          <label class="full"><span>Objet <b>*</b></span><input id="followupSubject" name="objet" maxlength="255" placeholder="Objet précis de la relance" required></label>
+          <label class="full"><span>Contenu du message <b>*</b></span><textarea id="followupMessage" name="contenu" rows="6" placeholder="Bonjour,&#10;&#10;Dans le cadre du suivi de votre dossier, nous vous prions de bien vouloir…" required></textarea><small>Ce contenu sera envoyé tel quel à l’adresse indiquée lorsque la date d’envoi sera atteinte.</small></label>
+          <label class="full"><span>Échéance de réponse</span><input id="followupDueDate" name="date_echeance" type="date"><small>Facultatif si aucun délai formel n’a été fixé.</small></label>
         </div>
       </div>
 

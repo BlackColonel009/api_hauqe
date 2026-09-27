@@ -202,11 +202,15 @@ class CollecteWorkspaceRepository:
         return (
             select(
                 FicheCollecte.mission_id.label("mission_id"),
+                FicheCollecte.dossier_id.label("dossier_id"),
                 func.max(
                     FicheCollecte.numero_revision
                 ).label("numero_revision"),
             )
-            .group_by(FicheCollecte.mission_id)
+            .group_by(
+                FicheCollecte.mission_id,
+                FicheCollecte.dossier_id,
+            )
             .subquery()
         )
 
@@ -328,6 +332,12 @@ class CollecteWorkspaceRepository:
                 ZoneAdministrative.nom.label("zone_name"),
                 ZoneAdministrative.type_zone.label("zone_type"),
                 FicheCollecte.id.label("fiche_id"),
+                FicheCollecte.responsable_id.label("fiche_responsable_id"),
+                func.concat_ws(
+                    literal(" "),
+                    Utilisateur.prenoms,
+                    Utilisateur.nom,
+                ).label("fiche_responsable_name"),
                 FicheCollecte.statut.label("fiche_status"),
                 FicheCollecte.taux_completude.label("completeness"),
                 FicheCollecte.numero_revision.label("revision_number"),
@@ -359,9 +369,15 @@ class CollecteWorkspaceRepository:
                 and_(
                     FicheCollecte.mission_id
                     == MissionCollecte.id,
+                    FicheCollecte.dossier_id
+                    == current_revision.c.dossier_id,
                     FicheCollecte.numero_revision
                     == current_revision.c.numero_revision,
                 ),
+            )
+            .outerjoin(
+                Utilisateur,
+                Utilisateur.id == FicheCollecte.responsable_id,
             )
             .outerjoin(
                 Entreprise,

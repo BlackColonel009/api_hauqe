@@ -9,7 +9,7 @@
     LOGIN: "Connexion", LOGOUT: "Déconnexion", EXPORT: "Export",
     VALIDATE: "Validation", COMPLETE: "Finalisation", FAIL: "Échec",
   };
-  let rows = [], total = 0, me = null;
+  let rows = [], total = 0, me = null, searchTimer = null;
   const labelAction = (v) => {
     const code = String(v || "ÉVÉNEMENT").toUpperCase();
     const suffix = Object.entries(actionLabels).find(([key]) => code.includes(key))?.[1];
@@ -26,14 +26,20 @@
     const params = new URLSearchParams({ limit: "500" });
     const nature = $("#auditType").value;
     const result = $("#auditResult").value;
+    const search = $("#auditSearch").value.trim();
     if (nature !== "all") params.set("categorie", nature);
     if (result !== "all") params.set("resultat", result === "success" ? "SUCCES" : "ECHEC");
+    if (search) params.set("search", search);
     const payload = await api.apiRequest(`/api/v1/audit/events?${params}`);
     rows = payload.items || []; total = payload.total || 0; render();
   }
   function filtered() {
     const q = $("#auditSearch").value.trim().toLowerCase();
-    return rows.filter((x) => !q || `${x.action} ${x.categorie} ${x.ressource_type} ${x.ressource_id} ${x.adresse_ip} ${x.utilisateur_id}`.toLowerCase().includes(q));
+    return rows.filter((x) => !q || [
+      x.utilisateur_nom, x.utilisateur_email, x.utilisateur_id,
+      x.action, x.categorie, x.ressource_type, x.ressource_id,
+      x.adresse_ip, x.contexte,
+    ].join(" ").toLowerCase().includes(q));
   }
   function render() {
     const list = filtered();
@@ -55,7 +61,17 @@
       ["shield-alert", "Échecs", rows.length - successes, "À examiner"],
       ["fingerprint", "Empreintes présentes", rows.filter((x) => x.empreinte).length, "Contrôle d’intégrité"],
     ].map((x) => `<article class="audit-kpi"><span><i data-lucide="${x[0]}"></i></span><div><small>${x[1]}</small><strong>${x[2]}</strong><em>${x[3]}</em></div></article>`).join("");
-    document.querySelectorAll("[data-audit]").forEach((tr) => tr.onclick = () => open(rows.find((x) => x.id === tr.dataset.audit)));
+    document.querySelectorAll("[data-audit]").forEach((tr) => {
+      tr.tabIndex = 0;
+      const show = () => open(rows.find((x) => x.id === tr.dataset.audit));
+      tr.addEventListener("click", show);
+      tr.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          show();
+        }
+      });
+    });
     icons();
   }
   function prettyJson(value) {
@@ -63,6 +79,7 @@
     return esc(JSON.stringify(value, null, 2));
   }
   function open(x) {
+    if (!x) return;
     $("#auditDrawerTitle").textContent = labelAction(x.action);
     $("#auditDrawerBody").innerHTML = `<section class="audit-detail">${[
       ["Identifiant", x.id], ["Horodatage", dateFr(x.date_evenement || x.created_at)],
@@ -74,21 +91,49 @@
     <div class="diff-row"><pre>${prettyJson(x.valeurs_avant)}</pre><pre>${prettyJson(x.valeurs_apres)}</pre></div></section>`;
     $("#auditOverlay").hidden = false; $("#auditDrawer").classList.add("open"); icons();
   }
-  $("#auditSearch").oninput = render;
+  function recreateAuditButton(selector, handler) {
+    const previous = $(selector);
+    if (!previous) return null;
+    const button = document.createElement("button");
+    ["id", "class", "title", "aria-label"].forEach((attribute) => {
+      if (previous.hasAttribute(attribute)) {
+        button.setAttribute(attribute, previous.getAttribute(attribute));
+      }
+    });
+    button.type = "button";
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = previous.innerHTML;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    });
+    previous.replaceWith(button);
+    return button;
+  }
+  $("#auditSearch").addEventListener("input", () => {
+    render();
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      load().catch((error) => toast(error.message || "Recherche impossible.", true));
+    }, 250);
+  });
   $("#auditType").innerHTML = `<option value="all">Toutes les catégories</option><option value="SECURITE">Sécurité</option><option value="REFERENTIEL">Référentiel</option><option value="QUALITE">Qualité</option><option value="REPORTING">Rapports</option><option value="METIER">Métier</option>`;
   $("#auditType").onchange = load; $("#auditResult").onchange = load;
-  $("#resetAudit").onclick = async () => { $("#auditSearch").value = ""; $("#auditType").value = $("#auditResult").value = "all"; await load(); };
-  $("#closeAudit").onclick = $("#auditOverlay").onclick = () => { $("#auditOverlay").hidden = true; $("#auditDrawer").classList.remove("open"); };
-  $("#verifyIntegrity").onclick = () => {
+  recreateAuditButton("#resetAudit", async () => { $("#auditSearch").value = ""; $("#auditType").value = $("#auditResult").value = "all"; await load(); });
+  const closeDrawer = () => { $("#auditOverlay").hidden = true; $("#auditDrawer").classList.remove("open"); };
+  recreateAuditButton("#closeAudit", closeDrawer);
+  $("#auditOverlay").addEventListener("click", closeDrawer);
+  recreateAuditButton("#verifyIntegrity", () => {
     const missing = rows.filter((x) => !x.empreinte).length;
     toast(missing ? `${missing} événement(s) sans empreinte sur la page chargée.` : "Toutes les traces chargées possèdent une empreinte.", Boolean(missing));
-  };
-  $("#exportAudit").onclick = () => {
+  });
+  recreateAuditButton("#exportAudit", () => {
     const agent = [me?.prenoms, me?.nom].filter(Boolean).join(" ") || me?.email || "Agent HAUQE";
     const body = filtered().map((x) => `<tr><td>${esc(dateFr(x.date_evenement || x.created_at))}</td><td>${esc(x.utilisateur_nom || "Système")}</td><td>${esc(labelAction(x.action))}</td><td>${esc(x.categorie || "Général")}</td><td>${esc(x.ressource_type || "—")}</td><td>${esc(x.adresse_ip || "—")}</td><td>${isSuccess(x.resultat) ? "Réussi" : "Échec"}</td></tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial;color:#173c2e}.head{border-bottom:3px solid #176b4d;padding-bottom:12px}.brand{font-size:22px;font-weight:700;color:#176b4d}.agent{float:right;font-size:11px}.meta{margin:14px 0}table{border-collapse:collapse;width:100%}th{background:#176b4d;color:white;padding:8px;border:1px solid #d4e2db}td{padding:7px;border:1px solid #d4e2db}tr:nth-child(even){background:#f2f8f5}</style></head><body><div class="head"><span class="agent">Export demandé par<br><strong>${esc(agent)}</strong></span><div class="brand">HAUQE</div><div>Haute Autorité de la Qualité et de l’Environnement</div></div><h1>Journal d’audit</h1><div class="meta">Généré le ${esc(new Date().toLocaleString("fr-FR"))} · ${filtered().length} événement(s)</div><table><thead><tr><th>Date</th><th>Agent</th><th>Opération</th><th>Catégorie</th><th>Ressource</th><th>Adresse IP</th><th>Résultat</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel" })); a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast("Journal exporté avec l’en-tête institutionnel HAUQE.");
-  };
+  });
   try { me = await api.apiRequest("/api/v1/me"); await load(); } catch (error) { toast(error.message, true); }
 })();

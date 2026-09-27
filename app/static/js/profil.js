@@ -676,8 +676,9 @@ function securityLockFieldsChanged() {
             <div>
               <strong>Actualisation automatique des données</strong>
               <small>
-                Charge les modifications réalisées par les autres agents
-                sans interrompre votre saisie.
+                Actualise automatiquement le tableau de bord. Les écrans
+                opérationnels se mettent à jour avec leur bouton Actualiser,
+                afin de ne jamais interrompre une saisie ou une action.
               </small>
             </div>
           </header>
@@ -685,7 +686,7 @@ function securityLockFieldsChanged() {
           <div class="setting-row">
             <div>
               <strong>Activer l’actualisation automatique</strong>
-              <small>Vous pourrez continuer à utiliser le bouton Actualiser.</small>
+              <small>Les écrans opérationnels restent actualisables manuellement.</small>
             </div>
             <input
               id="profileAutoRefreshEnabled"

@@ -29,6 +29,8 @@ class MissionCollecteCreateRequest(BaseModel):
     priorite: str | None = Field(default=None, max_length=255)
     progression: int | None = Field(default=0, ge=0, le=100)
     statut: str | None = Field(default=None, max_length=255)
+    # Affectations créées avec la mission : aucun plafond métier n'est imposé.
+    agent_ids: list[UUID] = Field(default_factory=list)
 
 
 class MissionCollecteUpdateRequest(BaseModel):
@@ -70,6 +72,17 @@ class MissionCollecteListResponse(BaseModel):
 
 class AffectationMissionCreateRequest(BaseModel):
     utilisateur_id: UUID
+    role_mission: str | None = Field(default=None, max_length=255)
+    date_debut: date | None = None
+    date_fin: date | None = None
+    motif: str | None = None
+    statut: str | None = Field(default="ACTIF", max_length=255)
+
+
+class AffectationMissionBatchCreateRequest(BaseModel):
+    """Ajoute plusieurs agents à une mission sans toucher aux fiches."""
+
+    utilisateur_ids: list[UUID] = Field(min_length=1)
     role_mission: str | None = Field(default=None, max_length=255)
     date_debut: date | None = None
     date_fin: date | None = None

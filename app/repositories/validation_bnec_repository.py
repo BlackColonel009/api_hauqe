@@ -631,6 +631,11 @@ class ValidationBnecRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_organism(db: AsyncSession, organism_id: UUID) -> Organisme | None:
+        result = await db.execute(select(Organisme).where(Organisme.id == organism_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def find_norm_by_label(
         db: AsyncSession,
         label: str,

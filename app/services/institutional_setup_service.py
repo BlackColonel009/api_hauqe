@@ -12,6 +12,7 @@ from app.rules.collecte_completeness import (
     selectable_fields,
     validate_parameters,
 )
+from app.rules.sncc_matrix import validate_sncc_matrix_parameters
 from app.schemas.institutional_setup import (
     CompletenessCatalogResponse,
     CompletenessValidateResponse,
@@ -99,6 +100,21 @@ class InstitutionalSetupService:
             db,
             "INFC",
         )
+        sncc_rule = await resolve_business_rule(
+            db,
+            "SNCC_CLASSIFICATION_MATRIX",
+        )
+        _, sncc_errors = validate_sncc_matrix_parameters(
+            sncc_rule.parametres or {},
+        ) if sncc_rule else ({}, ["Aucune matrice SNCC publiée active."])
+        sncc = ReadinessRule(
+            ready=sncc_rule is not None and not sncc_errors,
+            id=sncc_rule.id if sncc_rule else None,
+            version=sncc_rule.version if sncc_rule else None,
+            effective_from=sncc_rule.date_debut_effet if sncc_rule else None,
+            approval_reference=sncc_rule.reference_approbation if sncc_rule else None,
+            status=sncc_rule.statut if sncc_rule else None,
+        )
 
         blockers = []
         if not collecte.ready:
@@ -107,14 +123,21 @@ class InstitutionalSetupService:
             blockers.append("Aucun modèle publié actif CLASSIFICATION_ENTREPRISE.")
         if not infc.ready:
             blockers.append("Aucun modèle publié actif INFC.")
+        if not sncc.ready:
+            blockers.append(
+                "Aucune matrice SNCC publiée active et valide "
+                "(SNCC_CLASSIFICATION_MATRIX)."
+            )
 
         return InstitutionalReadinessResponse(
             collecte_completude=collecte,
             classification_entreprise=classification,
             infc=infc,
+            sncc=sncc,
             ready_for_collecte_submission=collecte.ready,
             ready_for_classification_tests=classification.ready,
             ready_for_infc_score_tests=infc.ready,
+            ready_for_sncc_classification=sncc.ready,
             blockers=blockers,
         )
 

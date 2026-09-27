@@ -14,6 +14,7 @@
   let selectedModel = null;
   let selectedWeights = [];
   let completenessDraft = null;
+  let snccDraft = null;
   let publishTarget = null;
   let cloneSourceRule = null;
   let selectedCodificationRule = null;
@@ -52,6 +53,35 @@
     root.querySelectorAll(".rules-page button").forEach((button) => {
       button.setAttribute("data-no-action-loader", "true");
       button.classList.add("rules-action-button");
+    });
+  }
+
+  // Un bouton provenant d'un innerHTML peut être remplacé lors d'un rendu ou
+  // capturé par le chargeur global. On le recrée donc avant de lui donner son
+  // écouteur local : une action répond ainsi dès le premier clic.
+  function bindDirectRuleButtons(selector, handler, root = document) {
+    root.querySelectorAll(selector).forEach((source) => {
+      if (!(source instanceof HTMLButtonElement)) return;
+
+      const button = document.createElement("button");
+      Array.from(source.attributes).forEach((attribute) => {
+        button.setAttribute(attribute.name, attribute.value);
+      });
+      button.type = source.getAttribute("type") || "button";
+      button.innerHTML = source.innerHTML;
+      button.setAttribute("data-no-action-loader", "true");
+      button.dataset.rulesDirectButton = "true";
+      button.classList.add("rules-action-button");
+      source.replaceWith(button);
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        void Promise.resolve(handler(button, event)).catch((error) => {
+          console.error("[HAUQE Règles & codification] Action impossible", error);
+          state(error?.message || "Opération impossible.", true);
+        });
+      });
     });
   }
 
@@ -106,45 +136,6 @@
     return task();
   }
 
-  function bindPersistentFuccsPrefillTrigger() {
-    window.__HAUQE_FUCCS_PREFILL_ABORT__?.abort?.();
-
-    const controller = new AbortController();
-    window.__HAUQE_FUCCS_PREFILL_ABORT__ = controller;
-
-    document.addEventListener(
-      "click",
-      async (event) => {
-        const button = event.target.closest(
-          "#openFuccsHistorical24, "
-          + "#prefillFuccsHistorical24, "
-          + "#openFuccsHistorical22NoLegalIdentifiers, "
-          + "#prefillFuccsHistorical22NoLegalIdentifiers"
-        );
-
-        if (!button) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (button.matches(
-          "#openFuccsHistorical22NoLegalIdentifiers, "
-          + "#prefillFuccsHistorical22NoLegalIdentifiers"
-        )) {
-          await requestFuccsHistorical22NoLegalIdentifiers(event);
-        } else {
-          await requestFuccsHistorical24(event);
-        }
-      },
-      {
-        capture: true,
-        signal: controller.signal,
-      }
-    );
-  }
-
-  bindPersistentFuccsPrefillTrigger();
-
   function renderReadiness() {
     const fuccsReadiness = {
       ready: Boolean(fuccsActiveGrid),
@@ -179,6 +170,7 @@
       ["layout-grid", "Grille FUCCS", fuccsReadiness],
       ["building-2", "Classification entreprise", readiness?.classification_entreprise],
       ["badge-cent", "INFC", readiness?.infc],
+      ["trophy", "Classement SNCC", readiness?.sncc],
     ];
 
     $("#institutionalReadiness").innerHTML = cards.map(([icon, label, item]) => `
@@ -283,20 +275,16 @@
       };
     });
 
-    $$("[data-remove-field]").forEach((button) => {
-      button.onclick = () => {
+    bindDirectRuleButtons("[data-remove-field]", (button) => {
         const index = fieldReqs.findIndex((x) => x.id === button.dataset.removeField);
         if (index >= 0) fieldReqs.splice(index, 1);
         renderRequirements();
-      };
     });
 
-    $$("[data-remove-count]").forEach((button) => {
-      button.onclick = () => {
+    bindDirectRuleButtons("[data-remove-count]", (button) => {
         const index = countReqs.findIndex((x) => x.id === button.dataset.removeCount);
         if (index >= 0) countReqs.splice(index, 1);
         renderRequirements();
-      };
     });
 
     icons();
@@ -441,6 +429,8 @@
       publishTarget = null;
       completenessDraft = null;
       $("#publishCompleteness").hidden = true;
+      snccDraft = null;
+      $("#publishSnccMatrix").hidden = true;
 
       await Promise.all([
         loadReadiness(),
@@ -460,6 +450,8 @@
       rules = await api.apiGet("/api/v1/governance/rules");
       renderRuleList();
       renderCodificationModels();
+      restoreSnccDraft();
+      renderSnccMatrixStatus();
       renderReadiness();
     } catch (error) {
       $("#businessRuleList").innerHTML = `<div class="priority-empty">${e(error?.message || "Règles indisponibles.")}</div>`;
@@ -470,7 +462,8 @@
     const search = $("#ruleSearch")?.value.trim().toLowerCase() || "";
     const status = $("#ruleStatusFilter")?.value || "";
     const visible = rules.filter((item) => {
-      if (String(item.logical_code || "").toUpperCase().startsWith("CODIFICATION_BNEC_")) return false;
+      const logicalCode = String(item.logical_code || "").toUpperCase();
+      if (logicalCode.startsWith("CODIFICATION_BNEC_") || logicalCode === "SNCC_CLASSIFICATION_MATRIX") return false;
       if (status && String(item.statut || "").toUpperCase() !== status) return false;
       if (!search) return true;
       return [item.logical_code, item.libelle, item.famille, item.version]
@@ -488,12 +481,10 @@
         `).join("")
       : `<div class="priority-empty">Aucune règle.</div>`;
 
-    $$("[data-rule-id]").forEach((button) => {
-      button.onclick = () => {
+    bindDirectRuleButtons("[data-rule-id]", (button) => {
         selectedRule = rules.find((x) => String(x.id) === String(button.dataset.ruleId));
         renderRuleList();
         renderRuleDetail();
-      };
     });
     icons();
   }
@@ -528,7 +519,7 @@
       </div>
     `;
 
-    $("#saveSelectedRule")?.addEventListener("click", async () => {
+    bindDirectRuleButtons("#saveSelectedRule", async () => {
       try {
         const params = JSON.parse($("#selectedRuleJson").value);
         selectedRule = await api.apiPatch(
@@ -542,8 +533,8 @@
       }
     });
 
-    $("#publishSelectedRule")?.addEventListener("click", () => openPublish("rule", selectedRule));
-    $("#cloneSelectedRule")?.addEventListener("click", () => openRuleDialog(selectedRule));
+    bindDirectRuleButtons("#publishSelectedRule", () => openPublish("rule", selectedRule));
+    bindDirectRuleButtons("#cloneSelectedRule", () => openRuleDialog(selectedRule));
     icons();
   }
 
@@ -680,6 +671,174 @@
     }
   }
 
+  const SNCC_TEMPLATE_ROWS = [
+    { classe: "A+", label: "Très favorable", min: 90, max: 100, statut: "VA", risque: "R1" },
+    { classe: "A", label: "Favorable", min: 75, max: 89.99, statut: "VA", risque: "R1" },
+    { classe: "B", label: "À suivre", min: 60, max: 74.99, statut: "RE", risque: "R2" },
+    { classe: "C", label: "Fragile", min: 40, max: 59.99, statut: "RE", risque: "R3" },
+    { classe: "D", label: "Critique", min: 0, max: 39.99, statut: "RE", risque: "R5" },
+  ];
+  const SNCC_STATUS_OPTIONS = [
+    ["VA", "VA — valide"], ["RE", "RE — réservé"],
+  ];
+  const SNCC_RISK_OPTIONS = [
+    ["R1", "R1 — faible"], ["R2", "R2 — modéré"],
+    ["R3", "R3 — significatif"], ["R4", "R4 — élevé"],
+    ["R5", "R5 — critique"],
+  ];
+
+  function selectOptions(items, selected) {
+    return items.map(([value, label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`).join("");
+  }
+
+  function renderSnccMatrix(rows = SNCC_TEMPLATE_ROWS) {
+    const target = $("#snccMatrixRows");
+    if (!target) return;
+    target.innerHTML = rows.map((row) => `
+      <tr data-sncc-class="${e(row.classe)}">
+        <td><strong>${e(row.classe)}</strong></td>
+        <td><small>${e(row.label)}</small></td>
+        <td><input data-sncc-min type="number" min="0" max="100" step="0.01" value="${e(row.min)}" aria-label="Score minimum ${e(row.classe)}"></td>
+        <td><input data-sncc-max type="number" min="0" max="100" step="0.01" value="${e(row.max)}" aria-label="Score maximum ${e(row.classe)}"></td>
+        <td><select data-sncc-status aria-label="Statut normal ${e(row.classe)}">${selectOptions(SNCC_STATUS_OPTIONS, row.statut)}</select></td>
+        <td><select data-sncc-risk aria-label="Risque ${e(row.classe)}">${selectOptions(SNCC_RISK_OPTIONS, row.risque)}</select></td>
+      </tr>
+    `).join("");
+    icons();
+  }
+
+  function snccMatrixPayload() {
+    const errors = [];
+    const rows = $$("#snccMatrixRows tr").map((row) => {
+      const minimum = Number(row.querySelector("[data-sncc-min]")?.value);
+      const maximum = Number(row.querySelector("[data-sncc-max]")?.value);
+      const classe = row.dataset.snccClass || "";
+      const statut = row.querySelector("[data-sncc-status]")?.value || "";
+      const risque = row.querySelector("[data-sncc-risk]")?.value || "";
+      if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) {
+        errors.push(`Classe ${classe} : les deux bornes sont obligatoires.`);
+      } else if (minimum < 0 || maximum > 100 || minimum > maximum) {
+        errors.push(`Classe ${classe} : plage de score incohérente.`);
+      }
+      return { min: minimum, max: maximum, classe, statut_administratif: statut, niveau_risque: risque };
+    });
+    const ordered = [...rows].sort((a, b) => a.min - b.min);
+    if (ordered.length !== 5) errors.push("Les cinq classes SNCC sont requises.");
+    if (ordered.length && ordered[0].min !== 0) errors.push("La première plage doit commencer à 0.");
+    if (ordered.length && ordered.at(-1).max !== 100) errors.push("La dernière plage doit se terminer à 100.");
+    ordered.slice(1).forEach((current, index) => {
+      const previous = ordered[index];
+      if (current.min <= previous.max) errors.push("Les plages SNCC se chevauchent.");
+      else {
+        // Les scores sont administrés au centième. En JavaScript,
+        // 75 - 74.99 peut devenir 0.010000000000005 ; arrondir le calcul
+        // évite de déclarer à tort une lacune dans le préremplissage.
+        const gap = Math.round((current.min - previous.max) * 100) / 100;
+        if (gap > 0.01) errors.push("Les plages SNCC présentent un intervalle non couvert.");
+      }
+    });
+    return { rows: ordered, errors: [...new Set(errors)] };
+  }
+
+  function renderSnccValidation(errors = []) {
+    const node = $("#snccMatrixValidation");
+    if (!node) return;
+    node.innerHTML = errors.length
+      ? `<div class="validation-summary invalid"><strong>Matrice à corriger</strong><ul class="validation-errors">${errors.map((item) => `<li>${e(item)}</li>`).join("")}</ul></div>`
+      : `<div class="validation-summary valid"><strong>Matrice cohérente</strong><p>Les cinq classes couvrent le score INFC de 0 à 100. La matrice décide de la classe, du risque et du statut normal VA/RE ; les statuts EX, VE, SU et RT sont appliqués automatiquement lorsque la situation du certificat l’impose.</p></div>`;
+    icons();
+  }
+
+  function renderSnccMatrixStatus() {
+    const current = rules.find((item) => String(item.logical_code || "").toUpperCase() === "SNCC_CLASSIFICATION_MATRIX" && String(item.statut || "").toUpperCase() === "PUBLIE");
+    const draft = rules.find((item) => String(item.logical_code || "").toUpperCase() === "SNCC_CLASSIFICATION_MATRIX" && String(item.statut || "").toUpperCase() === "BROUILLON");
+    const node = $("#snccMatrixStatus");
+    if (!node) return;
+    node.textContent = current
+      ? `Publiée · v${current.version || "—"}`
+      : draft
+        ? `Brouillon · v${draft.version || "—"}`
+        : "Non publiée";
+    node.className = `inst-status ${current ? "ready" : ""}`;
+  }
+
+  function restoreSnccDraft() {
+    const draft = rules.find((item) =>
+      String(item.logical_code || "").toUpperCase() === "SNCC_CLASSIFICATION_MATRIX"
+      && String(item.statut || "").toUpperCase() === "BROUILLON"
+    ) || null;
+    const version = $("#snccMatrixVersion");
+    const label = $("#snccMatrixLabel");
+    const description = $("#snccMatrixDescription");
+    const saveButton = $("#saveSnccMatrixDraft");
+    const publishButton = $("#publishSnccMatrix");
+    if (!version || !label || !description || !saveButton || !publishButton) return;
+
+    snccDraft = draft;
+    if (!draft) {
+      version.disabled = false;
+      saveButton.innerHTML = '<i data-lucide="save"></i>Créer le brouillon SNCC';
+      publishButton.hidden = true;
+      return;
+    }
+
+    version.value = draft.version || version.value;
+    version.disabled = true;
+    version.title = "La version est fixée pour ce brouillon. Créez une nouvelle version après publication.";
+    label.value = draft.libelle || label.value;
+    description.value = draft.description || "";
+    const rows = Array.isArray(draft.parametres?.rows) ? draft.parametres.rows : [];
+    if (rows.length) renderSnccMatrix(rows);
+    saveButton.innerHTML = '<i data-lucide="save"></i>Enregistrer le brouillon SNCC';
+    publishButton.hidden = false;
+    icons();
+  }
+
+  async function validateSnccMatrix() {
+    const payload = snccMatrixPayload();
+    renderSnccValidation(payload.errors);
+    return payload;
+  }
+
+  async function saveSnccMatrixDraft() {
+    const { rows, errors } = await validateSnccMatrix();
+    if (errors.length) return;
+    try {
+      const draftPayload = {
+        famille: "SNCC",
+        libelle: $("#snccMatrixLabel").value.trim(),
+        description: $("#snccMatrixDescription").value.trim() || null,
+        parametres: { rows },
+        date_debut_effet: null,
+      };
+      const isExistingDraft = Boolean(snccDraft?.id);
+      snccDraft = await run(
+        () => isExistingDraft
+          ? api.apiPatch(`/api/v1/governance/rules/${snccDraft.id}`, draftPayload)
+          : api.apiPost("/api/v1/governance/rules", {
+            logical_code: "SNCC_CLASSIFICATION_MATRIX",
+            ...draftPayload,
+            version: $("#snccMatrixVersion").value.trim(),
+          }),
+        {
+          button: $("#saveSnccMatrixDraft"),
+          title: "Matrice SNCC",
+          message: isExistingDraft ? "Enregistrement du brouillon" : "Création du brouillon",
+        }
+      );
+      $("#publishSnccMatrix").hidden = false;
+      state(
+        isExistingDraft
+          ? `Brouillon ${snccDraft.code} enregistré. Il peut maintenant être publié.`
+          : `Brouillon ${snccDraft.code} créé. Vérifiez-le puis publiez la version approuvée.`
+      );
+      await Promise.all([loadRules(), loadReadiness()]);
+      renderSnccMatrixStatus();
+    } catch (error) {
+      state(error?.message || "Création de la matrice SNCC impossible.", true);
+    }
+  }
+
   async function loadModels() {
     try {
       const p = new URLSearchParams();
@@ -704,12 +863,10 @@
         `).join("")
       : `<div class="priority-empty">Aucun modèle.</div>`;
 
-    $$("[data-model-id]").forEach((button) => {
-      button.onclick = async () => {
+    bindDirectRuleButtons("[data-model-id]", async (button) => {
         selectedModel = models.find((x) => String(x.id) === String(button.dataset.modelId));
         await loadSelectedModel();
         renderModelList();
-      };
     });
     icons();
   }
@@ -775,7 +932,7 @@
       </div>
     `;
 
-    $("#saveModelRule")?.addEventListener("click", async () => {
+    bindDirectRuleButtons("#saveModelRule", async () => {
       try {
         selectedModel = await api.apiPatch(
           `/api/v1/scoring/models/${selectedModel.id}`,
@@ -789,17 +946,16 @@
       }
     });
 
-    $("#publishModel")?.addEventListener("click", () => openPublish("model", selectedModel));
-    $("#addWeight")?.addEventListener("click", () => {
+    bindDirectRuleButtons("#publishModel", () => openPublish("model", selectedModel));
+    bindDirectRuleButtons("#addWeight", () => {
       $("#weightDomain").value = "";
       $("#weightValue").value = "";
       $("#weightDialog").showModal();
       icons();
     });
-    $("#loadInfcWeights")?.addEventListener("click", loadDocumentedInfcWeights);
+    bindDirectRuleButtons("#loadInfcWeights", loadDocumentedInfcWeights);
 
-    $$("[data-deactivate-weight]").forEach((button) => {
-      button.onclick = async () => {
+    bindDirectRuleButtons("[data-deactivate-weight]", async (button) => {
         try {
           await api.apiPost(
             `/api/v1/scoring/models/${selectedModel.id}/weights/${button.dataset.deactivateWeight}/deactivate`,
@@ -810,7 +966,6 @@
         } catch (error) {
           state(error?.message || "Désactivation impossible.", true);
         }
-      };
     });
     icons();
   }
@@ -1170,15 +1325,13 @@ function renderFuccsGridList() {
       `).join("")
     : `<div class="priority-empty">Aucune version de grille FUCCS.</div>`;
 
-  $$("[data-fuccs-grid]").forEach((button) => {
-    button.onclick = async () => {
+  bindDirectRuleButtons("[data-fuccs-grid]", async (button) => {
       selectedFuccsGrid = fuccsGrids.find(
         (item) => String(item.id) === String(button.dataset.fuccsGrid)
       ) || null;
 
       renderFuccsGridList();
       await loadSelectedFuccsGrid();
-    };
   });
 
   icons();
@@ -1341,59 +1494,21 @@ ${
         </div>
 
         <div class="fuccs-prefill-actions">
-          <button class="btn btn-primary app-btn" id="prefillFuccsHistorical24" type="button">
-            <i data-lucide="list-plus"></i>
-            Préremplissage 1 · 24 critères
-          </button>
-          <button class="btn btn-outline-secondary app-btn" id="prefillFuccsHistorical22NoLegalIdentifiers" type="button">
-            <i data-lucide="list-minus"></i>
-            Préremplissage 2 · sans RCCM/NIF
-          </button>
+          <div data-fuccs-prefill-action-slot="historical-24"></div>
+          <div data-fuccs-prefill-action-slot="historical-22"></div>
         </div>
       </section>
     `
     : ""
 }
 
-      <div class="fuccs-grid-actions">
-        ${
-          draft && canAdmin
-            ? `
-              <button class="btn btn-outline-secondary app-btn" id="editFuccsGrid" type="button">
-                <i data-lucide="pencil"></i>
-                Modifier
-              </button>
-
-              <button class="btn btn-primary app-btn" id="publishFuccsGrid" type="button">
-                <i data-lucide="rocket"></i>
-                Publier
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          !draft && canAdmin
-            ? `
-              <button class="btn btn-outline-secondary app-btn" id="cloneFuccsGrid" type="button">
-                <i data-lucide="copy-plus"></i>
-                Nouvelle version
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          published && canAdmin
-            ? `
-              <button class="btn btn-outline-danger app-btn" id="retireFuccsGrid" type="button">
-                <i data-lucide="archive"></i>
-                Retirer
-              </button>
-            `
-            : ""
-        }
-      </div>
+      <div
+        class="fuccs-grid-actions"
+        data-fuccs-grid-action-slot
+        data-fuccs-grid-draft="${draft}"
+        data-fuccs-grid-published="${published}"
+        data-fuccs-grid-admin="${canAdmin}"
+      ></div>
 
       <section class="fuccs-structure">
         <div class="fuccs-structure-heading">
@@ -1408,16 +1523,7 @@ ${
             </p>
           </div>
 
-          ${
-            draft && canAdmin
-              ? `
-                <button class="btn btn-primary app-btn" id="newFuccsRubric" type="button">
-                  <i data-lucide="folder-plus"></i>
-                  Ajouter une rubrique
-                </button>
-              `
-              : ""
-          }
+          ${draft && canAdmin ? `<div data-new-fuccs-rubric-slot></div>` : ""}
         </div>
 
         <div class="fuccs-rubric-list">
@@ -1437,98 +1543,7 @@ ${
     </div>
   `;
 
-  $("#editFuccsGrid")?.addEventListener(
-    "click",
-    () => openFuccsGridDialog(selectedFuccsGrid)
-  );
-
-  $("#publishFuccsGrid")?.addEventListener(
-    "click",
-    () => openPublish("fuccs", selectedFuccsGrid)
-  );
-
-  $("#cloneFuccsGrid")?.addEventListener(
-    "click",
-    openFuccsCloneDialog
-  );
-
-  $("#retireFuccsGrid")?.addEventListener("click", () => {
-    $("#fuccsRetireDate").value =
-      new Date().toISOString().slice(0, 10);
-    $("#fuccsRetireReason").value = "";
-    $("#fuccsRetireDialog").showModal();
-    icons();
-  });
-
-  $("#newFuccsRubric")?.addEventListener(
-    "click",
-    () => openFuccsRubricDialog()
-  );
-
-  $$("[data-edit-fuccs-rubric]").forEach((button) => {
-    button.onclick = () => {
-      const rubric = fuccsRubrics.find(
-        (item) => String(item.id)
-          === String(button.dataset.editFuccsRubric)
-      );
-
-      openFuccsRubricDialog(rubric);
-    };
-  });
-
-  $$("[data-delete-fuccs-rubric]").forEach((button) => {
-    button.onclick = () => {
-      const rubric = fuccsRubrics.find(
-        (item) => String(item.id)
-          === String(button.dataset.deleteFuccsRubric)
-      );
-
-      openFuccsDeleteDialog("rubric", rubric);
-    };
-  });
-
-  $$("[data-add-fuccs-criterion]").forEach((button) => {
-    button.onclick = () => {
-      const rubric = fuccsRubrics.find(
-        (item) => String(item.id)
-          === String(button.dataset.addFuccsCriterion)
-      );
-
-      openFuccsCriterionDialog(rubric);
-    };
-  });
-
-  $$("[data-edit-fuccs-criterion]").forEach((button) => {
-    button.onclick = () => {
-      const criterion = fuccsCriteria.find(
-        (item) => String(item.id)
-          === String(button.dataset.editFuccsCriterion)
-      );
-
-      const rubric = fuccsRubrics.find(
-        (item) => String(item.id)
-          === String(criterion?.rubrique_fuccs_id)
-      );
-
-      openFuccsCriterionDialog(rubric, criterion);
-    };
-  });
-
-  $$("[data-delete-fuccs-criterion]").forEach((button) => {
-    button.onclick = () => {
-      const criterion = fuccsCriteria.find(
-        (item) => String(item.id)
-          === String(button.dataset.deleteFuccsCriterion)
-      );
-
-      const rubric = fuccsRubrics.find(
-        (item) => String(item.id)
-          === String(criterion?.rubrique_fuccs_id)
-      );
-
-      openFuccsDeleteDialog("criterion", criterion, rubric);
-    };
-  });
+  hydrateFuccsActionButtons(node);
 
   icons();
 }
@@ -1557,23 +1572,10 @@ function renderFuccsRubric(rubric, draft, canAdmin) {
         ${
           draft && canAdmin
             ? `
-              <div class="fuccs-inline-actions">
-                <button
-                  type="button"
-                  title="Modifier la rubrique"
-                  data-edit-fuccs-rubric="${e(rubric.id)}"
-                >
-                  <i data-lucide="pencil"></i>
-                </button>
-
-                <button
-                  type="button"
-                  title="Supprimer la rubrique"
-                  data-delete-fuccs-rubric="${e(rubric.id)}"
-                >
-                  <i data-lucide="trash-2"></i>
-                </button>
-              </div>
+              <div
+                class="fuccs-inline-actions"
+                data-fuccs-rubric-action-slot="${e(rubric.id)}"
+              ></div>
             `
             : ""
         }
@@ -1623,23 +1625,10 @@ function renderFuccsRubric(rubric, draft, canAdmin) {
                   ${
                     draft && canAdmin
                       ? `
-                        <div class="fuccs-inline-actions">
-                          <button
-                            type="button"
-                            title="Modifier le critère"
-                            data-edit-fuccs-criterion="${e(criterion.id)}"
-                          >
-                            <i data-lucide="pencil"></i>
-                          </button>
-
-                          <button
-                            type="button"
-                            title="Supprimer le critère"
-                            data-delete-fuccs-criterion="${e(criterion.id)}"
-                          >
-                            <i data-lucide="trash-2"></i>
-                          </button>
-                        </div>
+                        <div
+                          class="fuccs-inline-actions"
+                          data-fuccs-criterion-action-slot="${e(criterion.id)}"
+                        ></div>
                       `
                       : ""
                   }
@@ -1657,20 +1646,175 @@ function renderFuccsRubric(rubric, draft, canAdmin) {
         draft && canAdmin
           ? `
             <footer>
-              <button
-                class="btn btn-outline-secondary app-btn"
-                type="button"
-                data-add-fuccs-criterion="${e(rubric.id)}"
-              >
-                <i data-lucide="list-plus"></i>
-                Ajouter un critère
-              </button>
+              <div data-fuccs-add-criterion-slot="${e(rubric.id)}"></div>
             </footer>
           `
           : ""
       }
     </article>
   `;
+}
+
+// Les actions FUCCS sont volontairement créées après le rendu des données,
+// comme les actions de Gestion des campagnes. Ainsi, aucune icône d'action ne
+// dépend d'un bouton injecté par innerHTML ni d'un écouteur délégué.
+function createFuccsActionButton({
+  label,
+  iconName,
+  className = "btn btn-outline-secondary app-btn",
+  iconOnly = false,
+  handler,
+}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.setAttribute("aria-label", label);
+  button.setAttribute("title", label);
+  button.setAttribute("data-no-action-loader", "true");
+  button.dataset.rulesDirectButton = "true";
+  button.innerHTML = `<i data-lucide="${iconName}"></i>${iconOnly ? "" : label}`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    void Promise.resolve(handler(button)).catch((error) => {
+      console.error("[HAUQE FUCCS] Action impossible", error);
+      state(error?.message || "Opération impossible.", true);
+    });
+  });
+  return button;
+}
+
+function fuccsRubricById(id) {
+  return fuccsRubrics.find((item) => String(item.id) === String(id)) || null;
+}
+
+function fuccsCriterionById(id) {
+  return fuccsCriteria.find((item) => String(item.id) === String(id)) || null;
+}
+
+function hydrateFuccsActionButtons(root = document) {
+  root.querySelectorAll("[data-fuccs-prefill-action-slot]").forEach((slot) => {
+    const isSecondTemplate = slot.dataset.fuccsPrefillActionSlot === "historical-22";
+    slot.replaceChildren(createFuccsActionButton({
+      label: isSecondTemplate
+        ? "Préremplissage 2 · sans RCCM/NIF"
+        : "Préremplissage 1 · 24 critères",
+      iconName: isSecondTemplate ? "list-minus" : "list-plus",
+      className: isSecondTemplate
+        ? "btn btn-outline-secondary app-btn"
+        : "btn btn-primary app-btn",
+      handler: (button) => (
+        isSecondTemplate
+          ? requestFuccsHistorical22NoLegalIdentifiers(button)
+          : requestFuccsHistorical24(button)
+      ),
+    }));
+  });
+
+  root.querySelectorAll("[data-fuccs-grid-action-slot]").forEach((slot) => {
+    const draft = slot.dataset.fuccsGridDraft === "true";
+    const published = slot.dataset.fuccsGridPublished === "true";
+    const canAdmin = slot.dataset.fuccsGridAdmin === "true";
+    const actions = [];
+
+    if (draft && canAdmin) {
+      actions.push(createFuccsActionButton({
+        label: "Modifier",
+        iconName: "pencil",
+        handler: () => openFuccsGridDialog(selectedFuccsGrid),
+      }));
+      actions.push(createFuccsActionButton({
+        label: "Publier",
+        iconName: "rocket",
+        className: "btn btn-primary app-btn",
+        handler: () => openPublish("fuccs", selectedFuccsGrid),
+      }));
+    }
+    if (!draft && canAdmin) {
+      actions.push(createFuccsActionButton({
+        label: "Nouvelle version",
+        iconName: "copy-plus",
+        handler: openFuccsCloneDialog,
+      }));
+    }
+    if (published && canAdmin) {
+      actions.push(createFuccsActionButton({
+        label: "Retirer",
+        iconName: "archive",
+        className: "btn btn-outline-danger app-btn",
+        handler: () => {
+          $("#fuccsRetireDate").value = new Date().toISOString().slice(0, 10);
+          $("#fuccsRetireReason").value = "";
+          $("#fuccsRetireDialog").showModal();
+          icons();
+        },
+      }));
+    }
+    slot.replaceChildren(...actions);
+  });
+
+  root.querySelectorAll("[data-new-fuccs-rubric-slot]").forEach((slot) => {
+    slot.replaceChildren(createFuccsActionButton({
+      label: "Ajouter une rubrique",
+      iconName: "folder-plus",
+      className: "btn btn-primary app-btn",
+      handler: () => openFuccsRubricDialog(),
+    }));
+  });
+
+  root.querySelectorAll("[data-fuccs-rubric-action-slot]").forEach((slot) => {
+    const rubric = fuccsRubricById(slot.dataset.fuccsRubricActionSlot);
+    if (!rubric) return;
+    slot.replaceChildren(
+      createFuccsActionButton({
+        label: "Modifier la rubrique",
+        iconName: "pencil",
+        className: "",
+        iconOnly: true,
+        handler: () => openFuccsRubricDialog(rubric),
+      }),
+      createFuccsActionButton({
+        label: "Supprimer la rubrique",
+        iconName: "trash-2",
+        className: "",
+        iconOnly: true,
+        handler: () => openFuccsDeleteDialog("rubric", rubric),
+      })
+    );
+  });
+
+  root.querySelectorAll("[data-fuccs-criterion-action-slot]").forEach((slot) => {
+    const criterion = fuccsCriterionById(slot.dataset.fuccsCriterionActionSlot);
+    const rubric = fuccsRubricById(criterion?.rubrique_fuccs_id);
+    if (!criterion || !rubric) return;
+    slot.replaceChildren(
+      createFuccsActionButton({
+        label: "Modifier le critère",
+        iconName: "pencil",
+        className: "",
+        iconOnly: true,
+        handler: () => openFuccsCriterionDialog(rubric, criterion),
+      }),
+      createFuccsActionButton({
+        label: "Supprimer le critère",
+        iconName: "trash-2",
+        className: "",
+        iconOnly: true,
+        handler: () => openFuccsDeleteDialog("criterion", criterion, rubric),
+      })
+    );
+  });
+
+  root.querySelectorAll("[data-fuccs-add-criterion-slot]").forEach((slot) => {
+    const rubric = fuccsRubricById(slot.dataset.fuccsAddCriterionSlot);
+    if (!rubric) return;
+    slot.replaceChildren(createFuccsActionButton({
+      label: "Ajouter un critère",
+      iconName: "list-plus",
+      handler: () => openFuccsCriterionDialog(rubric),
+    }));
+  });
 }
 
 function updateFuccsGridCodePreview() {
@@ -2093,10 +2237,7 @@ function selectedFuccsCounts() {
   };
 }
 
-async function requestFuccsPrefill(variant, event = null) {
-  const sourceButton = event?.target?.closest?.(
-    variant.triggerSelector
-  ) || null;
+async function requestFuccsPrefill(variant, sourceButton = null) {
 
   try {
     if (!user) {
@@ -2215,22 +2356,20 @@ async function requestFuccsPrefill(variant, event = null) {
   }
 }
 
-function requestFuccsHistorical24(event = null) {
+function requestFuccsHistorical24(sourceButton = null) {
   return requestFuccsPrefill({
-    triggerSelector: "#openFuccsHistorical24, #prefillFuccsHistorical24",
     confirmationSelector: "#fuccsHistorical24Confirm",
     dialogSelector: "#fuccsHistorical24Dialog",
     label: "Le préremplissage historique",
-  }, event);
+  }, sourceButton);
 }
 
-function requestFuccsHistorical22NoLegalIdentifiers(event = null) {
+function requestFuccsHistorical22NoLegalIdentifiers(sourceButton = null) {
   return requestFuccsPrefill({
-    triggerSelector: "#openFuccsHistorical22NoLegalIdentifiers, #prefillFuccsHistorical22NoLegalIdentifiers",
     confirmationSelector: "#fuccsHistorical22Confirm",
     dialogSelector: "#fuccsHistorical22Dialog",
     label: "Le préremplissage 2",
-  }, event);
+  }, sourceButton);
 }
 
 async function prefillFuccsTemplate(event, variant) {
@@ -2499,8 +2638,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     $("#codificationTokens").innerHTML = CODIFICATION_TOKENS.map((token) => `
       <button class="codification-token" type="button" data-codification-token="${token}" title="${e(labels[token] || token)}">{${token}}</button>
     `).join("");
-    $$('[data-codification-token]').forEach((button) => {
-      button.onclick = () => {
+    bindDirectRuleButtons('[data-codification-token]', (button) => {
         const input = $("#codificationFormat");
         const token = `{${button.dataset.codificationToken}}`;
         const start = input.selectionStart ?? input.value.length;
@@ -2509,7 +2647,6 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
         input.focus();
         input.setSelectionRange(start + token.length, start + token.length);
         updateCodificationPreview();
-      };
     });
   }
 
@@ -2544,14 +2681,12 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
       `;
     }).join("") : `<div class="priority-empty">Aucun modèle de codification.</div>`;
 
-    $$('[data-codification-rule]').forEach((button) => {
-      button.onclick = () => {
+    bindDirectRuleButtons('[data-codification-rule]', (button) => {
         selectedCodificationRule = rules.find((item) =>
           String(item.id) === String(button.dataset.codificationRule)
         ) || null;
         renderCodificationModels();
         renderCodificationSummary();
-      };
     });
     icons();
   }
@@ -2587,16 +2722,48 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
           <article><small>Début d’effet</small><strong>${e(item.date_debut_effet || "—")}</strong></article>
           <article><small>Approbation</small><strong>${e(item.reference_approbation || "—")}</strong></article>
         </div>
-        <div class="institutional-actions no-pad-actions">
-          ${draft && has("GOUVERNANCE.ADMINISTRER_REGLES") ? `<button class="btn btn-outline-secondary app-btn" id="editCodificationModel" type="button"><i data-lucide="pencil"></i>Modifier</button><button class="btn btn-primary app-btn" id="publishSelectedCodification" type="button"><i data-lucide="rocket"></i>Publier</button>` : ""}
-          ${published && has("GOUVERNANCE.ADMINISTRER_REGLES") ? `<button class="btn btn-outline-secondary app-btn" id="newCodificationVersion" type="button"><i data-lucide="copy-plus"></i>Nouvelle version</button>` : ""}
-        </div>
+        <div
+          class="institutional-actions no-pad-actions"
+          data-codification-action-slot
+          data-codification-draft="${draft}"
+          data-codification-published="${published}"
+          data-codification-admin="${has("GOUVERNANCE.ADMINISTRER_REGLES")}"
+        ></div>
       </div>
     `;
-    $("#editCodificationModel")?.addEventListener("click", () => openCodificationBuilder(item));
-    $("#publishSelectedCodification")?.addEventListener("click", () => openPublish("rule", item));
-    $("#newCodificationVersion")?.addEventListener("click", () => openCodificationBuilder(item, true));
+    hydrateCodificationActionButtons(node, item);
     icons();
+  }
+
+  function hydrateCodificationActionButtons(root, item) {
+    root.querySelectorAll("[data-codification-action-slot]").forEach((slot) => {
+      const draft = slot.dataset.codificationDraft === "true";
+      const published = slot.dataset.codificationPublished === "true";
+      const canAdmin = slot.dataset.codificationAdmin === "true";
+      const actions = [];
+
+      if (draft && canAdmin) {
+        actions.push(createFuccsActionButton({
+          label: "Modifier",
+          iconName: "pencil",
+          handler: () => openCodificationBuilder(item),
+        }));
+        actions.push(createFuccsActionButton({
+          label: "Publier",
+          iconName: "rocket",
+          className: "btn btn-primary app-btn",
+          handler: () => openPublish("rule", item),
+        }));
+      }
+      if (published && canAdmin) {
+        actions.push(createFuccsActionButton({
+          label: "Nouvelle version",
+          iconName: "copy-plus",
+          handler: () => openCodificationBuilder(item, true),
+        }));
+      }
+      slot.replaceChildren(...actions);
+    });
   }
 
   function fillCodificationForm(objectType, source = null) {
@@ -2777,6 +2944,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     $("#rulesTab").hidden = tab !== "rules";
     $("#publicationDataTab").hidden = tab !== "publication-data";
     $("#scoringTab").hidden = tab !== "scoring";
+    $("#snccTab").hidden = tab !== "sncc";
     $("#fuccsTab").hidden = tab !== "fuccs";
 
     if (tab === "codification") {
@@ -2786,14 +2954,17 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     if (tab === "fuccs") {
       loadFuccsGrids();
     }
+    if (tab === "sncc") {
+      renderSnccMatrixStatus();
+    }
   }
 
   function bind() {
-    $("#addFieldRequirement").onclick = () => {
+    bindDirectRuleButtons("#addFieldRequirement", () => {
       fieldReqs.push({ id: createClientId("field"), label: "", fields: [], match: "ALL" });
       renderRequirements();
-    };
-    $("#addCountRequirement").onclick = () => {
+    });
+    bindDirectRuleButtons("#addCountRequirement", () => {
       countReqs.push({
         id: createClientId("count"),
         label: "",
@@ -2801,28 +2972,38 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
         minimum: 1,
       });
       renderRequirements();
-    };
+    });
 
-    $("#validateCompleteness").onclick = validateCompleteness;
-    $("#saveCompletenessDraft").onclick = createCompletenessDraft;
-    $("#publishCompleteness").onclick = () => {
+    bindDirectRuleButtons("#validateCompleteness", validateCompleteness);
+    bindDirectRuleButtons("#saveCompletenessDraft", createCompletenessDraft);
+    bindDirectRuleButtons("#publishCompleteness", () => {
       if (completenessDraft) openPublish("rule", completenessDraft);
-    };
+    });
 
-    $("#newGenericRule").onclick = () => openRuleDialog();
-    $("#savePublicationDataRule").onclick = savePublicationDataRule;
+    bindDirectRuleButtons("#newGenericRule", () => openRuleDialog());
+    bindDirectRuleButtons("#savePublicationDataRule", savePublicationDataRule);
+    bindDirectRuleButtons("#prefillSnccMatrix", () => {
+      renderSnccMatrix();
+      renderSnccValidation([]);
+      state("Préremplissage SNCC chargé : ajustez les seuils si nécessaire avant publication.");
+    });
+    bindDirectRuleButtons("#validateSnccMatrix", validateSnccMatrix);
+    bindDirectRuleButtons("#saveSnccMatrixDraft", saveSnccMatrixDraft);
+    bindDirectRuleButtons("#publishSnccMatrix", () => {
+      if (snccDraft) openPublish("rule", snccDraft);
+    });
     $("#ruleForm").onsubmit = saveRuleDialog;
     $("#publishForm").onsubmit = publish;
 
-    $("#newCodificationModel").onclick = () => openCodificationBuilder();
+    bindDirectRuleButtons("#newCodificationModel", () => openCodificationBuilder());
     $("#codificationObjectFilter").onchange = renderCodificationModels;
     $("#codificationStatusFilter").onchange = renderCodificationModels;
-    $("#cancelCodificationEdit").onclick = closeCodificationBuilder;
-    $("#saveCodificationModel").onclick = saveCodificationModel;
-    $("#publishCodificationModel").onclick = () => {
+    bindDirectRuleButtons("#cancelCodificationEdit", closeCodificationBuilder);
+    bindDirectRuleButtons("#saveCodificationModel", saveCodificationModel);
+    bindDirectRuleButtons("#publishCodificationModel", () => {
       if (editingCodificationRule) openPublish("rule", editingCodificationRule);
-    };
-    $("#copyCodificationPreview").onclick = copyCodificationPreview;
+    });
+    bindDirectRuleButtons("#copyCodificationPreview", copyCodificationPreview);
     [
       "#codificationVersion", "#codificationLabel", "#codificationFormat",
       "#codificationSeparator", "#codificationSequenceLength",
@@ -2846,8 +3027,8 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
       updateCodificationPreview();
     };
 
-    $("#newScoringModel").onclick = () => openModelDialog(false);
-    $("#prefillClassificationReference").onclick = () => openModelDialog(true);
+    bindDirectRuleButtons("#newScoringModel", () => openModelDialog(false));
+    bindDirectRuleButtons("#prefillClassificationReference", () => openModelDialog(true));
     $("#modelForm").onsubmit = createModel;
     $("#weightForm").onsubmit = addWeight;
 
@@ -2855,7 +3036,13 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     $("#scoringStatusFilter").onchange = loadModels;
     $("#ruleStatusFilter").onchange = renderRuleList;
 
-    $("#newFuccsGrid").onclick = () => openFuccsGridDialog();
+    bindDirectRuleButtons("#newFuccsGrid", () => openFuccsGridDialog());
+    bindDirectRuleButtons("#openFuccsHistorical24", (button) => {
+      return requestFuccsHistorical24(button);
+    });
+    bindDirectRuleButtons("#openFuccsHistorical22NoLegalIdentifiers", (button) => {
+      return requestFuccsHistorical22NoLegalIdentifiers(button);
+    });
     $("#fuccsGridForm").onsubmit = saveFuccsGrid;
     $("#fuccsCloneForm").onsubmit = cloneFuccsGrid;
     $("#fuccsRubricForm").onsubmit = saveFuccsRubric;
@@ -2879,8 +3066,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
       event.target.value = normalizeFuccsCode(event.target.value);
       updateFuccsRubricCodePreview();
     };
-    $("#generateFuccsRubricCode").onclick =
-      generateFuccsRubricCode;
+    bindDirectRuleButtons("#generateFuccsRubricCode", generateFuccsRubricCode);
 
     $("#fuccsCriterionOrder").oninput = () => {
       if (!editingFuccsCriterion) generateFuccsCriterionCode();
@@ -2890,8 +3076,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
       event.target.value = normalizeFuccsCode(event.target.value);
       updateFuccsCriterionCodePreview();
     };
-    $("#generateFuccsCriterionCode").onclick =
-      generateFuccsCriterionCode;
+    bindDirectRuleButtons("#generateFuccsCriterionCode", generateFuccsCriterionCode);
 
     $("#fuccsGridStatusFilter").onchange = renderFuccsGridList;
     $("#fuccsGridSearch").oninput = () => {
@@ -2904,7 +3089,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     };
     $("#rulePreset").onchange = (event) => applyRulePreset(event.target.value);
 
-    $("#refreshInstitutional").onclick = async (event) => {
+    bindDirectRuleButtons("#refreshInstitutional", async (button) => {
       try {
         await run(
           () => Promise.all([
@@ -2913,20 +3098,15 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
             loadModels(),
             loadFuccsGrids(),
           ]),
-          { button: event.currentTarget, title: "Paramétrage institutionnel", message: "Actualisation" }
+          { button, title: "Paramétrage institutionnel", message: "Actualisation" }
         );
       } catch (error) {
         state(error?.message || "Actualisation impossible.", true);
       }
-    };
-
-    $$("[data-inst-tab]").forEach((button) => {
-      button.onclick = () => switchTab(button.dataset.instTab);
     });
 
-    $$("[data-close-inst-dialog]").forEach((button) => {
-      button.onclick = () => document.getElementById(button.dataset.closeInstDialog)?.close();
-    });
+    bindDirectRuleButtons("[data-inst-tab]", (button) => switchTab(button.dataset.instTab));
+    bindDirectRuleButtons("[data-close-inst-dialog]", (button) => document.getElementById(button.dataset.closeInstDialog)?.close());
 
     // Les boutons créés par les rendus successifs ne doivent jamais attendre
     // le prochain appel à icons() pour devenir immédiatement cliquables.
@@ -2975,6 +3155,9 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     $("#saveCompletenessDraft").hidden = !canGovernRules;
     $("#addFieldRequirement").hidden = !canGovernRules;
     $("#addCountRequirement").hidden = !canGovernRules;
+    $("#prefillSnccMatrix").hidden = !canGovernRules;
+    $("#validateSnccMatrix").hidden = !canGovernRules;
+    $("#saveSnccMatrixDraft").hidden = !canGovernRules;
 
     $("#newScoringModel").hidden = !canAdminScoring;
     $("#prefillClassificationReference").hidden = !canAdminScoring;
@@ -3019,6 +3202,8 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     ]);
 
     renderRequirements();
+    if (!snccDraft) renderSnccMatrix();
+    renderSnccMatrixStatus();
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);
   }

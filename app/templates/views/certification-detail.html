@@ -132,4 +132,54 @@
       </footer>
     </form>
   </dialog>
+
+  <dialog class="hauqe-dialog certification-alert-policy-dialog" id="certificationAlertPolicyDialog">
+    <form id="certificationAlertPolicyForm">
+      <header class="certification-alert-policy-header">
+        <span><i data-lucide="bell-ring"></i></span>
+        <div>
+          <p class="eyebrow">Cellule de veille</p>
+          <h2>Plan d’alerte d’expiration</h2>
+          <small>Jalons propres à cette certification officielle</small>
+        </div>
+        <button class="dialog-close" type="button" data-close-certification-alert-policy aria-label="Fermer">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body certification-alert-policy-body" data-dialog-scroll>
+        <section class="certification-alert-policy-intro">
+          <i data-lucide="calendar-clock"></i>
+          <div>
+            <strong>Quand prévenir avant l’expiration ?</strong>
+            <small>Ajoutez les jours souhaités : par exemple 120, 45 et 15. Le jour J est toujours conservé.</small>
+          </div>
+        </section>
+
+        <section class="certification-alert-policy-fields">
+          <label>
+            <span>Ajouter un délai</span>
+            <div class="certification-alert-policy-add-row">
+              <input id="certificationAlertDayInput" type="number" inputmode="numeric" min="1" max="3650" step="1" placeholder="Ex. 90">
+              <span>jours avant l’expiration</span>
+              <span id="addCertificationAlertDaySlot"></span>
+            </div>
+          </label>
+          <div class="certification-alert-policy-days" id="certificationAlertPolicyDays"></div>
+        </section>
+
+        <section class="certification-alert-policy-note">
+          <i data-lucide="shield-alert"></i>
+          <span>Le jour J (0) est obligatoire : il garantit une alerte le jour exact de l’expiration.</span>
+        </section>
+      </div>
+
+      <footer>
+        <button class="btn btn-outline-secondary app-btn" type="button" data-close-certification-alert-policy>Annuler</button>
+        <button class="btn btn-primary app-btn" id="saveCertificationAlertPolicy" type="submit" data-no-action-loader="true">
+          <i data-lucide="save"></i>Enregistrer le plan
+        </button>
+      </footer>
+    </form>
+  </dialog>
 </div>

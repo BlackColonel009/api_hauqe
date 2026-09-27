@@ -987,6 +987,12 @@ enregistrées dans la file et les journaux sans perdre les données métier.
 | Précréation entreprise HAUQE | Code applicatif uniquement | Aucun changement PostgreSQL ; redémarrer `sngsc` après le déploiement. Les nouvelles précréations reçoivent `HAUQE-ENT-AAAA-XXXX`, puis BNEC les recodifie après N2. |
 | Gestion des campagnes de collecte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc` puis recharger le navigateur (`Ctrl + Shift + R`) pour charger la rubrique, la correction de code et le filtrage des campagnes désactivées. |
 | Réinitialisation sécurisée d'un brouillon de collecte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc` après le déploiement ; l'action est disponible seulement dans le formulaire et seulement pour la fiche courante en `BROUILLON`. |
+| Écriture de collecte limitée aux agents affectés | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Déployer puis redémarrer `sngsc`. Avant la saisie, l'administrateur ou le point focal doit créer une affectation active pour chaque agent et chaque mission ; les détenteurs de `COLLECTE.AFFECTER` gardent l'accès d'encadrement. |
+| Catalogue de rôles dans Nouvel utilisateur | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Déployer puis recharger le navigateur avec `Ctrl + Shift + R` : le script et la feuille de style sont versionnés afin de charger la liste complète des rôles actifs. |
+| Libellés des certifications déclarées | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Déployer puis recharger le navigateur avec `Ctrl + Shift + R` ; `collecte-form.js` est versionné pour charger les libellés de certificat corrigés. |
+| Autre identifiant juridique d'entreprise | **Migration PostgreSQL requise** | Sauvegarder la base, exécuter `alembic upgrade head` jusqu'à `f7a1e2c3d4b5`, puis redémarrer `sngsc` et recharger le navigateur (`Ctrl + Shift + R`). Aucune donnée existante n'est supprimée et aucun seed n'est requis. |
+| Plans d’alerte d’expiration par certification | **Migration PostgreSQL requise** | Sauvegarder la base, exécuter `alembic upgrade head` jusqu’à `b4c8d1e2f3a6`, puis redémarrer `sngsc` et recharger le navigateur (`Ctrl + Shift + R`). La migration ajoute seulement une colonne JSONB nullable ; les certifications historiques conservent la règle générale jusqu’à leur premier paramétrage. Aucun seed requis. |
+| Géolocalisation de précréation et carte des sites | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Déployer, redémarrer `sngsc` et recharger le navigateur (`Ctrl + Shift + R`). En production, publier le site en HTTPS : le navigateur peut refuser la géolocalisation sur HTTP hors `localhost`. |
 | Isolation du profil, des préférences et des avatars au changement de compte | Code applicatif uniquement | Aucun changement PostgreSQL ni seed. Redémarrer `sngsc`, puis recharger le navigateur (`Ctrl + Shift + R`) : l'API privée n'est plus lue depuis le cache et les réglages temporaires sont purgés à la déconnexion. |
 | Export Excel du dashboard opérationnel | **Nouvelle dépendance Python** | Exécuter `python -m pip install -r requirements.txt` pour installer `openpyxl`, puis redémarrer `sngsc`. L’export devient un fichier `.xlsx` mis en forme. Aucune migration ni seed. |
 
@@ -1062,5 +1068,397 @@ curl -fsS http://127.0.0.1:8014/api/v1/health
 sudo journalctl -u sngsc -n 100 --no-pager
 ```
 
-Résultat attendu après migration : `d9f2a7c4e318 (head)`. Aucune migration ne
+Résultat attendu après migration : `e1b7c4d9a206 (head)`. La migration
+`e1b7c4d9a206_collection_case_ownership.py` ajoute les références de dossier
+et de responsable aux fiches de collecte, indexe les dossiers par mission et
+regroupe les doublons historiques dans leur dossier d'origine. Elle ne supprime
+aucune fiche, aucune entreprise et aucune révision. Aucune seed n'est requise.
+
+Aucune migration ne
 doit être contournée, aucune seed n’est requise pour les correctifs récents.
+
+### 14.6 Vérificateur — lecture des collectes, sans affectation (27/09/2026)
+
+Après déploiement du code, appliquer la synchronisation RBAC suivante pour
+donner au rôle `VERIFICATEUR` la lecture des collectes et retirer une ancienne
+attribution éventuelle de `VERIFICATION.AFFECTER` :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m app.scripts.sync_verificateur_collecte_read
+sudo systemctl restart sngsc
+```
+
+Cette opération ne modifie pas le schéma PostgreSQL et n'exige aucune
+migration. Elle ajoute `COLLECTE.LIRE` et, si nécessaire, retire
+`VERIFICATION.AFFECTER` du seul rôle `VERIFICATEUR`.
+
+Redéployer le code applicatif, puis redémarrer `sngsc`. L'utilisateur concerné
+doit actualiser sa session afin que l'interface recharge ses permissions.
+
+### 14.6.1 Calculs automatiques Scoring / INFC / SNCC (25/09/2026)
+
+Déployer le code applicatif puis redémarrer le service :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.17 Cellule de veille — correction du formulaire de relance (25/09/2026)
+
+Cette livraison corrige le `422 Input should be a valid string` lors de
+l'enregistrement d'une relance : le navigateur lit les champs texte par leurs
+identifiants stables, sans dépendre du cache d’un modèle HTML, et affiche le
+libellé du champ réellement rejeté.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Déployer le code, redémarrer l'API, puis effectuer un rechargement
+forcé du navigateur afin de charger `veille.js` versionné :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.18 Matrice SNCC — correction des bornes au centième (25/09/2026)
+
+Le préremplissage `39,99 → 40`, `59,99 → 60`, `74,99 → 75` et `89,99 → 90`
+ne doit plus être rejeté comme une lacune. La correction est uniquement dans
+le script navigateur de Règles et codification.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed. Déployer
+le code, redémarrer le service, puis faire `Ctrl + Shift + R` :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.19 Veille — compatibilité des relances existantes (25/09/2026)
+
+Le schéma API de relance convertit les valeurs texte apportées par un ancien
+composant de formulaire (`value`, `label`, `text` ou `name`) avant validation.
+Cette protection évite le rejet `422 Input should be a valid string` sans
+relâcher les contrôles des champs obligatoires.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed. Redémarrer
+le service après déploiement :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.20 SNCC — reprise du brouillon existant (25/09/2026)
+
+L’écran SNCC recharge désormais automatiquement le brouillon `v1.0` déjà
+présent, afin de l’enregistrer ou de le publier au lieu de tenter une seconde
+création de la même version.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed. Déployer
+le code, redémarrer le service, puis faire `Ctrl + Shift + R` :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.21 Veille — journalisation sûre de validation (25/09/2026)
+
+En cas de rejet d’une relance, le journal affiche le champ et le motif sans
+écrire le contenu du message ni l’adresse du destinataire. Cette trace permet
+de diagnostiquer un formulaire navigateur ou un cache incohérent sans exposer
+de données métier.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed. Déployer
+le code puis redémarrer l’API :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.22 Veille — correctif de soumission de relance (25/09/2026)
+
+Le script global de contexte partagé ne doit plus intercepter la soumission
+des relances Veille. Cela corrige l’envoi d’un destinataire vide alors que le
+champ était renseigné à l’écran. La page Veille est désormais l’unique
+propriétaire de la requête API.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed. Déployer
+le code, puis faire `Ctrl + Shift + R` afin de recharger le script global :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+Aucune migration et aucun seed ne sont nécessaires. Après déploiement,
+l'administrateur doit publier une règle métier `SNCC_CLASSIFICATION_MATRIX`
+avant de pouvoir enregistrer des classements SNCC automatiques. Le système ne
+crée aucun classement si cette matrice de risques n'est pas publiée.
+
+### 14.7 Arborescence collecte entreprise par mission (24/09/2026)
+
+Déployer le code puis redémarrer le service afin d'appliquer le correctif de
+présentation et de réinitialisation des fiches de collecte :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+Ensuite effectuer un rechargement forcé du navigateur (`Ctrl + Shift + R`) :
+les scripts et la feuille de style Collectes sont versionnés. Aucune migration
+PostgreSQL, aucun seed et aucune modification de données ne sont requis.
+
+### 14.8 Échéances — correction de rendu du statut (24/09/2026)
+
+Déployer le code puis redémarrer le service :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+Ensuite effectuer un rechargement forcé (`Ctrl + Shift + R`) afin de charger
+les scripts et feuilles de style Échéances / Alertes versionnés. Cette correction est uniquement front-end :
+aucune migration PostgreSQL, aucun seed, aucune suppression ni modification de
+données ne sont requis.
+
+### 14.10 Direction Technique, stabilité des actions et suivi du dossier (24/09/2026)
+
+Cette livraison limite le rechargement automatique aux tableaux de bord afin
+de stabiliser tous les boutons et formulaires opérationnels. Elle ajoute aussi
+le thème nuit du Suivi du dossier et la consultation des vérifications pour
+la Direction Technique.
+
+```bash
+cd /var/www/api_hauqe
+git pull --ff-only
+source .venv/bin/activate
+python -m app.scripts.seed_verification_fuccs_permissions
+sudo systemctl restart sngsc
+```
+
+Faire ensuite un rechargement forcé (`Ctrl + Shift + R`), puis demander au
+directeur de se déconnecter/reconnecter afin de régénérer son jeton de
+permissions. Aucune migration Alembic n'est requise ; le seed ne modifie que
+les liaisons rôle-permission.
+
+### 14.9 Actions structurées, intégration sombre et règles (24/09/2026)
+
+Cette livraison ajoute des routes de suppression protégées pour les offres et
+certifications déclarées d'une fiche de collecte au statut brouillon. Aucun
+changement de schéma ni donnée de référence n'est nécessaire.
+
+```bash
+cd /var/www/api_hauqe
+git status --short
+git pull --ff-only
+source .venv/bin/activate
+sudo systemctl restart sngsc
+sudo systemctl status sngsc --no-pager
+curl -fsS http://127.0.0.1:8014/api/v1/health
+```
+
+Faire ensuite un rechargement forcé (`Ctrl + Shift + R`) : les scripts
+Entreprise, Fiche de collecte, Règles et codification, ainsi que les styles
+Collectes et Intégration sont versionnés. **Ne pas lancer `alembic upgrade
+head` pour cette livraison : aucune migration n'est requise.**
+
+### 14.11 Journal d'audit et ouvertures de collecte (24/09/2026)
+
+Cette livraison ajoute la recherche serveur du journal d'audit et corrige
+l'affichage/sauvegarde des offres et certifications d'une fiche de collecte.
+Elle améliore aussi le bouton **Ouvrir la collecte** dans une mission.
+
+```bash
+cd /var/www/api_hauqe
+git pull --ff-only
+source .venv/bin/activate
+sudo systemctl restart sngsc
+sudo systemctl status sngsc --no-pager
+curl -fsS http://127.0.0.1:8014/api/v1/health
+```
+
+Effectuer ensuite `Ctrl + Shift + R` dans le navigateur. **Ne pas lancer
+`alembic upgrade head` et ne lancer aucun seed : aucune migration, donnée ou
+permission PostgreSQL n'est modifiée par cette livraison.**
+
+### 14.12 Synchronisation des offres collectées (24/09/2026)
+
+Les nouvelles fiches soumises alimentent automatiquement les offres de leur
+entreprise. Aucun changement de schéma n'est requis.
+
+```bash
+cd /var/www/api_hauqe
+git pull --ff-only
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+Pour reprendre les données existantes d'une entreprise précise, exécuter une
+seule fois après le déploiement :
+
+```bash
+python -m app.scripts.synchronize_collection_offers_to_enterprise \
+  --enterprise-name "AgroNoura SARL" --apply
+```
+
+La commande modifie uniquement `offres_entreprise` et ajoute les traces dans
+`evenements_audit`. **Ne pas lancer Alembic : aucune migration ni seed n'est
+requis.**
+
+### 14.13 Doublons d'offres et reprise globale (24/09/2026)
+
+Cette livraison rend impossible l'enregistrement de deux offres actives ayant
+le même type, nom et catégorie dans une même fiche. Elle assainit les anciens
+doublons sans suppression physique.
+
+```bash
+cd /var/www/api_hauqe
+git pull --ff-only
+source .venv/bin/activate
+python -m alembic upgrade head
+python -m app.scripts.synchronize_collection_offers_to_enterprise --all --apply
+sudo systemctl restart sngsc
+```
+
+Faire ensuite un rechargement forcé (`Ctrl + Shift + R`). Cette livraison
+applique la migration
+`h3d9e4f1a607_declared_offer_duplicate_protection.py`, aucune seed n'est
+requise.
+
+### 14.14 Déploiement consolidé des corrections du 24–25/09/2026
+
+Cette livraison regroupe les corrections de collecte, de rattachement des
+organismes certificateurs, de recherche du journal d'audit, de suivi de
+dossier, de droits du vérificateur, de rendu Échéances / Alertes et de
+réactivité des boutons dans Règles et codification.
+
+La base PostgreSQL doit atteindre la révision Alembic
+`h3d9e4f1a607`. Les migrations ajoutent le rattachement explicite des
+certifications déclarées à leur organisme et protègent les offres déclarées
+contre les doublons actifs. Les doublons historiques d'offres sont conservés
+avec le statut `DOUBLON_ANNULE` ; aucune ligne métier n'est supprimée.
+
+Après la sauvegarde PostgreSQL, exécuter :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m alembic upgrade head
+python -m app.scripts.seed_role_permission_matrix
+python -m app.scripts.seed_verification_fuccs_permissions
+python -m app.scripts.synchronize_collection_offers_to_enterprise --all --apply
+sudo systemctl restart sngsc
+```
+
+Les deux seeds ne touchent pas au schéma : ils synchronisent les permissions
+de la Direction Technique et du Vérificateur. Le script de synchronisation
+ajoute les offres collectées absentes aux fiches entreprise et laisse une trace
+d'audit. Il peut être relancé sans créer de doublon. Aucun autre seed n'est
+requis. Faire ensuite un rechargement forcé du navigateur (`Ctrl + Shift + R`)
+et demander aux utilisateurs dont les permissions ont changé de se déconnecter
+puis se reconnecter.
+
+### 14.15 Rapprochement global des organismes certificateurs historiques (25/09/2026)
+
+Cette livraison corrige le blocage BNEC « organisme certificateur non
+rapproché dans le registre » pour les fiches de collecte déjà enregistrées et
+évite sa réapparition pour les nouvelles collectes et leurs révisions.
+
+**Base PostgreSQL modifiée : oui.** La migration de données
+`i4e8a2c6d0b4_backfill_declared_certification_organisms.py` ne supprime aucune
+colonne ni certification. Elle :
+
+- relie chaque certification déclarée historique à l'organisme déjà présent
+  lorsque le nom ou le sigle correspond exactement ;
+- précrée seulement les organismes absents à partir du libellé déjà déclaré ;
+- leur affecte le statut `A_VERIFIER` : l'administrateur HAUQE doit compléter
+  ou confirmer les informations de registre avant leur validation métier.
+
+Aucun seed n'est requis. Après sauvegarde PostgreSQL :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m alembic upgrade head
+sudo systemctl restart sngsc
+```
+
+Contrôle après déploiement (doit retourner `0`) :
+
+```sql
+SELECT count(*) AS certifications_sans_organisme
+FROM certifications_declarees
+WHERE organisme_id IS NULL
+  AND nullif(btrim(organisme_declare), '') IS NOT NULL;
+```
+
+### 14.16 Matrice SNCC administrable (25/09/2026)
+
+La page **Règles et codification** contient désormais l’onglet **Classement
+SNCC** : tableau de seuils, préremplissage modifiable, brouillon et publication
+avec référence d’approbation. Le calcul SNCC recherche correctement la règle
+versionnée publiée par son code logique.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Déployer le code, redémarrer l’API, puis effectuer un rechargement
+forcé du navigateur :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.17 SNCC — statuts prioritaires et explication des dossiers (26/09/2026)
+
+Cette livraison applique la priorité de la situation réelle du certificat sur
+le statut administratif calculé : expiration `EX`, retrait `RT`, suspension
+`SU`, authenticité à vérifier `VE`. La matrice SNCC conserve la classe, le
+risque et le statut normal `VA` ou `RE`. Elle ajoute également l'analyse en
+lecture seule des manquements dans la fiche certification et corrige les
+compteurs d'expiration du tableau de bord : une certification datée est
+comptée même lorsqu'elle est encore `A_VERIFIER`.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Déployer le code, redémarrer le service puis recharger le navigateur :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.23 Lien SNGSC dans les alertes et échéances internes (26/09/2026)
+
+Cette livraison ajoute un lien vers l'application uniquement aux e-mails
+d'alertes et d'échéances destinés à un utilisateur HAUQE. Les destinataires
+externes (organismes, relances, confirmations) ne reçoivent pas ce lien.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Sur le serveur, ajouter ou corriger la variable dans `/var/www/api_hauqe/.env`
+puis redémarrer le service :
+
+```bash
+LIEN_VERS_SNGSC=http://31.220.87.142/sngsc
+sudo systemctl restart sngsc
+```
+
+Si le site est accessible en HTTPS, remplacer impérativement `http://` par
+`https://`. Ne pas ajouter d'espace autour du signe `=`.

@@ -41,6 +41,7 @@
     <button data-inst-tab="rules" type="button">Règles métier</button>
     <button data-inst-tab="publication-data" type="button">Données à publier</button>
     <button data-inst-tab="scoring" type="button">Modèles de scoring</button>
+    <button data-inst-tab="sncc" type="button">Classement SNCC</button>
     <button data-inst-tab="fuccs" type="button">Grilles FUCCS</button>
   </div>
 
@@ -142,6 +143,53 @@
         <div class="institutional-list" id="businessRuleList"></div>
       </article>
       <aside class="panel institutional-side" id="businessRuleDetail"><div class="priority-empty">Sélectionnez une version de règle.</div></aside>
+    </div>
+  </section>
+
+
+  <section id="snccTab" hidden>
+    <div class="institutional-layout">
+      <article class="panel institutional-panel sncc-matrix-panel">
+        <header>
+          <div>
+            <p class="eyebrow">Classement national</p>
+            <h2>Matrice de classement SNCC</h2>
+            <p>Définissez les plages de l’INFC qui produisent automatiquement une classe, un statut normal et un niveau de risque.</p>
+          </div>
+          <span class="inst-status" id="snccMatrixStatus">Non publiée</span>
+        </header>
+        <div class="institutional-form-grid">
+          <label><span>Version <b>*</b></span><input id="snccMatrixVersion" value="1.0" maxlength="100"></label>
+          <label class="full"><span>Libellé <b>*</b></span><input id="snccMatrixLabel" value="Matrice de classement national des certifications" maxlength="255"></label>
+          <label class="full"><span>Description</span><textarea id="snccMatrixDescription" rows="3">Règle publiée qui transforme l’INFC automatique en classe SNCC, statut normal VA/RE et niveau de risque. Les statuts EX, VE, SU et RT sont appliqués automatiquement selon la situation réelle du certificat.</textarea></label>
+        </div>
+        <div class="requirement-builder sncc-matrix-builder">
+          <div class="requirement-builder-head">
+            <div><h3>Seuils de classement</h3><p>Le préremplissage est une proposition modifiable. Vérifiez les seuils puis publiez avec la référence d’approbation HAUQE.</p></div>
+            <button class="btn btn-outline-secondary app-btn" id="prefillSnccMatrix" type="button"><i data-lucide="wand-sparkles"></i>Charger le préremplissage</button>
+          </div>
+          <div class="sncc-matrix-table-wrap">
+            <table class="sncc-matrix-table">
+              <thead><tr><th>Classe</th><th>Signification</th><th>Score min.</th><th>Score max.</th><th>Statut normal</th><th>Risque</th></tr></thead>
+              <tbody id="snccMatrixRows"></tbody>
+            </table>
+          </div>
+          <div class="sncc-reference-legend"><span><b>Matrice de score :</b> VA valide · RE réservé</span><span><b>Statuts prioritaires automatiques :</b> EX expiré · VE en vérification · SU suspendu · RT retiré</span><span><b>Risques :</b> R1 faible · R2 modéré · R3 significatif · R4 élevé · R5 critique</span></div>
+        </div>
+        <div class="institutional-actions">
+          <button class="btn btn-outline-secondary app-btn" id="validateSnccMatrix" type="button"><i data-lucide="scan-search"></i>Vérifier la matrice</button>
+          <button class="btn btn-primary app-btn" id="saveSnccMatrixDraft" type="button"><i data-lucide="save"></i>Créer le brouillon SNCC</button>
+          <button class="btn btn-primary app-btn" id="publishSnccMatrix" type="button" hidden><i data-lucide="rocket"></i>Publier la matrice</button>
+        </div>
+        <div class="validation-report" id="snccMatrixValidation"><div class="priority-empty compact">Chargez le préremplissage, ajustez les seuils et vérifiez la matrice.</div></div>
+      </article>
+      <aside class="panel institutional-side">
+        <header><div><h2>Règle de décision</h2><p>Le SNCC ne dépend pas d’un seuil caché dans le code.</p></div></header>
+        <div class="institutional-reference"><strong>Classe et risque</strong><p>La matrice de score définit A+ très favorable · A favorable · B à suivre · C fragile · D critique, ainsi que le risque R1 à R5.</p></div>
+        <div class="institutional-reference"><strong>Priorité métier</strong><p>Le statut normal VA ou RE provient du score. Le moteur impose EX si le certificat est expiré, VE si l’authenticité reste à vérifier, SU en cas de suspension et RT en cas de retrait.</p></div>
+        <div class="institutional-reference"><strong>Traçabilité</strong><p>La publication rend la version immuable. Une évolution crée une nouvelle version et retire automatiquement la précédente.</p></div>
+        <div class="institutional-reference warning"><strong>Contrôle nécessaire</strong><p>Les seuils et le rapprochement classe/statut/risque doivent être approuvés par la HAUQE avant publication.</p></div>
+      </aside>
     </div>
   </section>
 

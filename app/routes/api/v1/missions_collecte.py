@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.permissions.auth import require_permission
 from app.schemas.mission_collecte import (
+    AffectationMissionBatchCreateRequest,
     AffectationMissionCreateRequest,
     AffectationMissionResponse,
     AffectationMissionUpdateRequest,
@@ -191,6 +192,27 @@ async def create_assignment(
     ),
 ):
     return await MissionCollecteService.assign(
+        db,
+        mission_id=mission_id,
+        payload=payload,
+        actor=actor,
+        request=request,
+    )
+
+
+@global_router.post(
+    "/{mission_id}/affectations/ajout-groupe",
+    response_model=list[AffectationMissionResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_assignments_batch(
+    mission_id: UUID,
+    payload: AffectationMissionBatchCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.AFFECTER")),
+):
+    return await MissionCollecteService.assign_many(
         db,
         mission_id=mission_id,
         payload=payload,

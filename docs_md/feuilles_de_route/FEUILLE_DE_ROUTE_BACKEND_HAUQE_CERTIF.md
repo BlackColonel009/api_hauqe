@@ -2548,6 +2548,221 @@ réinitialisation, car elles structurent la mission. Tant que la fiche reste en
 et la zone : la même mission est déplacée, sans créer de doublon. Impact
 PostgreSQL : **aucune migration, aucun seed**.
 
+### Contrôle d'écriture par affectation de mission (23/09/2026)
+
+Une mission peut avoir plusieurs affectations actives. Un utilisateur qui ne
+dispose pas de `COLLECTE.AFFECTER` doit désormais posséder une affectation
+active à la mission pour créer, modifier, réinitialiser ou soumettre sa fiche,
+créer une révision, ou saisir une offre ou certification déclarée. À défaut,
+l'API répond `403` avec un message métier explicite.
+
+Les détenteurs de `COLLECTE.AFFECTER` (administrateur HAUQE ou point focal
+habilité) conservent l'accès d'encadrement à toutes les missions. La
+consultation reste régie par `COLLECTE.LIRE`. Cette règle réutilise
+`affectations_mission` déjà existante : **Base PostgreSQL modifiée : non ;
+migration : aucune ; seed : aucun.**
+
+Le modèle actuel conserve volontairement une seule fiche courante (et ses
+révisions) par mission. L'évolution future « plusieurs collectes d'entreprise
+par mission » est un chantier distinct : elle nécessitera une conception de
+cardinalité, une migration et des règles d'affectation au niveau de chaque
+collecte ; elle n'est pas incluse dans ce correctif d'accès.
+
+### Autre identifiant juridique d'entreprise (24/09/2026)
+
+Le champ facultatif `autre_identifiant_juridique` complète RCCM, NIF et IFU
+lorsqu'une entreprise dispose d'un numéro administratif ou légal différent. Il
+est normalisé comme les identifiants juridiques existants, renvoyé par les API
+de création, modification et consultation, et inscrit dans l'audit de création
+ou de modification. Il n'est pas rendu unique car sa nature dépend du pays et
+du référentiel concerné.
+
+**Base PostgreSQL modifiée : oui. Migration :
+`f7a1e2c3d4b5_other_legal_identifier.py`. Seed : aucun.**
+
+### Plan d’alerte par certification officielle (24/09/2026)
+
+Le plan d’alerte d’expiration n’est plus limité à une liste globale de jours
+pour les certifications qui ont un paramétrage local. La colonne JSONB
+`certifications.seuils_alerte_expiration_jours` contient une liste de jalons
+libres, par exemple `[120, 45, 15, 0]`. Le jour `0` est obligatoire : il
+garantit l’alerte d’expiration le jour J. Les certifications historiques qui
+ont `NULL` continuent volontairement à utiliser la règle publiée
+`VEILLE_SEUILS_EXPIRATION` ; aucune donnée n’est modifiée implicitement.
+
+Les routes `GET/PATCH /api/v1/certifications/{id}/expiration-alerts` lisent et
+mettent à jour ce plan. La modification est protégée par `VEILLE.GERER`, déjà
+attribuée à `CELLULE_VEILLE` et détenue par `ADMIN_HAUQE`. Elle déclenche le
+recalcul immédiat de l’alerte automatique active liée à l’expiration, annule
+seulement l’ancienne alerte automatique de ce même jalon et laisse intactes
+les alertes manuelles, les échéances, l’historique et les notifications.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`b4c8d1e2f3a6_certification_expiration_alert_policy.py` ; seed : aucun.**
+
+### Enrichissement entreprise depuis la collecte terrain (24/09/2026)
+
+La précréation d’entreprise depuis une fiche de collecte accepte une adresse
+terrain et des coordonnées latitude/longitude. Elle crée, dans la même
+transaction, l’entreprise provisoire et son premier `sites_entreprise` de type
+`SIEGE`. Les coordonnées restent dans la table des sites, qui est le bon
+emplacement du MPD ; aucune colonne n’est ajoutée à `entreprises`.
+
+Lorsqu’une fiche de collecte a une entreprise et des données de déclarant, le
+système crée ou actualise un `contacts_entreprise` actif de type
+`DECLARANT_COLLECTE`. Quand une offre déclarée contient une description et que
+l’activité principale de l’entreprise est vide, cette dernière est initialisée
+avec cette description (limitée à 255 caractères). Une activité existante,
+saisie ou validée dans le dossier entreprise, n’est jamais écrasée. Les trois
+actions sont inscrites dans le journal d’audit.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Courriels internes HAUQE — lien SNGSC pour alertes et échéances (26/09/2026)
+
+Le worker SMTP ajoute l'accès à l'application uniquement lorsqu'une
+notification e-mail est simultanément rattachée à une **alerte** et à un
+**utilisateur HAUQE**. Cela couvre les échéances, rappels et alertes internes,
+dont les alertes de vérification. Les courriels adressés à des organismes,
+entreprises ou contacts externes restent inchangés.
+
+La variable `LIEN_VERS_SNGSC` est lue depuis `.env`. Le lien est présent sous
+forme d'URL dans la version texte et sous forme de bouton dans la version HTML.
+Une valeur sans protocole est traitée comme une URL HTTPS ; renseigner de
+préférence l'URL complète réellement accessible aux agents.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Veille — contrat de création de relance (25/09/2026)
+
+`POST /api/v1/veille/dossiers/{case_id}/relances` conserve un contrat strict :
+`destinataire`, `adresse_email`, `canal`, `objet` et `contenu` sont des textes
+obligatoires ; les deux dates restent facultatives au format `YYYY-MM-DD`.
+L'interface convertit et contrôle ces valeurs avant l'envoi. Une réponse 422
+reste réservée à une donnée réellement invalide et son champ est désormais
+présenté explicitement à l'utilisateur.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — bornes décimales (25/09/2026)
+
+Le validateur serveur conserve les bornes SNCC sous forme décimale exacte :
+les transitions au centième, telles que `74.99 → 75`, sont continues. La
+correction associée concerne le contrôle navigateur des brouillons ; le
+contrôle backend continue de refuser tout chevauchement ou toute vraie lacune
+lors de la publication.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — cycle du brouillon (25/09/2026)
+
+Une matrice `SNCC_CLASSIFICATION_MATRIX` déjà enregistrée au statut
+`BROUILLON` doit être mise à jour par `PATCH /governance/rules/{id}`, et non
+créée une seconde fois avec le même couple code/version. L’interface recharge
+ce brouillon et applique cette transition. Le backend conserve l’unicité du
+code physique de version afin de préserver la traçabilité.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Veille — tolérance des champs texte historiques (25/09/2026)
+
+La création d'une relance normalise désormais chaque champ métier texte avant
+la validation : une valeur provenant d'un composant ancien sous la forme
+`{value, label}`, `{text}` ou `{name}` est convertie en texte utile. Le
+contrat reste strict après cette normalisation : une valeur vide demeure
+refusée avec un message de champ explicite.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Veille — diagnostic non sensible des relances (25/09/2026)
+
+Lorsqu’une requête de création de relance est invalide, le journal applicatif
+conserve uniquement le nom, le type et le message du champ rejeté. Le contenu
+du courriel, ses destinataires et toute autre valeur saisie ne sont jamais
+journalisés. L’API renvoie également un libellé français explicite, par
+exemple « Le contenu du message est obligatoire. ».
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Veille — soumission unique côté navigateur (25/09/2026)
+
+La route de création de relance doit être appelée par le contrôleur de la page
+Veille uniquement. Aucun script transversal ne doit réémettre cette requête,
+car il ne possède pas le contrat de champs de ce formulaire. Le backend garde
+son contrôle de champs obligatoire comme dernière barrière.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Matrice SNCC — règle versionnée et validée (25/09/2026)
+
+La règle métier `SNCC_CLASSIFICATION_MATRIX` est désormais administrée dans un
+onglet guidé. Sa version publiée doit comporter exactement une ligne pour
+chacune des classes `A+`, `A`, `B`, `C`, `D`, avec `min`, `max`,
+`statut_administratif` et `niveau_risque`.
+
+Avant publication, le serveur refuse : bornes absentes ou hors `0–100`,
+chevauchement ou trou de plages, classes manquantes, ou statut/risque hors du
+référentiel fermé (`VA/RE/SU/RT/EX/VE` et `R1…R5`). Le calcul automatique SNCC
+résout maintenant le **code logique** de la règle : il reconnaît donc bien le
+code physique versionné `SNCC_CLASSIFICATION_MATRIX__Vx_y` créé par la
+gouvernance.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Synchronisation des offres de collecte (24/09/2026)
+
+Lors de `POST /api/v1/missions/{mission_id}/fiches/{fiche_id}/submit`, le
+backend reprend les `offres_declarees` de la fiche vers `offres_entreprise`.
+Il protège le registre contre les doublons par la clé métier : type, nom et
+catégorie. `marches_vises` devient une liste dans `marches_cibles` et
+`destinations`. La synchronisation est journalisée dans `evenements_audit`.
+
+Les données historiques peuvent être reprises entreprise par entreprise avec :
+
+```bash
+python -m app.scripts.synchronize_collection_offers_to_enterprise \
+  --enterprise-name "AgroNoura SARL" --apply
+```
+
+Le script ignore les brouillons et est rejouable sans créer de nouvelle offre
+identique.
+
+**Base PostgreSQL modifiée : oui, données des offres et traces d'audit ;
+migration : aucune ; seed : aucun.**
+
+### Offres déclarées — unicité par fiche (24/09/2026)
+
+La migration `h3d9e4f1a607_declared_offer_duplicate_protection.py` marque les
+doublons historiques `DOUBLON_ANNULE` sans les supprimer et crée l'index
+unique partiel `uq_offres_declarees_fiche_business_key`. La liste des offres
+de collecte exclut ce statut. Le backend protège aussi la création et la
+modification afin qu'un double clic ou deux requêtes concurrentes ne créent
+pas deux lignes actives.
+
+Pour reprendre toutes les entreprises après le déploiement :
+
+```bash
+python -m app.scripts.synchronize_collection_offers_to_enterprise --all --apply
+```
+
+**Base PostgreSQL modifiée : oui, statut de doublons, index, offres entreprise
+et traces d'audit ; migration :
+`h3d9e4f1a607_declared_offer_duplicate_protection.py` ; seed : aucun.**
+
+### Direction Technique — consultation des vérifications (24/09/2026)
+
+Le rôle `DIRECTION_TECHNIQUE` reçoit `VERIFICATION.LIRE`. Il peut ouvrir la
+page Vérifications, consulter le registre et lire les dossiers, points,
+anomalies, confirmations et affectations. Il ne reçoit pas, par cette
+modification, un droit de traitement documentaire : créer ou modifier reste
+réservé aux permissions spécialisées.
+
+Le script de synchronisation `seed_verification_fuccs_permissions` est
+idempotent et ajoute la liaison manquante aux bases existantes.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; seed : `python -m app.scripts.seed_verification_fuccs_permissions`.**
+
 ### Offres déclarées
 
 ```text
@@ -5872,6 +6087,27 @@ cloche notifications
 
 SMTP reste hors critère de blocage ; IN_APP est la priorité de recette.
 
+### Correctif permanent — organisme certificateur des collectes
+
+Une certification déclarée ne doit jamais dépendre uniquement d'un texte
+libre pour son intégration BNEC. À l'enregistrement d'une certification de
+collecte, le système applique désormais cet ordre :
+
+1. organisme explicitement sélectionné : sa clé de registre est conservée ;
+2. libellé identique à un organisme existant : sa clé est réutilisée ;
+3. nouveau libellé : un organisme certificateur est précréé dans le registre,
+   avec le statut `A_VERIFIER`, puis lié à la certification.
+
+La nouvelle révision d'une fiche conserve cette liaison d'organisme. Lors
+d'une intégration BNEC d'un ancien dossier, un rapprochement historique exact
+est également persisté afin que le même blocage ne réapparaisse plus.
+
+La migration `i4e8a2c6d0b4_backfill_declared_certification_organisms.py`
+traite toutes les certifications déclarées déjà présentes : elle relie les
+libellés exacts existants et précrée uniquement les organismes absents, sans
+créer d'accréditation ni inventer d'information réglementaire. Les organismes
+ainsi créés restent volontairement `A_VERIFIER` pour revue par la HAUQE.
+
 ### SPRINT 12 — Gouvernance / Qualité / Continuité
 
 ```text
@@ -6055,6 +6291,40 @@ Aucune migration Alembic.
 Aucune nouvelle table.
 Aucune nouvelle permission.
 
+### Suppression contrôlée des éléments d'une fiche brouillon (24/09/2026)
+
+Deux routes sont disponibles pour les lignes déclaratives d'une fiche de
+collecte :
+
+```text
+DELETE /api/v1/missions/{mission_id}/fiches/{fiche_id}/offres/{offre_id}
+DELETE /api/v1/missions/{mission_id}/fiches/{fiche_id}/certifications/{certification_declaree_id}
+```
+
+Elles exigent `COLLECTE.MODIFIER`, une mission accessible au compte courant,
+la propriété de la fiche et le statut **BROUILLON**. Chaque retrait écrit un
+événement d'audit (`COLLECTE_DECLARED_OFFER_DELETE` ou
+`COLLECTE_DECLARED_CERT_DELETE`) avant de supprimer la ligne enfant. Une
+fiche soumise, contrôlée ou validée ne peut jamais être altérée par ces
+routes.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Correctif d'intégrité — mission à collectes multiples (24/09/2026)
+
+Le registre de collecte expose maintenant, pour chaque fiche courante, le nom
+du `responsable_id` enregistré lors de sa création. Cette information est
+présentée comme l'agent responsable de la collecte ; elle est distincte des
+agents simplement affectés à la mission. Aucune donnée n'est dupliquée.
+
+La réinitialisation `POST /api/v1/missions/{mission_id}/fiches/{fiche_id}/reset`
+ne modifie plus aucun champ de `missions_collecte`. Elle ne réinitialise que
+la fiche ciblée et ses sous-ressources. Ainsi, réinitialiser le brouillon de
+l'entreprise A ne peut ni effacer ni altérer la mission, ni les collectes des
+entreprises B, C ou suivantes.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
 ## Mise à jour — rappels d’échéances et exclusions administrateurs (01/09/2026)
 
 - politique configurable par échéance : rappels à l’agent, horizon quotidien,
@@ -6194,6 +6464,40 @@ Aucune nouvelle table.
 Aucune migration.
 Aucune nouvelle permission.
 
+### Création de mission avec affectations multiples (24/09/2026)
+
+`POST /api/v1/campagnes/{campagne_id}/missions` accepte désormais
+`agent_ids`, une liste sans plafond fonctionnel. Le service déduplique cette
+liste, vérifie que chaque utilisateur existe et est actif, puis crée les
+affectations `ACTIF` dans la même transaction que la mission. L’auteur de
+l’affectation reste l’utilisateur authentifié et la liste des agents est
+présente dans l’audit de création de mission.
+
+La création d’une mission ne crée aucune fiche de collecte. Les tables
+existantes `missions_collecte` et `affectations_mission` suffisent : aucune
+migration, nouvelle table, seed ou permission n’est requis.
+
+### Socle dossiers de collecte par entreprise (24/09/2026)
+
+Migration `e1b7c4d9a206_collection_case_ownership.py` :
+
+- ajoute `fiches_collecte.dossier_id` pour relier les révisions d’une même
+  collecte entreprise ;
+- ajoute `fiches_collecte.responsable_id`, stable et distinct de
+  `collecte_par_id` qui conserve le dernier intervenant ;
+- sauvegarde les données historiques : les doublons déjà présents pour une
+  même entreprise / mission sont regroupés dans le dossier le plus ancien,
+  sans suppression ;
+- crée une unicité partielle empêchant la création ultérieure de deux dossiers
+  racines pour une même entreprise dans une même mission.
+
+Cette migration est la première étape de la séparation complète
+**Mission → plusieurs collectes entreprises**. Elle nécessite :
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+```
+
 ## Correctif — contexte métier des alertes et actions urgentes (01/09/2026)
 
 - les ressources `DOSSIER_VEILLE` et `RELANCE_VEILLE` sont résolues jusqu’à
@@ -6278,7 +6582,65 @@ Règles backend conservées :
   nouvelle décision du même niveau;
 - seule une N2 favorable ouvre l'étape d'intégration BNEC.
 
-Aucune table, migration ou permission nouvelle.
+### Dossiers de collecte par entreprise et propriété de saisie (24/09/2026)
+
+Une mission peut désormais contenir plusieurs dossiers de collecte, un par
+entreprise. Les révisions restent rattachées à leur dossier d'origine ; elles
+ne bloquent donc plus une autre entreprise de la même mission. Le collecteur
+qui crée une fiche devient son responsable. Un autre agent affecté peut la
+consulter, mais son écriture est refusée ; le détenteur de `COLLECTE.AFFECTER`
+(administrateur HAUQE) conserve le droit d'intervention.
+
+`POST /api/v1/missions/{mission_id}/affectations/ajout-groupe` ajoute en une
+opération les nouveaux agents actifs, ignore les affectations déjà actives et
+ne modifie aucune fiche ni révision.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`e1b7c4d9a206_collection_case_ownership.py` ; seed : aucun.**
+
+Aucune permission nouvelle.
+
+### Vérificateur — consultation des collectes, sans pouvoir d'affectation (27/09/2026)
+
+Le rôle **VERIFICATEUR** peut consulter la liste et le détail des collectes
+grâce à `COLLECTE.LIRE`. Il ne reçoit aucune permission d'écriture sur une
+collecte : ni création, ni modification, ni soumission. Il traite les dossiers
+de vérification (ouverture, points, anomalies, confirmations et clôture), mais
+ne peut ni affecter ni réaffecter les agents : `VERIFICATION.AFFECTER` reste
+réservée au **POINT_FOCAL_BNEC** et à l'**ADMIN_HAUQE**.
+
+Le script idempotent `sync_verificateur_collecte_read.py` ajoute la lecture et
+retire explicitement une ancienne attribution éventuelle de
+`VERIFICATION.AFFECTER`.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; script : `python -m app.scripts.sync_verificateur_collecte_read`.**
+
+### Calcul automatique explicable — Classification, INFC et SNCC (25/09/2026)
+
+Les actions d'évaluation n'acceptent plus de notes saisies pour le parcours
+opérationnel. Le moteur lit les éléments rattachés à la certification :
+
+- complétude et soumission de la collecte ;
+- clôture de la vérification, anomalies ouvertes et contrôle FUCCS ;
+- décisions favorables N1 et N2 ;
+- intégration BNEC terminée ;
+- dates du certificat et éléments de fiabilité associés.
+
+Les indicateurs sont convertis en entrées des pondérations du **modèle publié
+actif**. Une règle peut préciser `automatic_mapping` et `automatic_sources`
+dans son JSON ; sans cela, les domaines INFC documentés sont reconnus par leur
+code. Le rapport retourne chaque constat, alerte et blocage ; aucun résultat
+n'est enregistré tant qu'une étape obligatoire est incomplète.
+
+Le SNCC utilise en plus une règle métier publiée active :
+`SNCC_CLASSIFICATION_MATRIX`. Son paramètre JSON doit contenir une liste
+`rows` (ou `matrice`) dont chaque ligne définit `min`, `max`, `classe`,
+`statut_administratif` et `niveau_risque`. Aucun seuil SNCC/R1–R5 n'est
+inventé par le code. En l'absence de cette matrice, le rapport explique le
+blocage sans créer de classement.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
 
 ## ÉTAPE 09 — INTÉGRATION BNEC
 
@@ -6391,9 +6753,83 @@ Le read model enrichit les UUID avec les informations nécessaires aux vues :
 entreprise, certification, norme, organisme, responsable et route de navigation
 vers la ressource source.
 
+### Journal d'audit — recherche métier (24/09/2026)
+
+`GET /api/v1/audit/events` accepte le paramètre facultatif `search` (255
+caractères maximum). La recherche est exécutée côté PostgreSQL avant la
+pagination : nom, prénoms et e-mail de l'utilisateur, action, catégorie,
+ressource, contexte, adresse IP et identifiant de ressource sont pris en
+compte. Elle ne modifie aucune trace d'audit.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Vérification — résolution d'anomalie robuste (25/09/2026)
+
+`POST /api/v1/verifications/{dossier_id}/anomalies/{anomaly_id}/resolve`
+vérifie désormais que la mesure de résolution contient un texte réel après
+suppression des espaces. Le statut est imposé par le service à `RESOLUE` : il
+ne dépend plus d'une valeur libre envoyée par le navigateur. Une seconde
+validation de la même anomalie renvoie simplement son état existant, sans
+écraser sa première résolution ni créer une seconde trace d'audit.
+
+Lors de la clôture avec l'avis « Vérifié conforme », le serveur distingue
+explicitement les deux blocages : anomalies encore non résolues ou
+confirmations externes encore en attente. Ces deux contrôles restent requis,
+mais le message ne doit jamais attribuer à tort le blocage à une anomalie déjà
+résolue.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — classement entièrement automatique (25/09/2026)
+
+`POST /api/v1/certifications/{certification_id}/sncc/automatic-classify`
+recalcule le score issu du parcours Collecte → Vérification → FUCCS → N1/N2 →
+Intégration BNEC, recherche la ligne applicable de la règle publiée
+`SNCC_CLASSIFICATION_MATRIX`, puis enregistre automatiquement la **classe**,
+le **statut administratif** et le **niveau de risque**. Il accepte les bornes
+`min`/`max` ou `score_min`/`score_max`, et les alias usuels des trois valeurs
+métier ; les codes finaux restent validés contre le référentiel SNCC fermé.
+
+Une matrice absente, une tranche non couverte ou une ligne incomplète bloque
+l'enregistrement et l'explique dans le rapport. Aucune valeur arbitraire n'est
+inventée par le système.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — priorité de la situation métier sur la matrice de score (26/09/2026)
+
+Le calcul automatique continue de lire la classe et le niveau de risque dans
+la règle publiée `SNCC_CLASSIFICATION_MATRIX`. Son statut normal est limité à
+**VA** ou **RE**. Avant l'enregistrement, le moteur applique les priorités
+suivantes : date d'expiration dépassée → **EX** ; retrait → **RT** ; suspension
+→ **SU** ; authenticité documentaire non confirmée → **VE**.
+
+Un statut historique `SU`, `RT`, `EX` ou `VE` placé dans une ancienne ligne de
+matrice est normalisé en `RE` : ces codes ne doivent jamais être produits par
+un score seul. Le rapport de calcul, la justification SNCC et la trace d'audit
+conservent le statut de matrice et le statut prioritaire éventuellement
+appliqué.
+
+`GET /api/v1/certifications/{certification_id}/status-analysis` fournit à la
+fiche certification les constats issus des données réelles : date expirée ou
+absente, document actif, authenticité confirmée, copie de collecte, procédure
+de renouvellement ouverte, retrait, suspension et motif de statut. Ce endpoint
+est en lecture seule ; il n'altère aucune donnée ni aucun classement. Les
+actions proposées pointent vers le document, le renouvellement ou l'historique
+adapté.
+
+Les buckets et la liste des expirations du tableau de bord ne filtrent plus
+sur les seuls statuts « actifs » : toute certification datée est comptée afin
+qu'une expiration ne soit jamais masquée par `A_VERIFIER` ou un autre statut
+documentaire.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
 ### Seuils de veille
 
-Le moteur existant conserve :
+Pour chaque certification, le moteur utilise en priorité les seuils
+spécifiquement enregistrés sur la certification. En leur absence, il utilise
+la règle publiée `VEILLE_SEUILS_EXPIRATION`, dont le socle technique est :
 
 ```text
 180 jours → niveau 1 / Information
@@ -6402,9 +6838,7 @@ Le moteur existant conserve :
 0 ou dépassé → niveau 4 / Critique
 ```
 
-Le service tente d'abord de résoudre la règle publiée
-`VEILLE_SEUILS_EXPIRATION`. Le socle ci-dessus reste le fallback technique
-déjà présent dans le backend.
+Le socle ci-dessus reste le fallback technique déjà présent dans le backend.
 
 Aucune migration.
 Aucune nouvelle permission.

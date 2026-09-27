@@ -57,7 +57,7 @@ async def close_verification(dossier_id:UUID,payload:VerificationCloseRequest,re
 
 @router.post("/{dossier_id}/reopen",response_model=VerificationDossierResponse)
 async def reopen_verification(dossier_id:UUID,payload:VerificationReopenRequest,request:Request,
-    db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.AFFECTER"))):
+    db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.CLOTURER"))):
     return await VerificationService.reopen(db,dossier_id=dossier_id,payload=payload,actor=actor,request=request)
 
 @router.get("/{dossier_id}/affectations",response_model=list[VerificationAssignmentResponse])

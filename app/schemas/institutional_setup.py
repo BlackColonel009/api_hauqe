@@ -62,7 +62,9 @@ class InstitutionalReadinessResponse(BaseModel):
     collecte_completude: ReadinessRule
     classification_entreprise: ReadinessModel
     infc: ReadinessModel
+    sncc: ReadinessRule
     ready_for_collecte_submission: bool
     ready_for_classification_tests: bool
     ready_for_infc_score_tests: bool
+    ready_for_sncc_classification: bool
     blockers: list[str] = Field(default_factory=list)

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.models.entreprise import Entreprise
+from app.models.site_entreprise import SiteEntreprise
 from app.repositories.collecte_workspace_repository import (
     CollecteWorkspaceRepository,
 )
@@ -95,6 +96,8 @@ class CollecteWorkspaceService:
                     zone_type=row.zone_type,
                     assigned_names=row.assigned_names,
                     fiche_id=row.fiche_id,
+                    fiche_responsable_id=row.fiche_responsable_id,
+                    fiche_responsable_name=row.fiche_responsable_name,
                     fiche_status=row.fiche_status,
                     completeness=row.completeness,
                     revision_number=row.revision_number,
@@ -174,6 +177,22 @@ class CollecteWorkspaceService:
         db.add(item)
         await db.flush()
 
+        # La précréation terrain est aussi une première implantation : elle
+        # centralise adresse et coordonnées dans les tables déjà prévues pour
+        # les sites, sans inventer de colonnes sur l'entreprise.
+        site = SiteEntreprise(
+            entreprise_id=item.id,
+            nom="Siège / site collecté",
+            type_site="SIEGE",
+            adresse=item.adresse_siege,
+            zone_id=item.zone_siege_id,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+            statut="ACTIF",
+        )
+        db.add(site)
+        await db.flush()
+
         await write_audit_event(
             db,
             action="COLLECTE_ENTERPRISE_QUICK_CREATE",
@@ -187,6 +206,9 @@ class CollecteWorkspaceService:
                 "identifiant_national": item.identifiant_national,
                 "raison_sociale": item.raison_sociale,
                 "zone_siege_id": str(item.zone_siege_id),
+                "site_id": str(site.id),
+                "latitude": str(site.latitude) if site.latitude is not None else None,
+                "longitude": str(site.longitude) if site.longitude is not None else None,
                 "statut": item.statut,
                 "source_donnee": item.source_donnee,
             },
@@ -200,6 +222,8 @@ class CollecteWorkspaceService:
             raison_sociale=item.raison_sociale or name,
             zone_siege_id=item.zone_siege_id,
             adresse_siege=item.adresse_siege,
+            latitude=site.latitude,
+            longitude=site.longitude,
             telephone_principal=item.telephone_principal,
             email_principal=item.email_principal,
             statut=item.statut or "INCOMPLET_COLLECTE",

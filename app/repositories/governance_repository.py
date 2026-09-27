@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -405,6 +405,7 @@ class GovernanceRepository:
         ressource_type: str | None,
         ressource_id: UUID | None,
         resultat: str | None,
+        search: str | None,
         start_at: datetime | None,
         end_at: datetime | None,
         limit: int,
@@ -425,6 +426,33 @@ class GovernanceRepository:
             filters.append(EvenementAudit.ressource_id == ressource_id)
         if resultat:
             filters.append(EvenementAudit.resultat == resultat)
+        if search and search.strip():
+            # La recherche du journal doit retrouver l'auteur tel qu'il est
+            # connu de l'utilisateur (nom, prénoms ou e-mail), sans limiter la
+            # consultation aux événements déjà chargés côté navigateur.
+            pattern = f"%{search.strip()}%"
+            filters.append(
+                or_(
+                    EvenementAudit.action.ilike(pattern),
+                    EvenementAudit.categorie.ilike(pattern),
+                    EvenementAudit.ressource_type.ilike(pattern),
+                    EvenementAudit.contexte.ilike(pattern),
+                    EvenementAudit.adresse_ip.ilike(pattern),
+                    EvenementAudit.ressource_id.cast(String).ilike(pattern),
+                    EvenementAudit.utilisateur.has(
+                        or_(
+                            Utilisateur.nom.ilike(pattern),
+                            Utilisateur.prenoms.ilike(pattern),
+                            Utilisateur.email.ilike(pattern),
+                            func.concat_ws(
+                                " ",
+                                Utilisateur.prenoms,
+                                Utilisateur.nom,
+                            ).ilike(pattern),
+                        )
+                    ),
+                )
+            )
         if start_at:
             filters.append(EvenementAudit.date_evenement >= start_at)
         if end_at:

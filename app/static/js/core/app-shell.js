@@ -164,14 +164,12 @@ const PAGE_REFRESH_DEFAULTS = Object.freeze({
   refreshOnReturn: true,
 });
 const PAGE_REFRESH_INTERVALS = new Set([15, 30, 60, 120, 300]);
-// Ces écrans portent des actions immédiates et des modals d'édition. Les
-// remplacer silencieusement en arrière-plan laisse brièvement des boutons
-// visibles sans le script de la page et peut faire perdre un clic utilisateur.
-// Ils restent actualisables avec leur commande « Actualiser » explicite.
-const PAGE_REFRESH_EXCLUDED_ROUTES = new Set([
-  "campagnes-collecte",
-  "profil",
-]);
+// Une navigation silencieuse remplace le DOM et les écouteurs de la page.
+// Elle est donc interdite sur les écrans opérationnels : listes, formulaires,
+// modals et icônes d'action restent stables jusqu'à une action explicite de
+// l'utilisateur. Le tableau de bord est le seul écran purement consultatif
+// autorisé à se recharger automatiquement.
+const PAGE_REFRESH_ALLOWED_ROUTES = new Set(["dashboard"]);
 let pageRefreshTimer = null;
 let pageRefreshRunning = false;
 let pageFormDirty = false;
@@ -260,7 +258,7 @@ function pageRefreshIsSafe() {
     && !pageHasOpenDialog()
     && !pageHasActiveInput()
     && !document.body.classList.contains("hauqe-action-loading")
-    && !PAGE_REFRESH_EXCLUDED_ROUTES.has(getCurrentRoute())
+    && PAGE_REFRESH_ALLOWED_ROUTES.has(getCurrentRoute())
     && !["connexion", "mot-de-passe-oublie"].includes(getCurrentRoute())
   );
 }

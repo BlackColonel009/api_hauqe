@@ -82,6 +82,11 @@ class EntrepriseCreateRequest(BaseModel):
         max_length=255,
     )
 
+    autre_identifiant_juridique: str | None = Field(
+        default=None,
+        max_length=255,
+    )
+
     date_creation: date | None = None
 
     nationalite: str | None = Field(
@@ -172,6 +177,11 @@ class EntrepriseUpdateRequest(BaseModel):
         max_length=255,
     )
 
+    autre_identifiant_juridique: str | None = Field(
+        default=None,
+        max_length=255,
+    )
+
     date_creation: date | None = None
 
     nationalite: str | None = Field(
@@ -256,6 +266,7 @@ class EntrepriseResponse(BaseModel):
     rccm: str | None = None
     nif: str | None = None
     ifu: str | None = None
+    autre_identifiant_juridique: str | None = None
 
     date_creation: date | None = None
     nationalite: str | None = None

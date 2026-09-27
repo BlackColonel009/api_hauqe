@@ -20,7 +20,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 # ============================================================
@@ -253,6 +253,47 @@ class FollowUpCreateRequest(BaseModel):
     contenu: str = Field(min_length=1)
     date_envoi: date | None = None
     date_echeance: date | None = None
+
+    @field_validator(
+        "destinataire", "adresse_email", "canal", "objet", "contenu",
+        mode="before",
+    )
+    @classmethod
+    def normalize_form_text(
+        cls,
+        value: object,
+        info: ValidationInfo,
+    ) -> str:
+        """Accepte le texte produit par les champs et composants du navigateur.
+
+        Certaines anciennes interfaces transmettent un objet de sélection
+        (`{value, label}`) au lieu de sa valeur. Une relance reste un message
+        texte : on extrait donc explicitement une valeur textuelle connue au
+        point d'entrée de l'API, avant les contrôles de longueur.
+        """
+        if isinstance(value, dict):
+            for key in ("value", "text", "label", "name"):
+                candidate = value.get(key)
+                if isinstance(candidate, str):
+                    value = candidate
+                    break
+            else:
+                value = None
+
+        normalized = "" if value is None else str(value).strip()
+        if normalized:
+            return normalized
+
+        labels = {
+            "destinataire": "Le destinataire",
+            "adresse_email": "L’adresse e-mail",
+            "canal": "Le canal",
+            "objet": "L’objet",
+            "contenu": "Le contenu du message",
+        }
+        raise ValueError(
+            f"{labels.get(info.field_name, 'Ce champ')} est obligatoire."
+        )
 
 
 class FollowUpUpdateRequest(BaseModel):

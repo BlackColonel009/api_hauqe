@@ -67,6 +67,8 @@ class CertificationDeclareeCreateRequest(BaseModel):
     nom_certification: str | None = Field(default=None, max_length=255)
     numero: str | None = Field(default=None, max_length=255)
     organisme_declare: str | None = Field(default=None, max_length=255)
+    organisme_id: UUID | None = None
+    organisme_id: UUID | None = None
     norme_declaree: str | None = Field(default=None, max_length=255)
     portee: str | None = None
     date_obtention: date | None = None
@@ -79,6 +81,8 @@ class CertificationDeclareeUpdateRequest(BaseModel):
     nom_certification: str | None = Field(default=None, max_length=255)
     numero: str | None = Field(default=None, max_length=255)
     organisme_declare: str | None = Field(default=None, max_length=255)
+    organisme_id: UUID | None = None
+    organisme_id: UUID | None = None
     norme_declaree: str | None = Field(default=None, max_length=255)
     portee: str | None = None
     date_obtention: date | None = None
@@ -93,6 +97,8 @@ class CertificationDeclareeResponse(BaseModel):
     nom_certification: str | None = None
     numero: str | None = None
     organisme_declare: str | None = None
+    organisme_id: UUID | None = None
+    organisme_id: UUID | None = None
     norme_declaree: str | None = None
     portee: str | None = None
     date_obtention: date | None = None
