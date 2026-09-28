@@ -21,11 +21,15 @@ from uuid import UUID
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
 from app.repositories.account_repository import AccountRepository
+from app.models.preference_utilisateur import PreferenceUtilisateur
+from app.models.utilisateur import Utilisateur
 from app.schemas.account import (
+    AdminSystemEmailPolicyResponse,
     MyProfileResponse,
     MyProfileUpdateRequest,
     MySessionResponse,
@@ -199,6 +203,57 @@ class AccountService:
     # ========================================================
     # PRÉFÉRENCES DE NOTIFICATION
     # ========================================================
+
+    @staticmethod
+    def require_email_policy_admin(actor: AuthContext) -> None:
+        if not set(actor.roles).intersection({"ADMIN_HAUQE", "ADMIN_BNEC"}):
+            raise HTTPException(403, "Réglage réservé aux administrateurs.")
+
+    @staticmethod
+    async def admin_system_email_policies(
+        db: AsyncSession, actor: AuthContext,
+    ) -> list[AdminSystemEmailPolicyResponse]:
+        AccountService.require_email_policy_admin(actor)
+        rows = (await db.execute(
+            select(Utilisateur, PreferenceUtilisateur.courriels_systeme_actifs)
+            .outerjoin(PreferenceUtilisateur, PreferenceUtilisateur.utilisateur_id == Utilisateur.id)
+            .order_by(Utilisateur.nom, Utilisateur.prenoms, Utilisateur.email)
+        )).all()
+        return [AdminSystemEmailPolicyResponse(
+            utilisateur_id=user.id,
+            nom=" ".join(part for part in (user.prenoms, user.nom) if part) or user.email,
+            email=user.email,
+            statut=user.statut,
+            courriels_systeme_actifs=enabled is not False,
+        ) for user, enabled in rows]
+
+    @staticmethod
+    async def update_admin_system_email_policy(
+        db: AsyncSession, *, actor: AuthContext, user_id: UUID,
+        enabled: bool, request: Request,
+    ) -> AdminSystemEmailPolicyResponse:
+        AccountService.require_email_policy_admin(actor)
+        user = await AccountRepository.get_user(db, user_id)
+        if user is None:
+            raise HTTPException(404, "Utilisateur introuvable.")
+        prefs = await AccountRepository.get_or_create_preferences(db, user_id)
+        old_value = prefs.courriels_systeme_actifs is not False
+        prefs.courriels_systeme_actifs = enabled
+        await write_audit_event(
+            db, action="ADMIN_SYSTEM_EMAIL_POLICY_UPDATE", categorie="SECURITE",
+            resultat="SUCCES", utilisateur_id=actor.user.id,
+            ressource_type="preference_utilisateur", ressource_id=prefs.id,
+            adresse_ip=client_ip(request),
+            valeurs_avant={"utilisateur_id": str(user_id), "courriels_systeme_actifs": old_value},
+            valeurs_apres={"utilisateur_id": str(user_id), "courriels_systeme_actifs": enabled},
+        )
+        await db.commit()
+        return AdminSystemEmailPolicyResponse(
+            utilisateur_id=user.id,
+            nom=" ".join(part for part in (user.prenoms, user.nom) if part) or user.email,
+            email=user.email, statut=user.statut,
+            courriels_systeme_actifs=enabled,
+        )
 
     @staticmethod
     async def notification_preferences(

@@ -70,13 +70,13 @@
   <section class="calendar-panel panel">
     <div class="calendar-toolbar">
       <div class="calendar-navigation">
-        <button id="prevMonth" class="icon-button" type="button" data-no-action-loader aria-label="Mois précédent"><i data-lucide="chevron-left"></i></button>
-        <button id="todayButton" class="btn btn-outline-secondary app-btn" type="button" data-no-action-loader>Aujourd’hui</button>
-        <button id="nextMonth" class="icon-button" type="button" data-no-action-loader aria-label="Mois suivant"><i data-lucide="chevron-right"></i></button>
+        <span id="prevMonthSlot" class="calendar-navigation-slot"></span>
+        <span id="todayButtonSlot" class="calendar-navigation-slot"></span>
+        <span id="nextMonthSlot" class="calendar-navigation-slot"></span>
         <h2 id="monthTitle"></h2>
         <div class="calendar-zoom-controls" id="calendarZoomControls" hidden>
-          <button id="calendarZoomIn" class="icon-button" type="button" data-no-action-loader title="Zoomer dans la période" aria-label="Zoomer dans la période"><i data-lucide="zoom-in"></i></button>
-          <button id="calendarZoomOut" class="icon-button" type="button" data-no-action-loader title="Dézoomer la période" aria-label="Dézoomer la période"><i data-lucide="zoom-out"></i></button>
+          <span id="calendarZoomInSlot" class="calendar-navigation-slot"></span>
+          <span id="calendarZoomOutSlot" class="calendar-navigation-slot"></span>
         </div>
       </div>
 
@@ -385,6 +385,17 @@
       </header>
       <div class="dialog-body deadline-detail-body" id="deadlineDetailBody"></div>
       <footer class="deadline-detail-footer" id="deadlineDetailActions"></footer>
+    </form>
+  </dialog>
+
+  <dialog id="deadlineDateDialog" class="hauqe-dialog deadline-date-dialog" aria-labelledby="deadlineDateTitle">
+    <form method="dialog">
+      <header class="deadline-date-header">
+        <div><span><i data-lucide="calendar-days"></i></span><div><p class="eyebrow">Calendrier des échéances</p><h2 id="deadlineDateTitle">Échéances du jour</h2><small id="deadlineDateSubtitle">Sélectionnez une échéance pour ouvrir son dossier.</small></div></div>
+        <button class="dialog-close" type="button" data-close-deadline-date aria-label="Fermer"><i data-lucide="x"></i></button>
+      </header>
+      <div class="deadline-date-body" id="deadlineDateBody"></div>
+      <footer class="deadline-date-footer"><button class="btn btn-outline-secondary app-btn" type="button" data-close-deadline-date>Fermer</button></footer>
     </form>
   </dialog>
 

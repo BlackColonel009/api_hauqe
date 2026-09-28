@@ -124,6 +124,7 @@ class AccountInactivityService:
                     subject=subject,
                     body=body,
                     immediate=True,
+                    security_notice=True,
                 )
                 await AccountRepository.create_notification(
                     db,
@@ -132,6 +133,7 @@ class AccountInactivityService:
                     subject=subject,
                     body=body,
                     immediate=False,
+                    security_notice=True,
                 )
 
                 security.inactivite_warning_sent_at = now

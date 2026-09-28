@@ -10,6 +10,7 @@ Elle persiste uniquement les préférences réellement attendues par
 - fuseau horaire ;
 - avatar privé éventuel ;
 - cinq catégories de notification.
+- l'autorisation administrative des courriels fonctionnels par compte.
 
 L'adresse professionnelle, la fonction, les rôles et permissions restent
 administrés ailleurs et ne sont pas stockés ici.
@@ -79,6 +80,12 @@ class PreferenceUtilisateur(Base):
         server_default=text("false"),
     )
     notifications_resume_hebdomadaire: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    # Réglage administratif : les notifications IN_APP restent actives.
+    courriels_systeme_actifs: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         server_default=text("true"),

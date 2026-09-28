@@ -581,7 +581,7 @@
       list.innerHTML = `
         <div class="dashboard-empty-state">
           ${icon("calendar-check-2")}
-          <strong>Aucun certificat à échéance dans les 180 jours</strong>
+          <strong>${expired ? `${formatNumber(expired)} certificat(s) expiré(s) — consultez la liste des certifications` : "Aucun certificat expiré ou à échéance dans les 180 jours"}</strong>
         </div>
       `;
       refreshIcons();

@@ -576,7 +576,6 @@ class DashboardRepository:
         filters.extend(
             [
                 Certification.date_expiration.is_not(None),
-                Certification.date_expiration >= today,
                 Certification.date_expiration <= end_date,
             ]
         )

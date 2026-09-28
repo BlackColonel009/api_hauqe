@@ -23,7 +23,7 @@ RÉINITIALISATION
 - réponse toujours neutre sur `/forgot` ;
 - token brut transmis uniquement par email ;
 - SHA-256(token) stocké ;
-- expiration : 30 minutes, conformément au frontend ;
+- expiration : durée configurée, trois minutes par défaut ;
 - usage unique ;
 - toutes les sessions sont révoquées après reset.
 """
@@ -147,6 +147,7 @@ class PasswordService:
             subject=subject,
             body=body,
             immediate=True,
+            security_notice=True,
         )
         await AccountRepository.create_notification(
             db,
@@ -156,6 +157,7 @@ class PasswordService:
             body=body,
             external_address=None,
             immediate=False,
+            security_notice=True,
         )
 
     @staticmethod
@@ -313,7 +315,9 @@ class PasswordService:
             utilisateur_id=user.id,
             type_jeton="PASSWORD_RESET",
             jeton_hash=token_hash(raw_token),
-            expiration_at=now + timedelta(minutes=30),
+            expiration_at=now + timedelta(
+                minutes=settings.password_reset_expire_minutes
+            ),
             utilise_at=None,
             adresse_ip=client_ip(request),
             user_agent=request.headers.get("User-Agent"),
@@ -332,10 +336,13 @@ class PasswordService:
                 subject="Réinitialisation de votre mot de passe HAUQE Certif",
                 body=(
                     "Un changement de mot de passe a été demandé. "
-                    "Le lien suivant est valable 30 minutes et une seule fois : "
+                    "Pour votre sécurité, ce lien est valable "
+                    f"{settings.password_reset_expire_minutes} minutes et "
+                    "une seule fois. Passé ce délai, il ne sera plus valable : "
                     f"{link}"
                 ),
                 immediate=False,
+                security_notice=True,
             )
 
         await write_audit_event(

@@ -22,6 +22,11 @@ class CollecteWorkspaceFiltersResponse(BaseModel):
     fiche_statuses: list[str] = Field(default_factory=list)
 
 
+class CollecteCodeProposalResponse(BaseModel):
+    type: str
+    code: str
+
+
 class CollecteRegistryItem(BaseModel):
     mission_id: UUID
     mission_code: str | None = None

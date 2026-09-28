@@ -40,6 +40,7 @@ class DocumentResponse(BaseModel):
     date_depot: datetime | None = None
     statut_verification: str | None = None
     statut: str | None = None
+    contexte_documentaire: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -49,3 +50,26 @@ class DocumentListResponse(BaseModel):
     limit: int
     offset: int
     items: list[DocumentResponse] = Field(default_factory=list)
+
+
+class OrganismeDocumentItem(BaseModel):
+    document: DocumentResponse
+    certification_id: UUID | None = None
+    certification_code: str | None = None
+    entreprise_name: str | None = None
+
+
+class OrganismeDocumentListResponse(BaseModel):
+    total: int
+    items: list[OrganismeDocumentItem] = Field(default_factory=list)
+
+
+class EntrepriseDocumentItem(BaseModel):
+    document: DocumentResponse
+    fiche_collecte_id: UUID | None = None
+    numero_revision: int | None = None
+
+
+class EntrepriseDocumentListResponse(BaseModel):
+    total: int
+    items: list[EntrepriseDocumentItem] = Field(default_factory=list)

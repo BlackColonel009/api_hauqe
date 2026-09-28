@@ -32,11 +32,12 @@ from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
-from sqlalchemy import delete, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
+from app.models.accreditation import Accreditation
 from app.models.certification_declaree import CertificationDeclaree
 from app.models.contact_entreprise import ContactEntreprise
 from app.models.document import Document
@@ -44,6 +45,7 @@ from app.models.evenement_collecte import EvenementCollecte
 from app.models.fiche_collecte import FicheCollecte
 from app.models.offre_entreprise import OffreEntreprise
 from app.models.offre_declaree import OffreDeclaree
+from app.services.workflow_communication_service import WorkflowCommunicationService
 from app.models.organisme import Organisme
 from app.repositories.fiche_collecte_repository import (
     FicheCollecteRepository,
@@ -58,6 +60,8 @@ from app.schemas.declarations_collecte import (
     CertificationDeclareeCreateRequest,
     CertificationDeclareeResponse,
     CertificationDeclareeUpdateRequest,
+    CollecteQuickOrganismeCreateRequest,
+    CollecteQuickOrganismeResponse,
     OffreDeclareeCreateRequest,
     OffreDeclareeResponse,
     OffreDeclareeUpdateRequest,
@@ -69,6 +73,7 @@ from app.schemas.fiche_collecte import (
     FicheCollecteUpdateRequest,
 )
 from app.services.auth_service import AuthContext
+from app.services.hauqe_identifier_service import HauqeIdentifierService
 from app.services.mission_collecte_service import (
     MissionCollecteService,
 )
@@ -196,6 +201,31 @@ def event_response(item: EvenementCollecte) -> EvenementCollecteResponse:
 
 class FicheCollecteService:
     @staticmethod
+    def revision_document_copy(
+        original: Document, *, resource_type: str, resource_id: UUID,
+    ) -> Document:
+        """Copie la référence, jamais le fichier, et exige une nouvelle vérification."""
+        return Document(
+            type_document=original.type_document,
+            nom_original=original.nom_original,
+            nom_stockage=original.nom_stockage,
+            chemin_stockage=original.chemin_stockage,
+            format=original.format,
+            taille_octets=original.taille_octets,
+            checksum=original.checksum,
+            version=original.version,
+            ressource_type=resource_type,
+            ressource_id=resource_id,
+            confidentialite=original.confidentialite,
+            source=f"REVISION_COLLECTE:{original.id}",
+            date_document=original.date_document,
+            depose_par_id=original.depose_par_id,
+            date_depot=original.date_depot,
+            statut_verification="A_VERIFIER",
+            statut="ACTIF",
+        )
+
+    @staticmethod
     async def resolve_declared_organisme(db: AsyncSession, organisme_id, libelle):
         """Garantit la liaison registre d'une certification déclarée.
 
@@ -220,14 +250,199 @@ class FicheCollecteService:
 
         organisme = await FicheCollecteRepository.find_organisme_by_label(db, label)
         if organisme is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "L’organisme certificateur n’est pas encore dans le "
+                    "registre. Utilisez « Précréer l’organisme » dans la "
+                    "certification déclarée avant d’enregistrer la fiche."
+                ),
+            )
+        return organisme.id, clean_text(organisme.nom_officiel) or label
+
+    @staticmethod
+    async def quick_create_declared_organisme(
+        db: AsyncSession,
+        *,
+        mission_id: UUID,
+        payload: CollecteQuickOrganismeCreateRequest,
+        actor: AuthContext,
+        request: Request,
+    ) -> CollecteQuickOrganismeResponse:
+        """Précrée un certificateur et son accréditation depuis le terrain.
+
+        Cette action est réservée à un agent affecté à la mission. Elle ne
+        reconnaît jamais automatiquement l'organisme ou l'accréditation : les
+        deux restent à vérifier dans le registre.
+        """
+        await FicheCollecteService.ensure_actor_can_write_mission(
+            db,
+            mission_id=mission_id,
+            actor=actor,
+        )
+
+        if (
+            payload.date_delivrance
+            and payload.date_expiration
+            and payload.date_expiration < payload.date_delivrance
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "La date d'expiration de l'accréditation doit être "
+                    "postérieure ou égale à sa date de délivrance."
+                ),
+            )
+
+        name = clean_text(payload.nom_officiel)
+        accrediteur = clean_text(payload.accrediteur)
+        if not name or not accrediteur:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Le nom de l'organisme certificateur et son accréditeur "
+                    "sont obligatoires."
+                ),
+            )
+
+        organisme = await FicheCollecteRepository.find_organisme_by_label(
+            db,
+            name,
+        )
+        organisme_cree = organisme is None
+
+        if organisme is None:
             organisme = Organisme(
-                nom_officiel=label,
+                identifiant_national=await HauqeIdentifierService.allocate_next(
+                    db,
+                    "ORGANISME",
+                ),
+                nom_officiel=name,
+                sigle=clean_text(payload.sigle),
                 type_organisme="CERTIFICATION",
+                pays=clean_text(payload.pays),
+                numero_enregistrement=clean_text(payload.numero_enregistrement),
+                email=clean_text(payload.email),
+                telephone=clean_text(payload.telephone),
+                site_web=clean_text(payload.site_web),
                 statut="A_VERIFIER",
             )
             db.add(organisme)
             await db.flush()
-        return organisme.id, clean_text(organisme.nom_officiel) or label
+            await write_audit_event(
+                db,
+                action="COLLECTE_ORGANISME_QUICK_CREATE",
+                categorie="COLLECTE",
+                resultat="SUCCES",
+                utilisateur_id=actor.user.id,
+                ressource_type="organisme",
+                ressource_id=organisme.id,
+                adresse_ip=client_ip(request),
+                valeurs_apres={
+                    "identifiant_national": organisme.identifiant_national,
+                    "nom_officiel": organisme.nom_officiel,
+                    "type_organisme": organisme.type_organisme,
+                    "statut": organisme.statut,
+                    "source": "COLLECTE_TERRAIN",
+                },
+            )
+        else:
+            # Une ancienne saisie libre pouvait avoir créé un organisme sans
+            # identifiant ni coordonnées. On complète seulement ses champs
+            # vides, sans jamais remplacer des données de registre existantes.
+            enriched_fields: list[str] = []
+            if not clean_text(organisme.identifiant_national):
+                organisme.identifiant_national = await HauqeIdentifierService.allocate_next(
+                    db,
+                    "ORGANISME",
+                )
+                enriched_fields.append("identifiant_national")
+            for field, value in {
+                "sigle": clean_text(payload.sigle),
+                "pays": clean_text(payload.pays),
+                "numero_enregistrement": clean_text(payload.numero_enregistrement),
+                "email": clean_text(payload.email),
+                "telephone": clean_text(payload.telephone),
+                "site_web": clean_text(payload.site_web),
+            }.items():
+                if value and not clean_text(getattr(organisme, field)):
+                    setattr(organisme, field, value)
+                    enriched_fields.append(field)
+            if enriched_fields:
+                await db.flush()
+                await write_audit_event(
+                    db,
+                    action="COLLECTE_ORGANISME_QUICK_COMPLETE",
+                    categorie="COLLECTE",
+                    resultat="SUCCES",
+                    utilisateur_id=actor.user.id,
+                    ressource_type="organisme",
+                    ressource_id=organisme.id,
+                    adresse_ip=client_ip(request),
+                    contexte={"champs_completes": enriched_fields},
+                )
+
+        numero = clean_text(payload.numero_accreditation)
+        accreditation = (
+            await FicheCollecteRepository.find_accreditation_by_identity(
+                db,
+                organisme_id=organisme.id,
+                accrediteur=accrediteur,
+                numero=numero,
+            )
+        )
+        accreditation_creee = accreditation is None
+
+        if accreditation is None:
+            accreditation = Accreditation(
+                organisme_id=organisme.id,
+                numero=numero,
+                accrediteur=accrediteur,
+                domaine_technique=clean_text(payload.domaine_technique),
+                perimetre=clean_text(payload.perimetre),
+                date_delivrance=payload.date_delivrance,
+                date_expiration=payload.date_expiration,
+                statut="A_VERIFIER",
+            )
+            db.add(accreditation)
+            await db.flush()
+            await write_audit_event(
+                db,
+                action="COLLECTE_ACCREDITATION_QUICK_CREATE",
+                categorie="COLLECTE",
+                resultat="SUCCES",
+                utilisateur_id=actor.user.id,
+                ressource_type="accreditation",
+                ressource_id=accreditation.id,
+                adresse_ip=client_ip(request),
+                valeurs_apres={
+                    "organisme_id": str(organisme.id),
+                    "accrediteur": accreditation.accrediteur,
+                    "numero": accreditation.numero,
+                    "statut": accreditation.statut,
+                    "source": "COLLECTE_TERRAIN",
+                },
+            )
+            from app.services.veille_service import WatchService
+            await WatchService.synchronize_accreditation_schedule(
+                db,
+                accreditation=accreditation,
+            )
+
+        await db.commit()
+        await db.refresh(organisme)
+        await db.refresh(accreditation)
+
+        return CollecteQuickOrganismeResponse(
+            organisme_id=organisme.id,
+            nom_officiel=clean_text(organisme.nom_officiel) or name,
+            identifiant_national=organisme.identifiant_national,
+            statut=clean_text(organisme.statut) or "A_VERIFIER",
+            organisme_cree=organisme_cree,
+            accreditation_id=accreditation.id,
+            accreditation_creee=accreditation_creee,
+            accrediteur=accrediteur,
+        )
 
     @staticmethod
     async def synchronize_declarant_contact(
@@ -993,8 +1208,16 @@ class FicheCollecteService:
         document_rows = list((await db.execute(
             select(Document)
             .where(
-                Document.ressource_type == "FICHE_COLLECTE",
-                Document.ressource_id == item.id,
+                or_(
+                    and_(
+                        Document.ressource_type == "FICHE_COLLECTE",
+                        Document.ressource_id == item.id,
+                    ),
+                    and_(
+                        Document.ressource_type == "CERTIFICATION_DECLAREE",
+                        Document.ressource_id.in_([cert.id for cert in certifications]),
+                    ),
+                ),
                 or_(
                     Document.statut.is_(None),
                     Document.statut != "INACTIF",
@@ -1161,6 +1384,14 @@ class FicheCollecteService:
             contexte={"commentaire": clean_text(commentaire)},
         )
 
+        company, details = await WorkflowCommunicationService.fiche_context(db, item.id)
+        await WorkflowCommunicationService.emit(
+            db, event="COLLECTE_SOUMISE", resource_type="FICHE_COLLECTE",
+            resource_id=item.id, title=f"Collecte soumise — {company}",
+            context=details, action="Ouvrir la fiche soumise et commencer la vérification documentaire.",
+            route="#/verifications", action_roles={"VERIFICATEUR"},
+            information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE"},
+        )
         await db.commit()
         await db.refresh(item)
         return fiche_response(item)
@@ -1248,27 +1479,88 @@ class FicheCollecteService:
             db,
             current.id,
         )
+        certification_pairs = []
         for old in old_certs:
-            db.add(
-                CertificationDeclaree(
-                    fiche_collecte_id=new_item.id,
-                    nom_certification=old.nom_certification,
-                    numero=old.numero,
-                    organisme_declare=old.organisme_declare,
-                    organisme_id=old.organisme_id,
-                    norme_declaree=old.norme_declaree,
-                    portee=old.portee,
-                    date_obtention=old.date_obtention,
-                    date_expiration=old.date_expiration,
-                    copie_disponible=old.copie_disponible,
-
-                    # Le rapprochement officiel n'est pas propagé
-                    # automatiquement à une nouvelle révision déclarative.
-                    certification_officielle_id=None,
-                    score_rapprochement=None,
-                    statut_rapprochement=None,
-                )
+            copy = CertificationDeclaree(
+                fiche_collecte_id=new_item.id,
+                nom_certification=old.nom_certification,
+                numero=old.numero,
+                organisme_declare=old.organisme_declare,
+                organisme_id=old.organisme_id,
+                norme_declaree=old.norme_declaree,
+                portee=old.portee,
+                date_obtention=old.date_obtention,
+                date_expiration=old.date_expiration,
+                copie_disponible=old.copie_disponible,
+                # Le rapprochement officiel n'est pas propagé
+                # automatiquement à une nouvelle révision déclarative.
+                certification_officielle_id=None,
+                score_rapprochement=None,
+                statut_rapprochement=None,
             )
+            db.add(copy)
+            certification_pairs.append((old, copy))
+
+        await db.flush()
+        old_declaration_ids = [old.id for old in old_certs]
+        old_official_ids = [
+            old.certification_officielle_id for old in old_certs
+            if old.certification_officielle_id is not None
+        ]
+        document_scopes = [
+            and_(
+                Document.ressource_type == "FICHE_COLLECTE",
+                Document.ressource_id == current.id,
+            )
+        ]
+        if old_declaration_ids:
+            document_scopes.append(and_(
+                Document.ressource_type == "CERTIFICATION_DECLAREE",
+                Document.ressource_id.in_(old_declaration_ids),
+            ))
+        if old_official_ids:
+            document_scopes.append(and_(
+                Document.ressource_type == "CERTIFICATION",
+                Document.ressource_id.in_(old_official_ids),
+            ))
+        source_documents = list((await db.execute(
+            select(Document).where(
+                or_(*document_scopes),
+                or_(Document.statut.is_(None), Document.statut == "ACTIF"),
+            )
+        )).scalars().all())
+        documents_by_owner: dict[tuple[str, UUID], list[Document]] = {}
+        for document in source_documents:
+            documents_by_owner.setdefault(
+                (document.ressource_type, document.ressource_id), []
+            ).append(document)
+        copied_document_ids: set[UUID] = set()
+        copied_count = 0
+
+        def copy_documents(items: list[Document], resource_type: str, resource_id: UUID) -> None:
+            nonlocal copied_count
+            for document in items:
+                if document.id in copied_document_ids:
+                    continue
+                copied_document_ids.add(document.id)
+                db.add(FicheCollecteService.revision_document_copy(
+                    document, resource_type=resource_type, resource_id=resource_id,
+                ))
+                copied_count += 1
+
+        copy_documents(
+            documents_by_owner.get(("FICHE_COLLECTE", current.id), []),
+            "FICHE_COLLECTE", new_item.id,
+        )
+        for old, copy in certification_pairs:
+            proof_documents = list(documents_by_owner.get(
+                ("CERTIFICATION_DECLAREE", old.id), []
+            ))
+            if old.certification_officielle_id:
+                proof_documents += documents_by_owner.get(
+                    ("CERTIFICATION", old.certification_officielle_id), []
+                )
+            copy_documents(proof_documents, "CERTIFICATION_DECLAREE", copy.id)
 
         await FicheCollecteService.record_event(
             db,
@@ -1304,6 +1596,7 @@ class FicheCollecteService:
                 "revision_source_id": str(current.id),
                 "numero_revision": new_item.numero_revision,
                 "statut": new_item.statut,
+                "documents_repris": copied_count,
             },
             contexte={"commentaire": commentaire.strip()},
         )
@@ -1843,12 +2136,21 @@ class FicheCollecteService:
         )
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certification déclarée introuvable.")
+        proof_rows = list((await db.execute(
+            select(Document).where(
+                Document.ressource_type == "CERTIFICATION_DECLAREE",
+                Document.ressource_id == item.id,
+                or_(Document.statut.is_(None), Document.statut == "ACTIF"),
+            ).with_for_update()
+        )).scalars().all())
+        for document in proof_rows:
+            document.statut = "INACTIF"
         await write_audit_event(
             db, action="COLLECTE_DECLARED_CERT_DELETE", categorie="COLLECTE",
             resultat="SUCCES", utilisateur_id=actor.user.id,
             ressource_type="certification_declaree", ressource_id=item.id,
             adresse_ip=client_ip(request),
-            valeurs_avant={"fiche_collecte_id": str(fiche.id), "nom_certification": item.nom_certification, "numero": item.numero},
+            valeurs_avant={"fiche_collecte_id": str(fiche.id), "nom_certification": item.nom_certification, "numero": item.numero, "preuves_desactivees": len(proof_rows)},
         )
         await db.delete(item)
         await db.commit()

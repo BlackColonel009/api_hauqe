@@ -68,7 +68,6 @@ class CertificationDeclareeCreateRequest(BaseModel):
     numero: str | None = Field(default=None, max_length=255)
     organisme_declare: str | None = Field(default=None, max_length=255)
     organisme_id: UUID | None = None
-    organisme_id: UUID | None = None
     norme_declaree: str | None = Field(default=None, max_length=255)
     portee: str | None = None
     date_obtention: date | None = None
@@ -81,7 +80,6 @@ class CertificationDeclareeUpdateRequest(BaseModel):
     nom_certification: str | None = Field(default=None, max_length=255)
     numero: str | None = Field(default=None, max_length=255)
     organisme_declare: str | None = Field(default=None, max_length=255)
-    organisme_id: UUID | None = None
     organisme_id: UUID | None = None
     norme_declaree: str | None = Field(default=None, max_length=255)
     portee: str | None = None
@@ -98,7 +96,6 @@ class CertificationDeclareeResponse(BaseModel):
     numero: str | None = None
     organisme_declare: str | None = None
     organisme_id: UUID | None = None
-    organisme_id: UUID | None = None
     norme_declaree: str | None = None
     portee: str | None = None
     date_obtention: date | None = None
@@ -110,3 +107,32 @@ class CertificationDeclareeResponse(BaseModel):
     statut_rapprochement: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CollecteQuickOrganismeCreateRequest(BaseModel):
+    """Précréation contrôlée d'un organisme depuis une certification terrain."""
+
+    nom_officiel: str = Field(min_length=2, max_length=255)
+    sigle: str | None = Field(default=None, max_length=255)
+    pays: str | None = Field(default=None, max_length=255)
+    numero_enregistrement: str | None = Field(default=None, max_length=255)
+    email: str | None = Field(default=None, max_length=255)
+    telephone: str | None = Field(default=None, max_length=255)
+    site_web: str | None = Field(default=None, max_length=255)
+    accrediteur: str = Field(min_length=2, max_length=255)
+    numero_accreditation: str | None = Field(default=None, max_length=255)
+    domaine_technique: str | None = Field(default=None, max_length=255)
+    perimetre: str | None = None
+    date_delivrance: date | None = None
+    date_expiration: date | None = None
+
+
+class CollecteQuickOrganismeResponse(BaseModel):
+    organisme_id: UUID
+    nom_officiel: str
+    identifiant_national: str | None = None
+    statut: str
+    organisme_cree: bool
+    accreditation_id: UUID | None = None
+    accreditation_creee: bool
+    accrediteur: str

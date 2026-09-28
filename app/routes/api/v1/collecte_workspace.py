@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.permissions.auth import require_permission
 from app.schemas.collecte_workspace import (
+    CollecteCodeProposalResponse,
     CollecteRegistryResponse,
     CollecteWorkspaceFiltersResponse,
     CollecteQuickEnterpriseCreateRequest,
@@ -17,12 +18,29 @@ from app.services.auth_service import AuthContext
 from app.services.collecte_workspace_service import (
     CollecteWorkspaceService,
 )
+from app.services.collecte_code_service import CollecteCodeService
 
 
 router = APIRouter(
     prefix="/collectes",
     tags=["Collecte - Espace de travail"],
 )
+
+
+@router.get(
+    "/codes/proposer",
+    response_model=CollecteCodeProposalResponse,
+)
+async def propose_collecte_code(
+    type: str = Query(..., max_length=32),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.LIRE")),
+):
+    """Propose le prochain code métier sans réserver la séquence."""
+    return CollecteCodeProposalResponse(
+        type=type.strip().upper(),
+        code=await CollecteCodeService.propose(db, type),
+    )
 
 
 @router.get(
@@ -84,4 +102,3 @@ async def quick_create_enterprise(
     return await CollecteWorkspaceService.quick_create_enterprise(
         db, payload=payload, actor=actor, request=request
     )
-

@@ -148,7 +148,7 @@ class WatchWorkspaceService:
             limit=payload.limit,
             offset=payload.offset,
             summary=AlertWorkspaceSummary(
-                **await WatchWorkspaceRepository.alert_summary(db)
+                **await WatchWorkspaceRepository.alert_summary(db, filters.get("current_user_id"))
             ),
             items=items,
         )

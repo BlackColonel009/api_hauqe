@@ -49,6 +49,7 @@ from app.schemas.dashboard import (
     DashboardFiltersResponse,
     DecisionSynthesis,
     DistributionItem,
+    ExpiringCertificationItem,
     GeographicAggregate,
     IndicatorDefinition,
     IndicatorDefinitionsResponse,
@@ -766,7 +767,7 @@ class DashboardService:
                     certification_body=row.organisme_name,
                     expiration_date=row.date_expiration,
                     days_remaining=(
-                        row.date_expiration - end
+                        row.date_expiration - date.today()
                     ).days,
                 )
                 for row in expiring_rows

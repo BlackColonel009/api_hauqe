@@ -15,6 +15,9 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.repositories.document_repository import DocumentRepository
+from app.services.document_service import build_response as document_response
+from app.schemas.document import OrganismeDocumentItem, OrganismeDocumentListResponse
 from app.permissions.auth import require_permission
 from app.schemas.organismes_certifications import (
     AccreditationCreateRequest,
@@ -276,6 +279,31 @@ async def get_organisme(
     actor: AuthContext = Depends(require_permission("ORGANISMES.LIRE")),
 ):
     return await OrganismeService.detail(db, organisme_id)
+
+
+@router.get(
+    "/organismes/{organisme_id}/documents",
+    response_model=OrganismeDocumentListResponse,
+    tags=["Organismes"],
+)
+async def list_organisme_documents(
+    organisme_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("ORGANISMES.LIRE")),
+    _documents_access: AuthContext = Depends(require_permission("DOCUMENTS.LIRE")),
+):
+    await OrganismeService.detail(db, organisme_id)
+    rows = await DocumentRepository.list_for_organisme(db, organisme_id)
+    items = [
+        OrganismeDocumentItem(
+            document=document_response(row.Document),
+            certification_id=row.certification_id,
+            certification_code=row.certification_code,
+            entreprise_name=row.entreprise_name,
+        )
+        for row in rows
+    ]
+    return OrganismeDocumentListResponse(total=len(items), items=items)
 
 
 @router.post("/organismes", response_model=OrganismeResponse, status_code=status.HTTP_201_CREATED, tags=["Organismes"])

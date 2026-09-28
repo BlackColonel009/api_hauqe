@@ -383,6 +383,7 @@ class AccountRepository:
         body: str,
         external_address: str | None = None,
         immediate: bool = False,
+        security_notice: bool = False,
     ) -> Notification:
         item = Notification(
             alerte_id=None,
@@ -397,8 +398,9 @@ class AccountRepository:
             ),
             date_lecture=None,
             resultat=(
-                "Disponible dans l'application"
-                if immediate else None
+                "Disponible dans l'application" if immediate
+                else "SECURITE_COMPTE" if security_notice
+                else None
             ),
             nombre_tentatives=0,
             message_erreur=None,

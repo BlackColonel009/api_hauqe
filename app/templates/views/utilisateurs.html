@@ -218,7 +218,11 @@
     </footer>
   </aside>
 
-  <dialog class="hauqe-dialog user-admin-dialog" id="userDialog">
+  <dialog
+    class="hauqe-dialog user-admin-dialog"
+    id="userDialog"
+    data-static="true"
+  >
     <form method="post" id="userForm" novalidate>
       <header>
         <div>
@@ -238,8 +242,29 @@
         </button>
       </header>
 
+      <nav
+        class="user-create-steps"
+        id="userCreateSteps"
+        aria-label="Étapes de création du compte"
+        hidden
+      >
+        <span class="user-create-step" data-user-create-step="1">
+          <b>1</b><span>Identité</span>
+        </span>
+        <span class="user-create-step" data-user-create-step="2">
+          <b>2</b><span>Mot de passe</span>
+        </span>
+        <span class="user-create-step" data-user-create-step="3">
+          <b>3</b><span>Rôles</span>
+        </span>
+      </nav>
+
       <div class="dialog-body">
-        <section class="admin-form-section">
+        <section
+          class="admin-form-section user-create-step-panel"
+          id="userIdentitySection"
+          data-user-create-panel="1"
+        >
           <div class="admin-form-section-heading">
             <span><i data-lucide="contact-round"></i></span>
             <div>
@@ -299,8 +324,9 @@
         </section>
 
         <section
-          class="admin-form-section"
+          class="admin-form-section user-create-step-panel"
           id="initialPasswordSection"
+          data-user-create-panel="2"
         >
           <div class="admin-form-section-heading">
             <span><i data-lucide="key-round"></i></span>
@@ -356,8 +382,9 @@
         </section>
 
         <section
-          class="admin-form-section"
+          class="admin-form-section user-create-step-panel"
           id="initialRolesSection"
+          data-user-create-panel="3"
         >
           <div class="admin-form-section-heading">
             <span><i data-lucide="badge-check"></i></span>
@@ -382,6 +409,26 @@
           data-close-user-dialog="userDialog"
         >
           Annuler
+        </button>
+
+        <button
+          class="btn btn-outline-secondary app-btn"
+          id="userWizardPrevious"
+          type="button"
+          hidden
+        >
+          <i data-lucide="arrow-left"></i>
+          Précédent
+        </button>
+
+        <button
+          class="btn btn-primary app-btn"
+          id="userWizardNext"
+          type="button"
+          hidden
+        >
+          Continuer
+          <i data-lucide="arrow-right"></i>
         </button>
 
         <button

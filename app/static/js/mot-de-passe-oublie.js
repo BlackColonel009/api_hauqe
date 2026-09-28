@@ -109,6 +109,7 @@
 
     setBusy(button, true, "Enregistrement…", "Enregistrer le nouveau mot de passe");
     try {
+      const api = await apiReady;
       await api.apiPost(
         "/api/v1/auth/password/reset",
         { token, new_password: password, confirm_password: confirmation },

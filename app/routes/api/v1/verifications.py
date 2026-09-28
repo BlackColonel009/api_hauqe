@@ -40,6 +40,10 @@ async def open_from_fiche(fiche_id:UUID,payload:VerificationOpenRequest,request:
 async def get_verification(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.LIRE"))):
     return await VerificationService.response(db,await VerificationService.get(db,dossier_id))
 
+@router.get("/{dossier_id}/reopen-analysis",response_model=VerificationReopenAnalysisResponse)
+async def reopen_analysis(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.CLOTURER"))):
+    return await VerificationService.reopen_analysis(db,dossier_id=dossier_id)
+
 
 @router.get("/{dossier_id}/context",response_model=VerificationRegistryItem)
 async def verification_context(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.LIRE"))):

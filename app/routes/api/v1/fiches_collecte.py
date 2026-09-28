@@ -24,6 +24,8 @@ from app.schemas.declarations_collecte import (
     CertificationDeclareeCreateRequest,
     CertificationDeclareeResponse,
     CertificationDeclareeUpdateRequest,
+    CollecteQuickOrganismeCreateRequest,
+    CollecteQuickOrganismeResponse,
     OffreDeclareeCreateRequest,
     OffreDeclareeResponse,
     OffreDeclareeUpdateRequest,
@@ -95,6 +97,33 @@ async def create_fiche(
     ),
 ):
     return await FicheCollecteService.create(
+        db,
+        mission_id=mission_id,
+        payload=payload,
+        actor=actor,
+        request=request,
+    )
+
+
+@router.post(
+    "/quick-organismes",
+    response_model=CollecteQuickOrganismeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def quick_create_declared_organisme(
+    mission_id: UUID,
+    payload: CollecteQuickOrganismeCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("COLLECTE.MODIFIER")),
+):
+    """Précrée un organisme certificateur depuis une fiche terrain.
+
+    Le service vérifie en complément que l'agent est bien affecté à la
+    mission : la permission ne permet pas de créer un organisme depuis une
+    mission qui ne lui est pas attribuée.
+    """
+    return await FicheCollecteService.quick_create_declared_organisme(
         db,
         mission_id=mission_id,
         payload=payload,

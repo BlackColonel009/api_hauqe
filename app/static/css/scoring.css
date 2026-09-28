@@ -137,6 +137,50 @@
 .sncc-notation-legend>footer{display:flex;align-items:flex-start;gap:8px;padding:11px 19px;border-top:1px solid #e7eeea;background:#f4f8f6;color:#64736c;font-size:8.5px;line-height:1.45}.sncc-notation-legend>footer svg{flex:0 0 15px;width:15px;color:#28795b}
 
 /* Modales ciblées : calcul INFC et classement SNCC. */
+/* Validation du résultat INFC — même hiérarchie que les modals Échéances. */
+#infcValidateDialog.hauqe-dialog-managed{width:min(660px,calc(100vw - 24px));border:1px solid #d1e1da;border-radius:24px;background:#fff}
+#infcValidateDialog>form{position:relative}
+#infcValidateDialog>form::before{content:"";position:absolute;z-index:3;inset:0 0 auto;height:4px;background:linear-gradient(90deg,#165d45,#23795a,#72bea0)}
+#infcValidateDialog .infc-validation-header{display:grid;grid-template-columns:50px minmax(0,1fr) 38px;gap:14px;align-items:start;padding:24px;border-bottom:1px solid #e4ece8;background:radial-gradient(circle at 92% 12%,rgba(35,121,90,.13),transparent 32%),linear-gradient(145deg,#fff,#edf8f2)}
+#infcValidateDialog .infc-validation-icon{display:grid;place-items:center;width:50px;height:50px;border:1px solid #d5e9de;border-radius:16px;background:#fff;color:#23795a;box-shadow:0 10px 24px rgba(35,121,90,.1)}
+#infcValidateDialog .infc-validation-icon svg{width:22px;height:22px}
+#infcValidateDialog .infc-validation-title{min-width:0}
+#infcValidateDialog .infc-validation-title .eyebrow{margin:1px 0 4px;color:#23795a;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+#infcValidateDialog .infc-validation-title h2{margin:0;color:#243b31;font:800 20px/1.25 Manrope,"DM Sans",sans-serif}
+#infcValidateDialog .infc-validation-title small{display:block;margin-top:6px;color:#63776c;font-size:11px;line-height:1.5}
+#infcValidateDialog .infc-validation-body{display:grid;align-content:start;gap:14px;padding:18px 20px 22px!important;background:linear-gradient(180deg,#f8fbf9,#f5f9f7)}
+#infcValidateDialog .infc-validation-context{display:grid;grid-template-columns:40px minmax(0,1fr);gap:11px;align-items:center;padding:13px;border:1px solid #d8e9e0;border-radius:14px;background:linear-gradient(135deg,#fff,#edf8f2)}
+#infcValidateDialog .infc-validation-context>svg{width:40px;height:40px;padding:10px;border-radius:11px;background:#fff;color:#23795a}
+#infcValidateDialog .infc-validation-context strong,#infcValidateDialog .infc-validation-context small{display:block;overflow-wrap:anywhere}
+#infcValidateDialog .infc-validation-context strong{color:#2e493c;font-size:12px}
+#infcValidateDialog .infc-validation-context small{margin-top:3px;color:#657c70;font-size:10px;line-height:1.45}
+#infcValidateDialog .infc-validation-fields{display:grid;gap:15px;min-width:0;padding:16px;border:1px solid #dfe8e4;border-radius:17px;background:#fff;box-shadow:0 8px 24px rgba(24,61,45,.045)}
+#infcValidateDialog .infc-validation-section-title{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;padding-bottom:12px;border-bottom:1px solid #e8efeb}
+#infcValidateDialog .infc-validation-section-title>svg{width:34px;height:34px;padding:9px;border-radius:10px;background:#dff3e8;color:#23795a}
+#infcValidateDialog .infc-validation-section-title strong,#infcValidateDialog .infc-validation-section-title small{display:block}
+#infcValidateDialog .infc-validation-section-title strong{color:#30473c;font-size:12px}
+#infcValidateDialog .infc-validation-section-title small{margin-top:2px;color:#6d8276;font-size:10px}
+#infcValidateDialog .infc-validation-fields label{display:grid;gap:7px;min-width:0;margin:0}
+#infcValidateDialog .infc-validation-fields label>span{color:#53685d;font-size:11px;font-weight:800}
+#infcValidateDialog .infc-validation-fields label em{color:#778a7f;font-size:10px;font-style:normal;font-weight:500}
+#infcValidateDialog .infc-validation-fields textarea{width:100%;min-height:110px;padding:11px 13px;border:1px solid #d7e2dd;border-radius:12px;background:#fff;color:#2e4439;font-size:12px;line-height:1.5;outline:none}
+#infcValidateDialog .infc-validation-fields textarea:focus{border-color:#66ad90;box-shadow:0 0 0 4px rgba(35,121,90,.1)}
+#infcValidateDialog .infc-validation-fields label>small{color:#71837a;font-size:10px;line-height:1.4}
+#infcValidateDialog .infc-validation-error{margin:0;padding:11px 13px;border:1px solid #efc9c6;border-radius:11px;background:#fff3f2;color:#923e38;font-size:11px;line-height:1.45}
+#infcValidateDialog .infc-validation-error[hidden]{display:none}
+#infcValidateDialog footer{padding:14px 20px 18px!important;border-top:1px solid #e2eae6;background:#fff}
+#infcValidateDialog footer .btn{min-height:42px}
+@media(max-width:640px){#infcValidateDialog .infc-validation-header{grid-template-columns:40px minmax(0,1fr) 36px;gap:10px;padding:17px 14px}#infcValidateDialog .infc-validation-icon{width:40px;height:40px;border-radius:12px}#infcValidateDialog .infc-validation-title h2{font-size:17px}#infcValidateDialog .infc-validation-body{padding:14px!important}#infcValidateDialog .infc-validation-fields{padding:13px}#infcValidateDialog footer{padding:12px 14px 14px!important}}
+@media(max-height:420px){#infcValidateDialog>form{overflow-y:auto!important}#infcValidateDialog .infc-validation-body{flex:0 0 auto!important;overflow:visible!important}#infcValidateDialog .infc-validation-header,#infcValidateDialog footer{flex:0 0 auto}}
+html[data-theme="dark"] #infcValidateDialog :is(.infc-validation-context,.infc-validation-fields){border-color:#315248;background:#173b32;color:#e5f0ec}
+html[data-theme="dark"] #infcValidateDialog .infc-validation-header{border-color:#315248;background:radial-gradient(circle at 92% 12%,rgba(45,142,104,.22),transparent 32%),linear-gradient(145deg,#173b32,#102d27)!important}
+html[data-theme="dark"] #infcValidateDialog .infc-validation-icon{border-color:#315248;background:#20483b;color:#a8e1c5}
+html[data-theme="dark"] #infcValidateDialog .infc-validation-title .eyebrow{color:#a8e1c5}
+html[data-theme="dark"] #infcValidateDialog footer{border-color:#315248;background:#12342c!important}
+html[data-theme="dark"] #infcValidateDialog :is(.infc-validation-title h2,.infc-validation-context strong,.infc-validation-section-title strong){color:#e5f0ec}
+html[data-theme="dark"] #infcValidateDialog :is(.infc-validation-title small,.infc-validation-context small,.infc-validation-fields label>span,.infc-validation-fields label>small){color:#b5c9bf}
+html[data-theme="dark"] #infcValidateDialog .infc-validation-fields textarea{border-color:#315248;background:#102d27;color:#e5f0ec}
+html[data-theme="dark"] #infcValidateDialog .infc-validation-error{border-color:#8f4a46;background:#482a2a;color:#ffe2df}
 #infcDialog.hauqe-dialog-managed,#snccDialog.hauqe-dialog-managed{width:min(760px,calc(100vw - 28px));border:1px solid rgba(45,105,80,.12);border-radius:22px;background:#fff}
 #infcDialog.hauqe-dialog-managed header,#snccDialog.hauqe-dialog-managed header{padding:20px 24px;border-bottom:1px solid #e5ece8;background:radial-gradient(circle at 92% 5%,rgba(60,154,115,.12),transparent 34%),linear-gradient(135deg,#fcfefd,#f2f9f6)}
 #infcDialog header h2,#snccDialog header h2{max-width:620px;margin:3px 0 0;color:#203d31;font:800 16px/1.35 Manrope,sans-serif}

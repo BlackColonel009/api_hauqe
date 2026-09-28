@@ -1,4 +1,8 @@
-import { apiGet as defaultApiGet } from "./api.js?v=20260731-1";
+import { apiGet as defaultApiGet } from "./api.js?v=20260927-1";
+
+const DOSSIER_PARCOURS_EVENT = "hauqe:dossier-parcours-changed";
+const registeredParcours = new Map();
+let refreshScheduled = false;
 
 const ICONS = {
   COLLECTE: "clipboard-check",
@@ -28,6 +32,8 @@ function escapeHtml(value) {
 export async function renderDossierParcours({ target, source, resourceId, apiGet = defaultApiGet }) {
   const container = typeof target === "string" ? document.querySelector(target) : target;
   if (!container || !resourceId) return;
+
+  registeredParcours.set(container, { source, resourceId, apiGet });
 
   try {
     const parcours = await apiGet(
@@ -65,4 +71,27 @@ export async function renderDossierParcours({ target, source, resourceId, apiGet
     // Le parcours est une aide de lecture : il ne doit jamais empêcher la fiche principale de fonctionner.
     container.hidden = true;
   }
+}
+
+async function refreshRegisteredParcours() {
+  refreshScheduled = false;
+  const refreshes = [];
+  for (const [container, options] of registeredParcours.entries()) {
+    if (!document.contains(container)) {
+      registeredParcours.delete(container);
+      continue;
+    }
+    refreshes.push(renderDossierParcours({ target: container, ...options }));
+  }
+  await Promise.allSettled(refreshes);
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(DOSSIER_PARCOURS_EVENT, () => {
+    // Plusieurs écritures successives (fiche, offres, certifications…) ne
+    // produisent qu'un redessin au cycle suivant.
+    if (refreshScheduled) return;
+    refreshScheduled = true;
+    window.setTimeout(refreshRegisteredParcours, 80);
+  });
 }

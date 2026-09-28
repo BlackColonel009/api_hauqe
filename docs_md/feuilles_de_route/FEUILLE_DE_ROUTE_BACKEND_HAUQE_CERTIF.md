@@ -2,12 +2,30 @@
 
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
-**Dernière mise à jour :** 2026-08-11
+**Dernière mise à jour :** 2026-09-28 — courriels du système par agent
 **Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
 
 ## 1. Règle de continuité du projet
+
+### Courriels du système par agent — 28 septembre 2026
+
+- Dans Profil > Notifications, seuls `ADMIN_HAUQE` et `ADMIN_BNEC` peuvent consulter et modifier `courriels_systeme_actifs` pour un compte ciblé. Contrôle des rôles effectué aussi dans l'API ; chaque changement est audité.
+- Le worker SMTP relit ce réglage juste avant l'envoi : les courriels fonctionnels désactivés passent en `ANNULEE`, sans tentative SMTP ni rattrapage automatique si le réglage est réactivé. Les notifications IN_APP restent actives. Les courriels de sécurité du compte (mot de passe, inactivité) sont explicitement exemptés ; les adresses externes ne sont pas visées.
+- **Base PostgreSQL modifiée : oui après déploiement.** Migration `j5f9b3d7e1a2_user_system_email_policy.py` : une colonne booléenne non nulle, `true` par défaut, dans `preferences_utilisateur`. Aucune donnée existante supprimée ; aucun seed requis.
+- Vérifié localement : 37 tests unitaires et recette isolée du profil administrateur ; SMTP réel non testé.
+
+### Communication inter-rôles du parcours — 27 septembre 2026
+
+- `WorkflowCommunicationService` émet, dans la transaction métier, une alerte de transition, une notification IN_APP par utilisateur actif et un courriel EMAIL en attente par utilisateur doté d'une adresse. Les rôles cumulés sont dédupliqués par utilisateur.
+- Déclencheurs : affectation nouvelle sur mission ; soumission de collecte ; clôture de vérification ; finalisation FUCCS ; décision N2 favorable ; intégration BNEC réussie. Aucun envoi depuis une simple lecture ou un brouillon.
+- Les messages contiennent entreprise, identifiant lisible, campagne, mission, révision et certifications déclarées disponibles ; l'URL provient de `LIEN_VERS_SNGSC`. Les UUID ne servent que dans les liens techniques, jamais comme libellés métier.
+- Les destinataires sont déterminés à la transition parmi les comptes et attributions de rôles actifs. Le point focal reçoit les étapes d'information et l'action N1 après FUCCS ; l'admin HAUQE est informé ; la direction technique est sollicitée après FUCCS ; l'admin BNEC après N2 ; la CVC après intégration.
+- `GET /api/v1/veille/workspace/alerts/mine` requiert `NOTIFICATIONS.LIRE` et filtre par compte côté PostgreSQL. `GET /api/v1/veille/workspace/alerts` garde `ALERTES.LIRE` pour le registre général.
+- La liste et le compteur de notifications personnelles portent uniquement sur IN_APP ; les lignes EMAIL restent dans la file SMTP et son historique de transport.
+- Pas de migration de schéma. **Données RBAC modifiées : oui**, par `python -m app.scripts.sync_workflow_communication_permissions` (ajouts idempotents seulement). Aucun seed métier.
+- Vérifié : tests unitaires, dont déduplication des rôles, absence d'alerte sans destinataire et isolation des alertes personnelles ; test frontend isolé du périmètre personnel. Restent à tester sur le serveur : SMTP réel et parcours complet avec comptes distincts.
 
 Ce document est la **source de reprise rapide du backend**.
 
@@ -2617,6 +2635,32 @@ saisie ou validée dans le dossier entreprise, n’est jamais écrasée. Les tro
 actions sont inscrites dans le journal d’audit.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — précréation contrôlée d’un organisme certificateur (27/09/2026)
+
+Depuis une ligne **Certifications déclarées**, l’agent affecté à la mission
+peut créer un organisme certificateur et son accréditation déclarée par
+`POST /api/v1/missions/{mission_id}/fiches/quick-organismes`. L’autorisation
+est contrôlée deux fois : permission `COLLECTE.MODIFIER` puis affectation
+réelle de l’agent à la mission. L’organisme et l’accréditation sont créés avec
+le statut `A_VERIFIER`, sans reconnaissance automatique.
+
+L’endpoint recherche d’abord un organisme sur son nom ou son sigle et une
+accréditation sur organisme + accréditeur + numéro : aucun doublon n’est créé.
+Une ancienne saisie incomplète peut seulement être complétée sur ses champs
+vides ; des informations du registre ne sont jamais remplacées. La réponse
+renvoie l’`organisme_id`, qui est sauvegardé avec la certification déclarée.
+
+Une saisie libre inconnue ne crée désormais plus discrètement un organisme
+incomplet lors de l’enregistrement de la fiche : le serveur demande
+d’utiliser la précréation. Les organismes déjà existants restent
+sélectionnables par leur libellé.
+
+Le rôle `AGENT_COLLECTE` reçoit également `ORGANISMES.CREER`. Pour les bases
+existantes, exécuter `python -m app.scripts.sync_agent_collecte_organismes_create`.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; seed : aucun.**
 
 ### Courriels internes HAUQE — lien SNGSC pour alertes et échéances (26/09/2026)
 
@@ -6291,6 +6335,41 @@ Aucune migration Alembic.
 Aucune nouvelle table.
 Aucune nouvelle permission.
 
+### Rapprochement documentaire et unicité métier (27/09/2026)
+
+**Complément révisions et réintégration (27/09/2026) :** lors de la création d’une révision, les références documentaires actives de la fiche et des certifications déclarées sont reprises sur le nouveau brouillon, avec provenance `REVISION_COLLECTE:<id>` et vérification remise à `A_VERIFIER`. Le fichier physique et les lignes de l’ancienne révision ne sont ni déplacés ni supprimés. Si la déclaration précédente était déjà intégrée, les documents actifs de sa certification officielle sont proposés comme preuves de la nouvelle déclaration ; au retour BNEC, une empreinte déjà présente sur la certification est ignorée afin de ne pas dupliquer la pièce officielle. Une réintégration conserve l’authenticité vérifiée uniquement si organisme, norme, numéro, portée et dates sont inchangés, qu’une pièce active existe toujours et que la situation déclarée n’est pas absente/suspendue/retirée. Sinon, une nouvelle vérification est exigée. Les statuts de suspension/retrait déjà prononcés sont conservés si la déclaration est inchangée.
+
+La réinitialisation d’un brouillon ou la suppression d’une certification déclarée désactive aussi ses preuves documentaires propres, sans effacer les fichiers physiques ni toucher aux documents de la certification BNEC. Cela évite de laisser des preuves actives orphelines.
+
+**Documents de l’entreprise :** `GET /api/v1/documents/entreprise/{id}/linked` agrège en lecture les pièces directes de l’entreprise et les justificatifs des fiches dont `entreprise_id` correspond exactement. Droits `ENTREPRISES.LIRE` et `DOCUMENTS.LIRE`; le téléchargement conserve `DOCUMENTS.TELECHARGER`. Aucun rattachement automatique par libellé d’entreprise.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.** Les créations futures de révision produisent des lignes `documents` supplémentaires dans la table existante, sans copie physique de fichier.
+
+**Correctif immédiat tableau de bord (27/09/2026) :** l’inclusion des certificats expirés dans la liste opérationnelle a révélé un import manquant de `ExpiringCertificationItem`, auparavant masqué lorsque la liste était vide. L’import est rétabli et l’appel opérationnel a été exécuté en lecture seule sur la base locale avec un certificat expiré. À éviter : valider uniquement le cas de liste vide pour un nouveau bloc de résultats.
+
+- Nouvelle lecture agrégée `GET /api/v1/organismes/{id}/documents` : documents propres à l’organisme et documents actifs des certifications dont il est certificateur. Les références de fichiers restent uniques ; aucun transfert de stockage.
+- L’intégration BNEC ne confond plus « copie disponible » et « authenticité vérifiée ». Une date dépassée donne le statut `EXPIREE` même sans copie. La vérification ultérieure ajuste `A_VERIFIER` / `ACTIVE` / `EXPIREE` selon l’authenticité et la date, sans remplacer les statuts particuliers de suspension/retrait.
+- Le rapprochement automatique d’une certification exige dorénavant le même numéro de certificat, y compris dans le cas d’un numéro absent. Un numéro déjà associé à une autre norme ou un autre organisme bloque l’intégration pour décision manuelle. Les déclarations strictement identiques d’une fiche restent regroupées en une certification officielle ; l’identifiant national officiel est déjà soumis à une contrainte SQL d’unicité.
+- Les preuves historiques attachées globalement à une fiche de collecte ne sont pas redistribuées en masse : une fiche pouvant comporter plusieurs certifications, cette redistribution pourrait attribuer un PDF au mauvais certificat.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Intégration BNEC — transfert contrôlé des preuves de certification (27/09/2026)
+
+Les documents ayant `ressource_type=CERTIFICATION_DECLAREE` et rattachés aux
+déclarations strictement identiques intégrées sont transférés, dans la même
+transaction d’intégration, vers `ressource_type=CERTIFICATION` et la
+certification officielle cible. Leur source est tracée
+`COLLECTE_CERTIFICATION_INTEGREE` et un événement d’audit conserve l’ancien
+rattachement. Les documents généraux `FICHE_COLLECTE` ne sont jamais déplacés.
+
+Le mécanisme est idempotent : une réexécution ne transfère que les preuves qui
+sont encore sur une déclaration terrain. Aucun rattachement rétroactif des
+anciens documents généraux n’est tenté, car une fiche peut contenir plusieurs
+certifications et l’association ne peut pas être déduite de façon fiable.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
 ### Suppression contrôlée des éléments d'une fiche brouillon (24/09/2026)
 
 Deux routes sont disponibles pour les lignes déclaratives d'une fiche de
@@ -6464,6 +6543,62 @@ Aucune nouvelle table.
 Aucune migration.
 Aucune nouvelle permission.
 
+### Réinitialisation de mot de passe — durée du lien configurable (27/09/2026)
+
+Le jeton `PASSWORD_RESET` expire après la durée configurée par
+`PASSWORD_RESET_EXPIRE_MINUTES`, fixée à **3 minutes** par défaut. La valeur
+est contrôlée entre 1 et 60 minutes au démarrage afin d’éviter un lien sans
+durée utile ou une durée excessive.
+
+Le jeton reste à usage unique, les anciens jetons de réinitialisation sont
+invalidés lorsqu’une nouvelle demande est faite, et la vérification serveur de
+`expiration_at` reste l’autorité de sécurité. Le courriel reprend la même
+durée configurée et avertit explicitement que le lien n’est plus valable après
+ce délai.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — codification automatique des campagnes, missions et zones (27/09/2026)
+
+Le service `CollecteCodeService` centralise désormais les propositions et
+l'attribution transactionnelle des codes métier. Une création sans code reçoit
+automatiquement le prochain numéro libre de l'année en cours :
+
+```text
+Campagne  → HAUQE-CAMP-AAAA-NNNN
+Mission   → HAUQE-MIS-AAAA-NNNN
+Zone      → HAUQE-ZON-AAAA-NNNN
+```
+
+Le numéro proposé est calculé à partir des codes déjà enregistrés ; le verrou
+transactionnel PostgreSQL évite que deux créations simultanées reçoivent le
+même numéro. Les trois champs restent modifiables pour un cas exceptionnel,
+mais la création refuse tout doublon de campagne, de mission ou de zone.
+
+`GET /api/v1/collectes/codes/proposer?type=CAMPAGNE|MISSION|ZONE` fournit une
+proposition sans réserver inutilement un numéro. Les anciennes données ne
+sont ni renommées ni modifiées.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Vérification — réouverture gouvernée par le parcours (27/09/2026)
+
+La réouverture d’un dossier de vérification est désormais précédée d’une
+analyse métier servie par `GET /api/v1/verifications/{dossier_id}/reopen-analysis`.
+La même décision est recalculée et protégée dans `POST .../reopen` : un appel
+direct ne peut donc pas contourner l’interface.
+
+- **BNEC déjà intégrée** : réouverture directe interdite ; une révision de la
+  fiche de collecte doit être créée afin de préserver la trace d’intégration.
+- **Validation N1 ou N2 déjà prononcée** : réouverture directe interdite ; une
+  révision de collecte est également requise.
+- **FUCCS finalisé sans validation** : la confirmation explicite de l’utilisateur
+  rouvre le contrôle en `BROUILLON`, conserve notes et constats, et trace les
+  deux opérations dans le journal d’audit.
+- **Aucun jalon aval** : le dossier est réouvert normalement avec son motif.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
 ### Création de mission avec affectations multiples (24/09/2026)
 
 `POST /api/v1/campagnes/{campagne_id}/missions` accepte désormais
@@ -6615,6 +6750,16 @@ retire explicitement une ancienne attribution éventuelle de
 
 **Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
 aucune ; script : `python -m app.scripts.sync_verificateur_collecte_read`.**
+
+### Direction technique — consultation des collectes et vérifications (27/09/2026)
+
+Le rôle **DIRECTION_TECHNIQUE** dispose de `COLLECTE.LIRE` et
+`VERIFICATION.LIRE` afin de suivre le parcours d'un dossier. Ces droits sont
+strictement consultatifs : ils ne donnent ni écriture de collecte, ni
+affectation, ni traitement ou clôture de vérification.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; script : `python -m app.scripts.sync_direction_consultation_dossiers`.**
 
 ### Calcul automatique explicable — Classification, INFC et SNCC (25/09/2026)
 
@@ -6842,3 +6987,36 @@ Le socle ci-dessus reste le fallback technique déjà présent dans le backend.
 
 Aucune migration.
 Aucune nouvelle permission.
+
+### Précréation et variables de codification BNEC (27/09/2026)
+
+La précréation terrain renseigne `entreprises.date_creation` à la date du jour.
+Le contexte de codification `{REGION}` utilise exclusivement le nom de la
+région administrative liée (ou de la zone sélectionnée si aucun parent de
+type région n'existe), jamais son code. Si ce nom manque et que le modèle
+publié utilise `{REGION}`, la génération signale la variable non résolue.
+`{SECTEUR}` provient des catégories non vides des offres produit/service de
+la fiche Entreprises ; les catégories distinctes sont concaténées dans l'ordre
+de création des offres avec `ET` comme séparateur lisible. L'ancienne valeur
+`activite_principale` n'est plus utilisée pour cette variable. Les modèles
+publiés restent inchangés ; seuls les nouveaux aperçus/intégrations utilisent
+ces nouvelles sources. Les codes BNEC déjà attribués ne sont pas recalculés.
+
+**Base PostgreSQL modifiée : non (schéma) ; données nouvelles : date de
+création et indicateur de copie lors des futures saisies ; migration : aucune ;
+seed : aucun.**
+
+### Vue documentaire consolidée par fiche (27/09/2026)
+
+`GET /api/v1/documents/fiche/{fiche_id}/linked` réunit, en lecture sécurisée,
+les documents actifs rattachés directement à la fiche, aux certifications
+déclarées de cette fiche et aux certifications officielles auxquelles ces
+déclarations ont été rapprochées. Le document conserve son propriétaire
+technique et son fichier privé ; la réponse ajoute un contexte lisible
+(certification et numéro) pour les écrans Vérifications et FUCCS. Le compteur
+du registre de vérification emploie les mêmes trois périmètres. La vue liée
+Entreprise inclut aussi les preuves déclarées et officielles de l'entreprise.
+La sélection SQL part de la fiche ou de l'entreprise : elle n'agrège jamais
+les preuves d'une autre entreprise simplement parce que le nom est identique.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**

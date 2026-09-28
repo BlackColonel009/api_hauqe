@@ -26,6 +26,7 @@ from app.schemas.campagne import (
     CampagneUpdateRequest,
 )
 from app.services.auth_service import AuthContext
+from app.services.collecte_code_service import CollecteCodeService
 
 
 def client_ip(request: Request) -> str | None:
@@ -124,7 +125,12 @@ class CampagneService:
         actor: AuthContext,
         request: Request,
     ) -> CampagneResponse:
-        code = payload.code.strip().upper()
+        supplied_code = clean_text(payload.code)
+        code = (
+            supplied_code.upper()
+            if supplied_code
+            else await CollecteCodeService.allocate_next(db, "CAMPAGNE")
+        )
 
         if await CampagneRepository.get_by_code(db, code):
             raise HTTPException(

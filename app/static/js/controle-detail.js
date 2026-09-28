@@ -526,6 +526,11 @@
                       ${proofOptions(note?.preuve_document_id)}
                     </select>
                   </label>
+                  ${hasPermission("DOCUMENTS.TELECHARGER") ? `
+                    <button type="button" class="btn btn-outline-secondary app-btn fuccs-proof-preview" data-view-proof>
+                      ${icon("eye")} Voir la preuve sélectionnée
+                    </button>
+                  ` : ""}
                 </div>
 
                 ${
@@ -683,6 +688,24 @@
         "change",
         () => markDirty(card)
       );
+
+    card
+      .querySelector("[data-view-proof]")
+      ?.addEventListener("click", async () => {
+        const documentId = card.querySelector("[data-note-proof]")?.value;
+        if (!documentId) {
+          showState("Sélectionnez d'abord une preuve documentaire.", { error: true });
+          return;
+        }
+        try {
+          const blob = await apiBlob(`/api/v1/documents/${encodeURIComponent(documentId)}/download`);
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank", "noopener");
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (error) {
+          showState(error?.message || "Impossible d'ouvrir la preuve.", { error: true });
+        }
+      });
 
     card
       .querySelector("[data-save-criterion]")
@@ -1022,7 +1045,7 @@
       renderRubricNav();
       renderActiveRubric();
       renderFindings();
-      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
       await renderDossierParcours({
         target: "#controleDossierParcours",
         source: "controle",
@@ -1117,7 +1140,7 @@
       return;
     }
 
-    const api = await import("/static/js/core/api.js");
+    const api = await import("/static/js/core/api.js?v=20260927-1");
 
     apiGet = api.apiGet;
     apiPost = api.apiPost;
@@ -1150,13 +1173,21 @@
         apiGet(`/api/v1/fuccs/controles/${controlId}/constats`),
       ]);
 
-      const documentPayload = await apiGet(
-        `/api/v1/documents?ressource_type=FICHE_COLLECTE`
-        + `&ressource_id=${encodeURIComponent(context.fiche_id)}`
-        + `&limit=100&offset=0`
-      );
+      const documentRows = [];
+      for (;;) {
+        const page = await apiGet(
+          `/api/v1/documents/fiche/${encodeURIComponent(context.fiche_id)}/linked?limit=200&offset=${documentRows.length}`
+        );
+        const batch = page.items || [];
+        documentRows.push(...batch);
+        if (!batch.length || documentRows.length >= Number(page.total || 0)) break;
+      }
 
-      documents = documentPayload.items || [];
+      documents = documentRows.map((item) => ({
+        ...item,
+        nom_original: [item.contexte_documentaire, item.nom_original || item.type_document]
+          .filter(Boolean).join(" — "),
+      }));
 
       activeRubricId = rubrics[0]?.id || null;
 

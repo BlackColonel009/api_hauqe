@@ -20,6 +20,7 @@
   let apiGet;
   let apiPost;
   let apiPatch;
+  let apiBlob;
   let apiRequest;
 
   let currentUser = null;
@@ -33,15 +34,24 @@
   let assignments = [];
   let offers = [];
   let declaredCertifications = [];
+  let declaredCertificationDocuments = new Map();
+  let pendingDeclaredProofs = new Map();
+  let declaredProofFeedback = new Map();
   let documents = [];
   let ficheHistory = [];
   let selectedEnterprise = null;
   let saveOffersPromise = null;
   let saveCertificationsPromise = null;
   let pendingFiles = [];
+  let quickOrganismeTargetRow = null;
 
   let step = 1;
   let enterpriseSearchTimer = null;
+  const organismeSearchTimers = new WeakMap();
+
+  function createClientKey() {
+    return `cert-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
 
   const state = {
     campaign_id: "",
@@ -270,12 +280,14 @@
     if (certRows.length) {
       declaredCertifications = certRows.map((row) => ({
         id: row.dataset.id || null,
+        client_key: row.dataset.clientKey || createClientKey(),
         nom_certification:
           row.querySelector('[name="decl_cert_name"]')?.value || "",
         numero:
           row.querySelector('[name="decl_cert_number"]')?.value || "",
         organisme_declare:
           row.querySelector('[name="decl_cert_body"]')?.value || "",
+        organisme_id: row.dataset.organismeId || null,
         norme_declaree:
           row.querySelector('[name="decl_cert_standard"]')?.value || "",
         portee:
@@ -511,7 +523,7 @@
                     "new_campaign_code",
                     "Code campagne",
                     {
-                      required: true,
+                      placeholder: "Proposition automatique",
                     }
                   )}
 
@@ -837,8 +849,12 @@
         class="repeat-entry collect-declared-cert-entry"
         data-declared-cert-row
         ${item.id ? `data-id="${escapeHtml(item.id)}"` : ""}
+        data-client-key="${escapeHtml(item.client_key || createClientKey())}"
         ${item.certification_officielle_id
           ? `data-official-id="${escapeHtml(item.certification_officielle_id)}"`
+          : ""}
+        ${item.organisme_id
+          ? `data-organisme-id="${escapeHtml(item.organisme_id)}"`
           : ""}
         ${item.statut_rapprochement
           ? `data-match-status="${escapeHtml(item.statut_rapprochement)}"`
@@ -870,6 +886,12 @@
             className: "collect-field-cert-body",
           }
         )}
+
+        <div class="organisme-lookup full" data-organisme-lookup>
+          ${item.organisme_id
+            ? renderOrganismeLookupLinked(item.organisme_declare || "organisme certificateur")
+            : renderOrganismeLookupHint()}
+        </div>
 
         ${input(
           "decl_cert_standard",
@@ -942,6 +964,8 @@
           }
         )}
 
+        ${renderDeclaredCertificationEvidence(item)}
+
         ${
           item.certification_officielle_id
             ? `
@@ -956,6 +980,67 @@
 
         <span data-remove-new-cert-slot></span>
       </div>
+    `;
+  }
+
+  function renderOrganismeLookupHint(message = "Saisissez au moins 2 caractères : les organismes enregistrés apparaîtront ici.") {
+    return `
+      <div class="organisme-lookup-intro">
+        <span class="organisme-lookup-icon">${icon("search")}</span>
+        <div><strong>Recherche dans le registre HAUQE</strong><small>${escapeHtml(message)}</small></div>
+      </div>
+    `;
+  }
+
+  function renderOrganismeLookupLinked(name) {
+    return `
+      <div class="organisme-lookup-intro organisme-lookup-linked">
+        <span class="organisme-lookup-icon">${icon("badge-check")}</span>
+        <div><strong>Organisme du registre sélectionné</strong><small>${escapeHtml(name)}</small></div>
+      </div>
+    `;
+  }
+
+  function renderDeclaredCertificationEvidence(item) {
+    const evidence = item.id
+      ? (declaredCertificationDocuments.get(String(item.id)) || [])
+      : [];
+    const clientKey = String(item.client_key || "");
+    const pending = pendingDeclaredProofs.get(clientKey) || [];
+    const feedback = declaredProofFeedback.get(clientKey);
+    const files = evidence.map((document) => `
+      <button type="button" class="cert-proof-file" data-cert-proof-download="${escapeHtml(document.id)}">
+        ${icon("file-check")}
+        <span><strong>${escapeHtml(document.nom_original || document.type_document || "Justificatif")}</strong><small>${escapeHtml(document.statut_verification || "À vérifier")}</small></span>
+      </button>
+    `).join("");
+
+    return `
+      <section class="declared-cert-evidence full">
+        <div class="declared-cert-evidence-head">
+          <span>${icon("paperclip")}</span>
+          <div><strong>Preuves de cette certification</strong><small>Ajoutez ici la copie du certificat ou tout justificatif qui lui est propre.</small></div>
+        </div>
+        ${hasPermission("DOCUMENTS.DEPOSER") && isDraft() ? `
+          <label class="cert-proof-upload">
+            ${icon("upload")}
+            <span>1. Choisir une ou plusieurs preuves</span>
+            <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" data-cert-proof-input>
+          </label>
+          ${pending.length ? `
+            <div class="cert-proof-pending" role="status" aria-live="polite">
+              <strong>${pending.length} fichier(s) sélectionné(s), pas encore enregistré(s)</strong>
+              <ul>${pending.map((file) => `<li>${icon("file-text")}<span>${escapeHtml(file.name)}</span></li>`).join("")}</ul>
+              <div class="cert-proof-pending-actions">
+                <button type="button" class="btn btn-primary app-btn" data-cert-proof-confirm>2. Enregistrer ${pending.length} preuve(s)</button>
+                <button type="button" class="btn btn-outline-secondary app-btn" data-cert-proof-cancel>Annuler la sélection</button>
+              </div>
+            </div>
+          ` : ""}
+        ` : ""}
+        ${feedback ? `<p class="cert-proof-feedback ${feedback.error ? "error" : "success"}" role="status">${escapeHtml(feedback.message)}</p>` : ""}
+        <div class="cert-proof-files">${files || '<small class="cert-proof-empty">Aucune preuve spécifique n’est encore jointe à cette certification.</small>'}</div>
+      </section>
     `;
   }
 
@@ -1371,6 +1456,19 @@
           mission = null;
           missionId = null;
           campagneId = null;
+          if (state.campaign_id === "__new__") {
+            try {
+              const [campaignProposal, missionProposal] = await Promise.all([
+                apiGet("/api/v1/collectes/codes/proposer?type=CAMPAGNE"),
+                apiGet("/api/v1/collectes/codes/proposer?type=MISSION"),
+              ]);
+              state.new_campaign_code = campaignProposal.code || "";
+              state.mission_code = missionProposal.code || "";
+            } catch {
+              // Le serveur attribuera les codes pendant l'enregistrement si
+              // la proposition est temporairement indisponible.
+            }
+          }
           render();
           return;
         }
@@ -1391,6 +1489,75 @@
     $("#collectZoneSearch")?.addEventListener("input", event => renderZoneMatches(event.target.value));
     $("#openQuickZone")?.addEventListener("click", openQuickZoneDialog);
     $("#openQuickEnterprise")?.addEventListener("click", () => openQuickEnterpriseDialog());
+
+    document.querySelectorAll('[name="decl_cert_body"]').forEach((field) => {
+      field.addEventListener("input", (event) => {
+        const row = event.currentTarget.closest("[data-declared-cert-row]");
+        if (row?.dataset.organismeId) {
+          delete row.dataset.organismeId;
+        }
+        const query = event.currentTarget.value.trim();
+        const lookup = row?.querySelector("[data-organisme-lookup]");
+        if (!lookup) return;
+        clearTimeout(organismeSearchTimers.get(row));
+        if (query.length < 2) {
+          lookup.innerHTML = renderOrganismeLookupHint();
+          return;
+        }
+        organismeSearchTimers.set(row, window.setTimeout(() => {
+          searchOrganismesForDeclaration(row, query);
+        }, 300));
+      });
+    });
+
+    document.querySelectorAll("[data-cert-proof-input]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const files = Array.from(event.currentTarget.files || []);
+        if (!files.length) return;
+        const row = event.currentTarget.closest("[data-declared-cert-row]");
+        if (!row) return;
+        pendingDeclaredProofs.set(row.dataset.clientKey, files);
+        declaredProofFeedback.delete(row.dataset.clientKey);
+        capture();
+        render(false);
+      });
+    });
+
+    document.querySelectorAll("[data-cert-proof-confirm]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const row = button.closest("[data-declared-cert-row]");
+        const files = pendingDeclaredProofs.get(row?.dataset.clientKey) || [];
+        if (!files.length) return;
+        button.disabled = true;
+        await uploadDeclaredCertificationProofs(row, files);
+        if (button.isConnected) button.disabled = false;
+      });
+    });
+    document.querySelectorAll("[data-cert-proof-cancel]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest("[data-declared-cert-row]");
+        if (!row) return;
+        pendingDeclaredProofs.delete(row.dataset.clientKey);
+        declaredProofFeedback.delete(row.dataset.clientKey);
+        capture();
+        render(false);
+      });
+    });
+
+    document.querySelectorAll("[data-cert-proof-download]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          const blob = await apiBlob(
+            `/api/v1/documents/${encodeURIComponent(button.dataset.certProofDownload)}/download`
+          );
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank", "noopener");
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } catch (error) {
+          showState(error?.message || "Ouverture du document impossible.", { error: true });
+        }
+      });
+    });
 
     $("#changeEnterprise")?.addEventListener("click", () => {
       if (!isDraft()) return;
@@ -1555,6 +1722,134 @@
     }
   }
 
+  async function searchOrganismesForDeclaration(row, query) {
+    const lookup = row?.querySelector("[data-organisme-lookup]");
+    if (!lookup || !isDraft()) return;
+
+    lookup.innerHTML = renderOrganismeLookupHint(`Recherche de « ${query} » en cours…`);
+    try {
+      const payload = await apiGet(
+        `/api/v1/organismes?search=${encodeURIComponent(query)}&limit=8&offset=0`
+      );
+      const currentValue = row.querySelector('[name="decl_cert_body"]')?.value.trim() || "";
+      if (currentValue !== query) return;
+      const items = payload.items || [];
+      const normalise = (value) => String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/gi, "")
+        .toUpperCase();
+      const exactMatch = items.some((item) => (
+        normalise(item.nom_officiel || item.sigle) === normalise(query)
+      ));
+
+      if (!items.length) {
+        lookup.innerHTML = `
+          <div class="organisme-lookup-empty">
+            <div class="organisme-lookup-empty-copy"><span class="organisme-lookup-icon">${icon("building-2")}</span><div><strong>Aucun organisme trouvé</strong><small>Vous pouvez l’ajouter avec les informations figurant sur le certificat.</small></div></div>
+            <button type="button" class="btn btn-outline-secondary app-btn organisme-precreate-cta" data-precreate-organisme>${icon("plus")} Précréer « ${escapeHtml(query)} »</button>
+          </div>
+        `;
+        lookup.querySelector("[data-precreate-organisme]")?.addEventListener("click", (event) => {
+          event.preventDefault();
+          openQuickOrganismeDialog(row);
+        });
+        refreshIcons();
+        return;
+      }
+
+      lookup.innerHTML = `
+        <div class="organisme-lookup-results">
+          <div class="organisme-lookup-results-head"><div><strong>Organismes correspondants</strong><small>Sélectionnez celui qui figure sur le certificat.</small></div><b>${items.length}</b></div>
+          ${items.map((item) => `
+            <button type="button" class="organisme-lookup-choice" data-organisme-id="${escapeHtml(item.id)}" data-organisme-name="${escapeHtml(item.nom_officiel || item.sigle || "Organisme")}">
+              ${icon("building-2")}
+              <span><strong>${escapeHtml(item.nom_officiel || item.sigle || "Organisme")}</strong><small>${escapeHtml(item.identifiant_national || item.pays || "Organisme du registre")}</small></span>
+              ${icon("check")}
+            </button>
+          `).join("")}
+          ${!exactMatch ? `
+            <div class="organisme-lookup-empty">
+              <div class="organisme-lookup-empty-copy"><span class="organisme-lookup-icon">${icon("circle-help")}</span><div><strong>L’organisme n’est pas dans cette liste ?</strong><small>Précréez-le avec ses informations d’accréditation.</small></div></div>
+              <button type="button" class="btn btn-outline-secondary app-btn organisme-precreate-cta" data-precreate-organisme>${icon("plus")} Précréer « ${escapeHtml(query)} »</button>
+            </div>
+          ` : ""}
+        </div>
+      `;
+      lookup.querySelector("[data-precreate-organisme]")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        openQuickOrganismeDialog(row);
+      });
+      lookup.querySelectorAll("[data-organisme-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          row.dataset.organismeId = button.dataset.organismeId;
+          const field = row.querySelector('[name="decl_cert_body"]');
+          if (field) field.value = button.dataset.organismeName || field.value;
+          lookup.innerHTML = renderOrganismeLookupLinked(button.dataset.organismeName || "organisme certificateur");
+          refreshIcons();
+        });
+      });
+      refreshIcons();
+    } catch (error) {
+      lookup.innerHTML = renderOrganismeLookupHint(error?.message || "Recherche d’organisme impossible.");
+    }
+  }
+
+  async function uploadDeclaredCertificationProofs(row, files) {
+    if (!row || !isDraft()) return;
+    const clientKey = row.dataset.clientKey;
+    if (!hasPermission("DOCUMENTS.DEPOSER")) {
+      declaredProofFeedback.set(clientKey, { error: true, message: "Permission DOCUMENTS.DEPOSER requise pour ajouter une preuve." });
+      render(false);
+      return;
+    }
+    try {
+      capture();
+      await ensureMissionAndFiche();
+      await saveDeclaredCertifications();
+      const declaration = declaredCertifications.find((item) => item.client_key === clientKey);
+      if (!declaration?.id) {
+        throw new Error("Renseignez au moins une information de la certification avant d’ajouter sa preuve.");
+      }
+
+      const remaining = [...files];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        body.append("type_document", "PREUVE_CERTIFICATION_DECLAREE");
+        body.append("ressource_type", "CERTIFICATION_DECLAREE");
+        body.append("ressource_id", declaration.id);
+        body.append("confidentialite", "INTERNE");
+        body.append("source", "FORMULAIRE_COLLECTE_CERTIFICATION");
+        const uploaded = await apiPost("/api/v1/documents/upload", body);
+        const key = String(declaration.id);
+        declaredCertificationDocuments.set(key, [
+          ...(declaredCertificationDocuments.get(key) || []), uploaded,
+        ]);
+        remaining.shift();
+        pendingDeclaredProofs.set(clientKey, [...remaining]);
+        if (declaration.copie_disponible !== true) {
+          const updated = await apiPatch(
+            `/api/v1/missions/${missionId}/fiches/${fiche.id}/certifications/${declaration.id}`,
+            { ...declaredCertificationPayload(declaration), copie_disponible: true }
+          );
+          declaredCertifications = declaredCertifications.map((item) =>
+            item.client_key === clientKey
+              ? { ...updated, client_key: clientKey }
+              : item
+          );
+          declaration.copie_disponible = true;
+        }
+      }
+      pendingDeclaredProofs.delete(clientKey);
+      declaredProofFeedback.set(clientKey, { error: false, message: `${files.length} preuve(s) enregistrée(s) pour cette certification.` });
+      render(false);
+    } catch (error) {
+      declaredProofFeedback.set(clientKey, { error: true, message: error?.message || "Ajout de la preuve impossible." });
+      render(false);
+    }
+  }
+
 
 function activeZoneOptions(excludeId = null) {
   return (workspace.zones || []).filter(z => String(z.id) !== String(excludeId || ""));
@@ -1579,13 +1874,27 @@ function renderZoneMatches(query = "") {
   refreshIcons();
 }
 
-function openQuickZoneDialog() {
+async function proposeCollecteCode(type, field) {
+  field.placeholder = "Proposition automatique…";
+  try {
+    const proposal = await apiGet(
+      `/api/v1/collectes/codes/proposer?type=${encodeURIComponent(type)}`
+    );
+    if (!field.value.trim()) field.value = proposal.code || "";
+  } catch {
+    field.placeholder = "Code attribué automatiquement à l’enregistrement";
+  }
+}
+
+async function openQuickZoneDialog() {
   const parent = $("#quickZoneParent");
   parent.innerHTML = '<option value="">Aucune</option>' + activeZoneOptions().map(z => `<option value="${escapeHtml(z.id)}">${escapeHtml(z.label || z.nom || "Zone")}</option>`).join("");
   $("#quickZoneName").value = $("#collectZoneSearch")?.value.trim() || "";
   $("#quickZoneCode").value = "";
   $("#quickZoneType").value = "LOCALITE";
+  window.HAUQE_MODAL_FEEDBACK?.clear($("#quickZoneForm"));
   $("#quickZoneDialog").showModal();
+  void proposeCollecteCode("ZONE", $("#quickZoneCode"));
   refreshIcons();
 }
 
@@ -1601,9 +1910,18 @@ async function saveQuickZone(event) {
     workspace.zones = [...(workspace.zones || []), {id: created.id, label: created.path || created.nom, nom: created.nom, type_zone: created.type_zone}];
     state.zone_id = created.id;
     $("#quickZoneDialog").close();
-    render();
+    // Ne pas relire l'ancien champ caché zone_id avant de réafficher la zone créée.
+    render(false);
     showState('Zone créée et sélectionnée dans la mission.');
-  } catch (error) { showState(error?.message || 'Création de la zone impossible.', {error:true}); }
+  } catch (error) { showQuickDialogError("#quickZoneDialog", error, "Création de la zone impossible."); }
+}
+
+function showQuickDialogError(selector, error, fallback) {
+  const message = error?.message || fallback;
+  const dialog = $(selector);
+  if (!window.HAUQE_MODAL_FEEDBACK?.show(message, { dialog })) {
+    showState(message, { error: true });
+  }
 }
 
 function openQuickEnterpriseDialog(defaultName = "") {
@@ -1616,6 +1934,7 @@ function openQuickEnterpriseDialog(defaultName = "") {
   $("#quickEnterpriseLongitude").value = "";
   $("#quickEnterprisePhone").value = state.telephone_declarant || "";
   $("#quickEnterpriseEmail").value = state.email_declarant || "";
+  window.HAUQE_MODAL_FEEDBACK?.clear($("#quickEnterpriseForm"));
   $("#quickEnterpriseDialog").showModal();
   refreshIcons();
 }
@@ -1648,13 +1967,13 @@ async function saveQuickEnterprise(event) {
       showState('Une entreprise identique existait déjà : elle a été sélectionnée.');
       return;
     }
-    showState(error?.message || 'Précréation impossible.', {error:true});
+    showQuickDialogError("#quickEnterpriseDialog", error, "Précréation impossible.");
   }
 }
 
 function locateQuickEnterprise() {
   if (!navigator.geolocation) {
-    showState("La géolocalisation n’est pas disponible dans ce navigateur. Saisissez les coordonnées manuellement.", {error: true});
+    showQuickDialogError("#quickEnterpriseDialog", null, "La géolocalisation n’est pas disponible dans ce navigateur. Saisissez les coordonnées manuellement.");
     return;
   }
   const button = $("#quickEnterpriseLocate");
@@ -1677,10 +1996,78 @@ function locateQuickEnterprise() {
         2: "La position est indisponible. Réessayez ou saisissez les coordonnées manuellement.",
         3: "La localisation a expiré. Réessayez ou saisissez les coordonnées manuellement.",
       };
-      showState(messages[error?.code] || "Localisation impossible.", {error: true});
+      showQuickDialogError("#quickEnterpriseDialog", null, messages[error?.code] || "Localisation impossible.");
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
   );
+}
+
+function openQuickOrganismeDialog(row) {
+  if (!row || !missionId) {
+    showState("Enregistrez d’abord la mission de collecte avant de précréer un organisme.", { error: true });
+    return;
+  }
+  quickOrganismeTargetRow = row;
+  $("#quickOrganismeName").value = row.querySelector('[name="decl_cert_body"]')?.value.trim() || "";
+  $("#quickOrganismeSigle").value = "";
+  $("#quickOrganismePays").value = "";
+  $("#quickOrganismeRegistration").value = "";
+  $("#quickOrganismeEmail").value = "";
+  $("#quickOrganismePhone").value = "";
+  $("#quickOrganismeWebsite").value = "";
+  $("#quickAccrediteur").value = "";
+  $("#quickAccreditationNumber").value = "";
+  $("#quickAccreditationDomain").value = "";
+  $("#quickAccreditationScope").value = "";
+  $("#quickAccreditationIssued").value = "";
+  $("#quickAccreditationExpiry").value = "";
+  window.HAUQE_MODAL_FEEDBACK?.clear($("#quickOrganismeForm"));
+  $("#quickOrganismeDialog").showModal();
+  refreshIcons();
+}
+
+async function saveQuickOrganisme(event) {
+  event.preventDefault();
+  if (!quickOrganismeTargetRow || !missionId) {
+    showState("La certification à compléter n’est plus disponible. Réessayez.", { error: true });
+    return;
+  }
+  try {
+    const created = await apiPost(
+      `/api/v1/missions/${encodeURIComponent(missionId)}/fiches/quick-organismes`,
+      {
+        nom_officiel: $("#quickOrganismeName").value.trim(),
+        sigle: $("#quickOrganismeSigle").value.trim() || null,
+        pays: $("#quickOrganismePays").value.trim() || null,
+        numero_enregistrement: $("#quickOrganismeRegistration").value.trim() || null,
+        email: $("#quickOrganismeEmail").value.trim() || null,
+        telephone: $("#quickOrganismePhone").value.trim() || null,
+        site_web: $("#quickOrganismeWebsite").value.trim() || null,
+        accrediteur: $("#quickAccrediteur").value.trim(),
+        numero_accreditation: $("#quickAccreditationNumber").value.trim() || null,
+        domaine_technique: $("#quickAccreditationDomain").value.trim() || null,
+        perimetre: $("#quickAccreditationScope").value.trim() || null,
+        date_delivrance: $("#quickAccreditationIssued").value || null,
+        date_expiration: $("#quickAccreditationExpiry").value || null,
+      }
+    );
+    const rows = Array.from(document.querySelectorAll("[data-declared-cert-row]"));
+    const index = rows.indexOf(quickOrganismeTargetRow);
+    capture();
+    if (index < 0 || !declaredCertifications[index]) {
+      throw new Error("La ligne de certification a changé. Réessayez la précréation.");
+    }
+    declaredCertifications[index].organisme_id = created.organisme_id;
+    declaredCertifications[index].organisme_declare = created.nom_officiel;
+    quickOrganismeTargetRow = null;
+    $("#quickOrganismeDialog").close();
+    render(false);
+    showState(
+      `Organisme ${created.organisme_cree ? "précréé" : "complété"} et accréditation ${created.accreditation_creee ? "enregistrée" : "existante"}. Ils restent à vérifier.`
+    );
+  } catch (error) {
+    showQuickDialogError("#quickOrganismeDialog", error, "Précréation de l’organisme impossible.");
+  }
 }
 
   function validateDates(start, end, label) {
@@ -1721,17 +2108,6 @@ function locateQuickEnterprise() {
       if (!state.campaign_id || !state.zone_id) {
         showState(
           "La campagne et la zone sont obligatoires.",
-          { error: true }
-        );
-        return false;
-      }
-
-      if (
-        state.campaign_id === "__new__"
-        && !state.new_campaign_code.trim()
-      ) {
-        showState(
-          "Le code de la nouvelle campagne est obligatoire.",
           { error: true }
         );
         return false;
@@ -1793,7 +2169,7 @@ function locateQuickEnterprise() {
     const created = await apiPost(
       "/api/v1/campagnes",
       {
-        code: state.new_campaign_code.trim(),
+        code: state.new_campaign_code.trim() || null,
         nom: state.new_campaign_name.trim() || null,
         objet: null,
         objectif: null,
@@ -2011,6 +2387,7 @@ function locateQuickEnterprise() {
         item.numero || null,
       organisme_declare:
         item.organisme_declare || null,
+      organisme_id: item.organisme_id || null,
       norme_declaree:
         item.norme_declaree || null,
       portee:
@@ -2065,7 +2442,7 @@ function locateQuickEnterprise() {
         );
       }
 
-        saved.push(result);
+        saved.push({ ...result, client_key: item.client_key || createClientKey() });
       }
 
       declaredCertifications = uniqueDeclaredCertifications(saved);
@@ -2174,7 +2551,7 @@ function locateQuickEnterprise() {
       render();
 
       if (fiche?.id) {
-        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
         await renderDossierParcours({
           target: "#collecteDossierParcours",
           source: "fiche",
@@ -2397,10 +2774,44 @@ function locateQuickEnterprise() {
     );
   }
 
+  function focusCreateRevisionFromVerification() {
+    let requested;
+    try {
+      requested = JSON.parse(
+        sessionStorage.getItem("hauqe-focus-create-revision") || "null"
+      );
+      sessionStorage.removeItem("hauqe-focus-create-revision");
+    } catch {
+      return;
+    }
+
+    if (
+      !requested
+      || String(requested.mission_id) !== String(missionId)
+      || String(requested.fiche_id) !== String(fiche?.id)
+    ) return;
+
+    const button = $("#createRevision");
+    if (!button || button.hidden) return;
+
+    button.classList.add("collect-revision-guided");
+    button.insertAdjacentHTML(
+      "afterend",
+      `<span class="collect-revision-game-hint"><i data-lucide="arrow-up"></i> Créez ici la nouvelle révision</span>`
+    );
+    button.scrollIntoView({ behavior: "smooth", block: "center" });
+    refreshIcons();
+    window.setTimeout(() => {
+      button.classList.remove("collect-revision-guided");
+      document.querySelector(".collect-revision-game-hint")?.remove();
+    }, 12000);
+  }
+
   async function loadFicheSubresources() {
     if (!fiche) {
       offers = [];
       declaredCertifications = [];
+      declaredCertificationDocuments = new Map();
       documents = [];
       ficheHistory = [];
       return;
@@ -2427,10 +2838,24 @@ function locateQuickEnterprise() {
       : [];
 
     declaredCertifications = Array.isArray(certData)
-      ? uniqueDeclaredCertifications(certData)
+      ? uniqueDeclaredCertifications(certData.map((item) => ({
+        ...item,
+        client_key: item.client_key || createClientKey(),
+      })))
       : [];
 
     documents = documentData.items || [];
+    const documentEntries = await Promise.all(
+      declaredCertifications
+        .filter((item) => item.id)
+        .map(async (item) => [
+          String(item.id),
+          await apiGet(
+            `/api/v1/documents?ressource_type=CERTIFICATION_DECLAREE&ressource_id=${encodeURIComponent(item.id)}&limit=100&offset=0`
+          ).then((payload) => payload.items || []),
+        ])
+    );
+    declaredCertificationDocuments = new Map(documentEntries);
     ficheHistory = Array.isArray(historyData)
       ? historyData
       : [];
@@ -2505,28 +2930,49 @@ function locateQuickEnterprise() {
       await loadFicheSubresources();
     }
 
-    $("#collectFormMode").textContent = "Modification";
+    $("#collectFormMode").textContent = editMode ? "Modification" : "Nouvelle collecte";
 
-    $("#collectFormTitle").textContent =
-      `Mission ${mission.code || mission.id}`;
+    $("#collectFormTitle").textContent = editMode
+      ? `Mission ${mission.code || mission.id}`
+      : `Nouvelle collecte — mission ${mission.code || mission.id}`;
   }
 
-  document.addEventListener("submit", event => {
-    if (event.target.id === "quickZoneForm") saveQuickZone(event);
-    if (event.target.id === "quickEnterpriseForm") saveQuickEnterprise(event);
-  }, true);
-
-  document.addEventListener("click", event => {
-    if (event.target.closest("#quickEnterpriseLocate")) locateQuickEnterprise();
-  });
+  function bindQuickDialogs() {
+    // Le routeur réexécute ce fichier à chaque visite. Les écouteurs globaux
+    // survivraient à la page et soumettraient plusieurs fois les précréations.
+    [
+      ["#quickZoneForm", saveQuickZone],
+      ["#quickEnterpriseForm", saveQuickEnterprise],
+      ["#quickOrganismeForm", saveQuickOrganisme],
+    ].forEach(([selector, handler]) => {
+      $(selector)?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (form.dataset.submitting === "true") return;
+        form.dataset.submitting = "true";
+        const submitButton = form.querySelector('[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+        try {
+          await handler(event);
+        } finally {
+          delete form.dataset.submitting;
+          if (submitButton) submitButton.disabled = false;
+        }
+      });
+    });
+    $("#quickEnterpriseLocate")?.addEventListener("click", locateQuickEnterprise);
+  }
 
   async function bootstrap() {
-    const api = await import("/static/js/core/api.js");
+    bindQuickDialogs();
+    const api = await import("/static/js/core/api.js?v=20260927-1");
 
     apiGet = api.apiGet;
     apiPost = api.apiPost;
     apiPatch = api.apiPatch;
+    apiBlob = api.apiBlob;
     apiRequest = api.apiRequest;
+    bindPageActions();
 
     const task = async () => {
       const [me, filterData] = await Promise.all([
@@ -2562,9 +3008,10 @@ function locateQuickEnterprise() {
 
       updateActionState();
       render();
+      focusCreateRevisionFromVerification();
 
       if (fiche?.id) {
-        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+        const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
         await renderDossierParcours({
           target: "#collecteDossierParcours",
           source: "fiche",
@@ -2595,6 +3042,7 @@ function locateQuickEnterprise() {
       return;
     }
 
+    function bindPageActions() {
     $("#collectNext").addEventListener(
       "click",
       async (event) => {
@@ -2701,6 +3149,7 @@ function locateQuickEnterprise() {
     );
 
     refreshIcons();
+    }
   }
 
   bootstrap();

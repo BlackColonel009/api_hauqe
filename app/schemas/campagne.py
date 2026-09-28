@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 
 class CampagneCreateRequest(BaseModel):
-    code: str = Field(min_length=1, max_length=255)
+    code: str | None = Field(default=None, max_length=255)
     nom: str | None = Field(default=None, max_length=255)
     objet: str | None = Field(default=None, max_length=255)
     objectif: str | None = Field(default=None, max_length=255)

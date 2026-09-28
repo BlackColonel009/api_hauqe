@@ -6,8 +6,45 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 1er septembre 2026
+**Dernière mise à jour :** 28 septembre 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
+
+> **Déploiement groupé du 28 septembre 2026 :** suivre en priorité
+> [la procédure consolidée](DEPLOIEMENT_CONSOLIDE_2026-09-28.md) pour livrer
+> les modifications des deux dernières semaines et demie. Elle recense les
+> révisions Alembic jusqu'à `j5f9b3d7e1a2`, les scripts RBAC, la reprise
+> facultative des offres et la sauvegarde des fichiers joints. Les notes
+> historiques ci-dessous décrivent des livraisons ponctuelles et leurs
+> anciennes têtes Alembic ne doivent pas servir de cible ce soir.
+
+> **Courriels du système par agent — 28 septembre 2026 :** base PostgreSQL
+> modifiée : **oui après exécution de la migration**
+> `j5f9b3d7e1a2_user_system_email_policy.py`. Elle ajoute uniquement
+> `preferences_utilisateur.courriels_systeme_actifs BOOLEAN NOT NULL DEFAULT TRUE`.
+> Après déploiement, exécuter dans `/var/www/api_hauqe` avec `.venv` activé :
+> `python -m alembic upgrade head`, puis `sudo systemctl restart sngsc`.
+> Aucun seed. Les courriels fonctionnels annulés par ce réglage ne sont pas
+> renvoyés automatiquement lors d'une réactivation. Le worker SMTP intégré au
+> service `sngsc` doit être redémarré ; ne pas lancer un second worker.
+
+> **Communication inter-rôles — 27 septembre 2026 :** base PostgreSQL
+> modifiée : **oui, données de permissions uniquement** après exécution du
+> script ciblé ci-dessous. Schéma modifié : **non**. Migration Alembic :
+> **aucune nouvelle**. Aucune colonne supprimée, aucune donnée métier effacée.
+> Après déploiement du code, dans `/var/www/api_hauqe` et avec `.venv`
+> activé : `python -m app.scripts.sync_workflow_communication_permissions`.
+> Ce script ajoute `NOTIFICATIONS.LIRE` aux rôles existants et les droits
+> opérationnels Scoring/INFC/SNCC à `CELLULE_VEILLE`, sans retirer de droit.
+> Puis `sudo systemctl restart sngsc` : le worker SMTP est déjà intégré au
+> service, **ne pas lancer un second worker**. Vérifier `LIEN_VERS_SNGSC` et
+> la configuration SMTP du serveur avant une recette réelle. Tester avec des
+> comptes de rôles différents ; les courriels antérieurs ne sont pas rejoués.
+
+> **Modals Validation / INFC — 27 septembre 2026 :** modification frontend
+> uniquement (`validation-detail.html`, `infc.html`, leurs CSS/JS et versions
+> de cache). Base PostgreSQL modifiée : **non**. Migration : **aucune**.
+> Seed : **aucun**. Après déploiement des fichiers, forcer un rechargement
+> du navigateur pour obtenir les nouvelles versions des scripts et styles.
 
 > **Point de reprise du 11 août 2026 :** les correctifs d'authentification,
 > d'affichage du mail HAUQE et de changement de mot de passe ne requièrent
@@ -1097,6 +1134,21 @@ migration. Elle ajoute `COLLECTE.LIRE` et, si nécessaire, retire
 Redéployer le code applicatif, puis redémarrer `sngsc`. L'utilisateur concerné
 doit actualiser sa session afin que l'interface recharge ses permissions.
 
+### 14.6.2 Direction technique — consultation de dossier (27/09/2026)
+
+Après déploiement, synchroniser les deux droits de lecture de la Direction
+technique :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m app.scripts.sync_direction_consultation_dossiers
+sudo systemctl restart sngsc
+```
+
+Cette opération ne modifie pas le schéma PostgreSQL : elle ajoute uniquement
+`COLLECTE.LIRE` et `VERIFICATION.LIRE` à `DIRECTION_TECHNIQUE` si nécessaire.
+
 ### 14.6.1 Calculs automatiques Scoring / INFC / SNCC (25/09/2026)
 
 Déployer le code applicatif puis redémarrer le service :
@@ -1462,3 +1514,310 @@ sudo systemctl restart sngsc
 
 Si le site est accessible en HTTPS, remplacer impérativement `http://` par
 `https://`. Ne pas ajouter d'espace autour du signe `=`.
+
+### 14.24 Réouverture contrôlée des dossiers de vérification (27/09/2026)
+
+Cette livraison est uniquement applicative : elle ajoute l’analyse de
+réouverture, la protection des jalons FUCCS/N1/N2/BNEC et le modal de guidage
+vers une révision de collecte. Aucune table, colonne, donnée ou variable `.env`
+ne change.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Déployer le code, redémarrer le service, puis effectuer un
+rechargement forcé du navigateur afin de recevoir le nouveau JavaScript et le
+nouveau style :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.25 Parcours de traitement dynamique (27/09/2026)
+
+Le rafraîchissement immédiat du bloc **Suivi du dossier** est une mise à jour
+front-end uniquement. Il n’y a ni migration, ni seed, ni modification `.env`.
+Après déploiement, redémarrer le service qui sert l’application puis effectuer
+un rechargement forcé du navigateur afin de charger les modules JavaScript
+versionnés.
+
+**Base PostgreSQL modifiée : non.**
+
+### Livraison du rapprochement des preuves et des cinq corrections du 27/09/2026
+
+**Complément de livraison — preuves/révisions/entreprises (27/09/2026) :** publier les nouveaux code API et script `entreprise-detail.js`, puis redémarrer le service et recharger le navigateur. Aucun `alembic upgrade` ni seed nouveau n’est requis. La table `documents` existante reçoit de nouvelles références seulement lorsqu’un utilisateur crée une nouvelle révision. Les justificatifs historiques sont visibles depuis l’entreprise si la fiche possède un `entreprise_id` explicite ; la base locale comporte une fiche historique sans entreprise liée, non attribuée automatiquement pour éviter une erreur métier. **Base PostgreSQL modifiée par le déploiement : non ; migration : aucune.**
+
+Les modifications concernent le code API, le tableau de bord, les fiches certification/organisme et une feuille de style nouvelle `app/static/css/organisme-verification.css`. Les preuves de certifications sont visibles depuis l’organisme par une vue liée ; aucun fichier n’est copié pendant le déploiement. Les anciens documents uniquement attachés à une fiche de collecte ne sont pas réaffectés automatiquement à un certificat, pour éviter un rapprochement erroné.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun ; variable `.env` nouvelle : aucune.** Déployer le code, redémarrer `sngsc` et recharger le navigateur afin de récupérer les ressources front-end versionnées. La création volontaire de nouvelles preuves par les utilisateurs reste une écriture applicative normale dans la table existante `documents`.
+
+### 14.38 Affichage collecte et actions SNCC (27/09/2026)
+
+Correction de la grille des certifications déclarées : la recherche
+d’organisme et les preuves occupent toute la largeur. Le classement SNCC
+affiche le résultat du préremplissage et garde la publication visible avec
+son état d’activation. Aucun schéma ou contenu PostgreSQL ne change.
+
+Après déploiement du code, redémarrer l’API et forcer le rechargement du
+navigateur pour charger `collecte-form.js?v=20260927-6`,
+`collecte-form.css?v=20260927-7`, `regles-codification.js?v=20260927-5`
+et `regles-codification.css?v=20260927-4`.
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+**Base PostgreSQL modifiée : non. Migration : aucune. Seed : aucun.**
+
+### 14.37 Collecte — preuves par certification et recherche d’organisme (27/09/2026)
+
+Cette livraison modifie l’interface de collecte et le service d’intégration
+BNEC. Déployer le code puis redémarrer l’API ; aucune migration, seed ou
+variable `.env` n’est nécessaire. Effectuer un rechargement forcé pour charger
+`collecte-form.js?v=20260927-5` et `collecte-form.css?v=20260927-6`.
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+**Base PostgreSQL modifiée : non.**
+
+### 14.36 Lien « Mot de passe oublié » — expiration de trois minutes (27/09/2026)
+
+La durée de validité est désormais réglable avec
+`PASSWORD_RESET_EXPIRE_MINUTES`. La valeur recommandée et livrée est `3`.
+Elle est utilisée à la fois pour le jeton stocké et le texte du courriel.
+
+Ajouter ou vérifier la ligne suivante dans `/var/www/api_hauqe/.env`, sans
+modifier les autres secrets :
+
+```env
+PASSWORD_RESET_EXPIRE_MINUTES=3
+```
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Après modification du fichier `.env`, redémarrer le service :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.30 Codes automatiques de collecte (27/09/2026)
+
+Les campagnes, missions et zones reçoivent désormais une proposition de code
+automatique fondée sur les données de production :
+`HAUQE-CAMP-AAAA-NNNN`, `HAUQE-MIS-AAAA-NNNN` et
+`HAUQE-ZON-AAAA-NNNN`. Il s'agit d'une évolution applicative ; aucun schéma
+et aucune donnée existante ne sont modifiés.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Après déploiement, redémarrer le service et effectuer un
+rechargement forcé du navigateur afin de recevoir les scripts versionnés :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.28 Assistant de création des campagnes (27/09/2026)
+
+La création et la modification d’une campagne s’effectuent désormais dans un
+assistant en trois étapes. Cette livraison est exclusivement front-end : aucun
+schéma, donnée, rôle ou variable d’environnement ne change.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Déployer le code, redémarrer le service, puis recharger le navigateur
+en forçant l’actualisation afin de recevoir `campagnes-collecte.js` et
+`collectes.css` versionnés :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.29 Modals de précréation de collecte (27/09/2026)
+
+La présentation des modals de précréation d’entreprise, de zone
+administrative et d’organisme certificateur est harmonisée. Cette livraison
+est uniquement front-end ; les endpoints et la base restent inchangés.
+
+**Base PostgreSQL modifiée : non.** Aucune migration et aucun seed ne sont
+requis. Après déploiement, redémarrer le service et recharger le navigateur en
+forçant l’actualisation afin de charger `collecte-form.css` versionné :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.31 Défilement du modal « Créer une mission » (27/09/2026)
+
+La correction est exclusivement front-end : le contenu du modal de création
+et d'affectation des agents défile correctement au zoom, sans masquer son
+pied de formulaire. Aucun endpoint ni modèle de données ne change.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Redémarrer le service et forcer le rechargement du navigateur
+pour recevoir `collectes.css` versionné :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.32 Boutons réactifs — Règles et codification (27/09/2026)
+
+Cette correction concerne uniquement `regles-codification.js`. Elle retire le
+clonage des boutons et l'observateur global qui pouvaient produire une
+latence apparente, puis fixe un écouteur direct unique sur chaque action
+affichée. Les actions de grilles FUCCS recréées après rendu restent couvertes.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Déployer le code, redémarrer le service puis forcer le
+rechargement du navigateur afin de charger
+`regles-codification.js?v=20260927-3` :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.33 SNCC — confirmation du contrôle et du brouillon (27/09/2026)
+
+La page **Classement SNCC** affiche à présent, directement sous ses boutons,
+le résultat de la vérification des plages et une fiche du brouillon enregistré
+(version, libellé, statut et cinq plages). Cette évolution est strictement
+front-end : elle ne crée aucune donnée seule ; la création reste déclenchée
+uniquement par l’utilisateur via **Créer le brouillon SNCC**.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Déployer le code, redémarrer le service puis faire un
+rechargement forcé afin de charger :
+`regles-codification.js?v=20260927-4` et
+`regles-codification.css?v=20260927-3`.
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.34 Erreurs de saisie conservées dans les modals (27/09/2026)
+
+Le gestionnaire central de modals affiche maintenant les erreurs de validation
+et les erreurs API dans la fenêtre où la saisie a été faite. Les valeurs déjà
+saisies ne sont pas effacées et l’utilisateur est guidé vers le premier champ
+à corriger. Cette livraison couvre les modals de tous les modules métier ; elle
+ne modifie aucune route ni aucun schéma PostgreSQL.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Déployer le code, redémarrer le service et effectuer un
+rechargement forcé du navigateur pour charger les fichiers versionnés :
+`app-shell.js?v=20260927-2`, `dialog-manager.js?v=20260927-1` et
+`dialog-system.css?v=20260927-4`.
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.35 Réinitialisation de mot de passe — correctif client (27/09/2026)
+
+Le script de l’écran public **Mot de passe oublié** charge maintenant son
+client API avant la soumission du nouveau mot de passe. Cela supprime l’erreur
+`api is not defined`. Aucun endpoint, secret, règle de sécurité ou donnée ne
+change.
+
+**Base PostgreSQL modifiée : non.** Aucune migration Alembic et aucun seed ne
+sont requis. Déployer le code, redémarrer le service et forcer le
+rechargement du navigateur pour charger
+`mot-de-passe-oublie.js?v=20260927-1` :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+### 14.27 Précréation terrain des organismes certificateurs (27/09/2026)
+
+Cette livraison permet à un agent affecté à une mission de précréer un
+organisme certificateur et son accréditation depuis la ligne de certification
+déclarée. Les deux éléments restent `A_VERIFIER` jusqu’au contrôle HAUQE. La
+création est protégée contre les doublons et la fiche conserve désormais le
+lien explicite vers l’organisme.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement.** Aucune migration
+Alembic et aucun seed ne sont requis. Après déploiement du code, accorder la
+permission nouvelle aux agents existants, puis redémarrer le service :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m app.scripts.sync_agent_collecte_organismes_create
+sudo systemctl restart sngsc
+```
+
+Effectuer ensuite un rechargement forcé du navigateur pour charger le nouveau
+JavaScript et la feuille de style versionnée.
+
+### 14.26 Assistant « Nouvel utilisateur » compatible avec le zoom (27/09/2026)
+
+Cette correction concerne uniquement l'interface d'administration : le modal
+de création devient un assistant en trois étapes et son style reste lisible au
+zoom. Aucune table, migration, seed ou variable `.env` ne change. Après déploiement,
+redémarrer le service puis faire un rechargement forcé du navigateur afin de
+charger la feuille de style versionnée :
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+sudo systemctl restart sngsc
+```
+
+**Base PostgreSQL modifiée : non.**
+
+### Collecte et codification BNEC — livraison du 27/09/2026
+
+Déployer le backend et les fichiers statiques ensemble, puis redémarrer
+`sngsc` et recharger l'interface. Aucune migration Alembic ni seed n'est
+nécessaire. Les nouveaux dépôts de preuves positionnent « Copie disponible »
+à oui ; les nouvelles précréations renseignent `date_creation`. Les modèles
+de codification existants ne sont pas republiés : `{REGION}` lit le nom de la
+région administrative, jamais son code ; `{SECTEUR}` concatène les catégories
+des offres de l'entreprise. Vérifier les noms des régions avant une nouvelle
+intégration utilisant `{REGION}`. Aucun code national déjà attribué n'est
+modifié rétroactivement.
+
+**Base PostgreSQL modifiée : non (schéma) ; écriture de données métier : oui
+sur les nouveaux dossiers.**
+
+### Modals de précréation de collecte — zoom (27/09/2026)
+
+La feuille de style `collecte-form.css` doit être déployée avec la version
+du cache `20260927-13` dans `index.html`. Les modals zone, entreprise et
+organisme ont été contrôlés au zoom normal et élevé. Après déploiement,
+redémarrer le service puis recharger l'interface pour obtenir la nouvelle CSS.
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Documents de collecte visibles dans Vérifications et FUCCS (27/09/2026)
+
+Déployer ensemble `document_repository.py`, `document_service.py`, la route
+`documents.py`, le compteur de vérification et les scripts des pages
+Vérifications, Contrôle FUCCS et Entreprise. Redémarrer `sngsc`, puis recharger
+l'interface pour prendre les nouveaux fichiers JavaScript versionnés. Les
+preuves existantes deviennent visibles grâce à la vue liée ; aucun déplacement
+de fichier, script de rattrapage, migration Alembic ou seed n'est requis.
+**Base PostgreSQL modifiée : non.**

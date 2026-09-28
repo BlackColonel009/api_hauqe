@@ -7,6 +7,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alerte import Alerte
+from app.models.affectation_mission import AffectationMission
+from app.models.notification import Notification
 from app.models.audit_certification import AuditCertification
 from app.models.certification import Certification
 from app.models.dossier_veille import DossierVeille
@@ -18,6 +20,7 @@ from app.models.rapport_veille import RapportVeille
 from app.models.relance_veille import RelanceVeille
 from app.models.renouvellement_certification import RenouvellementCertification
 from app.models.utilisateur import Utilisateur
+from app.models.validation import Validation
 
 
 class WatchWorkspaceRepository:
@@ -93,6 +96,28 @@ class WatchWorkspaceRepository:
             return {"label": None, "subtitle": None, "route": None}
 
         code = resource_type.strip().upper()
+
+        # Les alertes de parcours ouvrent la rubrique métier concernée, sans
+        # afficher un UUID comme libellé pour l'utilisateur.
+        workflow_labels = {
+            "AFFECTATION_MISSION": ("Mission de collecte", "#/collectes"),
+            "FICHE_COLLECTE": ("Fiche de collecte", "#/verifications"),
+            "DOSSIER_VERIFICATION": ("Vérification documentaire", f"#/verifications/{resource_id}"),
+            "CONTROLE_FUCCS": ("Contrôle FUCCS", f"#/controle/{resource_id}"),
+            "VALIDATION": ("Validation N2", "#/integrations"),
+            "INTEGRATION_BNEC": ("Intégration BNEC", "#/scoring"),
+        }
+        if code in workflow_labels:
+            label, route = workflow_labels[code]
+            if code == "AFFECTATION_MISSION":
+                assignment = await db.get(AffectationMission, resource_id)
+                if assignment:
+                    route = f"#/collectes/nouveau/{assignment.mission_id}"
+            elif code == "VALIDATION":
+                decision = await db.get(Validation, resource_id)
+                if decision:
+                    route = f"#/validations/{decision.fiche_collecte_id}"
+            return {"label": label, "subtitle": None, "route": route}
 
         if code == "CERTIFICATION":
             result = await db.execute(
@@ -241,10 +266,21 @@ class WatchWorkspaceRepository:
         }
 
     @staticmethod
-    async def alert_summary(db: AsyncSession):
+    async def alert_summary(db: AsyncSession, current_user_id: UUID | None = None):
+        visibility = []
+        if current_user_id is not None:
+            personal_notifications = select(Notification.alerte_id).where(
+                Notification.destinataire_utilisateur_id == current_user_id,
+                Notification.canal == "IN_APP",
+                Notification.alerte_id.is_not(None),
+            )
+            visibility.append(or_(
+                Alerte.responsable_id == current_user_id,
+                Alerte.id.in_(personal_notifications),
+            ))
         async def count(*filters):
             value = await db.scalar(
-                select(func.count(Alerte.id)).where(*filters)
+                select(func.count(Alerte.id)).where(*visibility, *filters)
             )
             return int(value or 0)
 

@@ -544,6 +544,13 @@
   margin:0;
 }
 
+.fuccs-criterion-fields .fuccs-proof-preview{
+  grid-column:2;
+  justify-self:start;
+  max-width:100%;
+  white-space:normal;
+}
+
 .fuccs-criterion-fields label>span{
   display:block;
   margin-bottom:4px;
@@ -660,6 +667,10 @@ body.dark-theme .fuccs-score-choice{
   #fuccsRubricNav,
   .fuccs-criterion-fields{
     grid-template-columns:1fr;
+  }
+
+  .fuccs-criterion-fields .fuccs-proof-preview{
+    grid-column:1;
   }
 
   .fuccs-published-badge{

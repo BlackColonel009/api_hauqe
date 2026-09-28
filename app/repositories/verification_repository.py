@@ -22,6 +22,9 @@ from app.models.role import Role
 from app.models.role_permission import RolePermission
 from app.models.utilisateur_role import UtilisateurRole
 from app.models.zone_administrative import ZoneAdministrative
+from app.models.controle_fuccs import ControleFuccs
+from app.models.validation import Validation
+from app.models.integration_bnec import IntegrationBnec
 
 class VerificationRepository:
 
@@ -93,7 +96,16 @@ class VerificationRepository:
             .select_from(AffectationVerification).join(Utilisateur,Utilisateur.id==AffectationVerification.verificateur_id)
             .where(AffectationVerification.dossier_verification_id==DossierVerification.id,or_(AffectationVerification.statut.is_(None),func.upper(AffectationVerification.statut)=="ACTIF"))
             .correlate(DossierVerification).scalar_subquery())
-        docs=(select(func.count(Document.id)).where(Document.ressource_type=="FICHE_COLLECTE",Document.ressource_id==FicheCollecte.id,or_(Document.statut.is_(None),func.upper(Document.statut)=="ACTIF")).correlate(FicheCollecte).scalar_subquery())
+        declared_ids=(select(CertificationDeclaree.id).where(CertificationDeclaree.fiche_collecte_id==FicheCollecte.id).correlate(FicheCollecte))
+        official_ids=(select(CertificationDeclaree.certification_officielle_id).where(CertificationDeclaree.fiche_collecte_id==FicheCollecte.id,CertificationDeclaree.certification_officielle_id.is_not(None)).correlate(FicheCollecte))
+        docs=(select(func.count(Document.id)).where(
+            or_(
+                (Document.ressource_type=="FICHE_COLLECTE") & (Document.ressource_id==FicheCollecte.id),
+                (Document.ressource_type=="CERTIFICATION_DECLAREE") & Document.ressource_id.in_(declared_ids),
+                (Document.ressource_type=="CERTIFICATION") & Document.ressource_id.in_(official_ids),
+            ),
+            or_(Document.statut.is_(None),func.upper(Document.statut)=="ACTIF")
+        ).correlate(FicheCollecte).scalar_subquery())
         return (select(
             DossierVerification,
             FicheCollecte.mission_id.label("mission_id"),FicheCollecte.entreprise_id.label("entreprise_id"),FicheCollecte.statut.label("fiche_status"),FicheCollecte.numero_revision.label("fiche_revision"),FicheCollecte.taux_completude.label("completeness"),FicheCollecte.soumise_at.label("submitted_at"),
@@ -174,6 +186,76 @@ class VerificationRepository:
     async def get_dossier(db: AsyncSession, dossier_id: UUID):
         r = await db.execute(select(DossierVerification).where(DossierVerification.id == dossier_id))
         return r.scalar_one_or_none()
+
+    @staticmethod
+    async def get_dossier_for_update(db: AsyncSession, dossier_id: UUID):
+        r = await db.execute(
+            select(DossierVerification)
+            .where(DossierVerification.id == dossier_id)
+            .with_for_update()
+        )
+        return r.scalar_one_or_none()
+
+    @staticmethod
+    async def reopen_dependencies(
+        db: AsyncSession, *, dossier_id: UUID, fiche_id: UUID, lock_controls: bool = False
+    ):
+        """Retourne les jalons aval qui gouvernent une réouverture.
+
+        Les validations sont définitives pour une fiche donnée. Une intégration
+        BNEC terminée prime sur toute autre situation. Les contrôles FUCCS
+        finalisés restent réouvrables seulement avant toute validation.
+        """
+        controls_stmt = (
+            select(ControleFuccs)
+            .where(
+                ControleFuccs.dossier_verification_id == dossier_id,
+                # TERMINE est conservé pour les contrôles historiques ; il a
+                # la même portée métier qu'un contrôle FINALISE.
+                func.upper(ControleFuccs.statut).in_(("FINALISE", "TERMINE")),
+            )
+            .order_by(ControleFuccs.created_at.desc())
+        )
+        if lock_controls:
+            controls_stmt = controls_stmt.with_for_update()
+        controls = list((await db.execute(controls_stmt)).scalars().all())
+
+        levels = list((await db.execute(
+            select(Validation.niveau_validation)
+            .where(Validation.fiche_collecte_id == fiche_id)
+            .order_by(Validation.date_validation.asc(), Validation.created_at.asc())
+        )).scalars().all())
+
+        bnec_integre = bool((await db.execute(
+            select(IntegrationBnec.id)
+            .join(Validation, Validation.id == IntegrationBnec.validation_id)
+            .where(
+                Validation.fiche_collecte_id == fiche_id,
+                func.upper(IntegrationBnec.statut).in_(("INTEGREE", "INTEGRE")),
+            )
+            .limit(1)
+        )).scalar_one_or_none())
+
+        context = (await db.execute(
+            select(
+                FicheCollecte.mission_id.label("mission_id"),
+                Entreprise.raison_sociale.label("entreprise_nom"),
+                Entreprise.nom_commercial.label("entreprise_nom_commercial"),
+            )
+            .select_from(FicheCollecte)
+            .outerjoin(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+            .where(FicheCollecte.id == fiche_id)
+        )).one_or_none()
+        return {
+            "controls": controls,
+            "validation_levels": [str(level) for level in levels if level],
+            "bnec_integre": bnec_integre,
+            "mission_id": context.mission_id if context else None,
+            "entreprise_nom": (
+                (context.entreprise_nom or context.entreprise_nom_commercial)
+                if context else None
+            ),
+        }
 
     @staticmethod
     async def find_open_for_fiche(db: AsyncSession, fiche_id: UUID):

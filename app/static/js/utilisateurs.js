@@ -12,6 +12,7 @@
   let selectedUser = null;
   let editingUser = null;
   let searchTimer = null;
+  let createWizardStep = 1;
 
   const filters = {
     search: "",
@@ -528,8 +529,107 @@
     `;
   }
 
+  function isCreateWizard() {
+    return !editingUser
+      && $("#userDialog")?.dataset.createWizard === "true";
+  }
+
+  function validateIdentityStep() {
+    const email = $("#userEmail");
+    const value = email.value.trim();
+
+    if (!value) {
+      state("Le courriel professionnel est obligatoire.", true);
+      email.focus();
+      return false;
+    }
+
+    if (!email.checkValidity()) {
+      state("Saisissez une adresse électronique professionnelle valide.", true);
+      email.focus();
+      return false;
+    }
+
+    return true;
+  }
+
+  function setCreateWizardStep(step, direction = "next") {
+    if (!isCreateWizard()) return;
+
+    const target = Math.max(1, Math.min(3, Number(step) || 1));
+    createWizardStep = target;
+
+    const panels = $$('[data-user-create-panel]');
+    panels.forEach((panel) => {
+      const isActive = Number(panel.dataset.userCreatePanel) === target;
+      panel.hidden = !isActive;
+      panel.classList.remove(
+        "is-wizard-entering-from-right",
+        "is-wizard-entering-from-left"
+      );
+    });
+
+    const activePanel = panels.find(
+      (panel) => Number(panel.dataset.userCreatePanel) === target
+    );
+    if (activePanel) {
+      // Réinitialise l'animation avant chaque changement d'étape.
+      void activePanel.offsetWidth;
+      activePanel.classList.add(
+        direction === "previous"
+          ? "is-wizard-entering-from-left"
+          : "is-wizard-entering-from-right"
+      );
+    }
+
+    $$('[data-user-create-step]').forEach((indicator) => {
+      const index = Number(indicator.dataset.userCreateStep);
+      indicator.classList.toggle("active", index === target);
+      indicator.classList.toggle("complete", index < target);
+      indicator.setAttribute(
+        "aria-current",
+        index === target ? "step" : "false"
+      );
+    });
+
+    $("#userWizardPrevious").hidden = target === 1;
+    $("#userWizardNext").hidden = target === 3;
+    $("#saveUser").hidden = target !== 3;
+    $("#userDialog .dialog-body").scrollTop = 0;
+
+    requestAnimationFrame(() => {
+      const focusTarget = target === 1
+        ? $("#userFirstNames")
+        : target === 2
+          ? $("#userInitialPassword")
+          : $("#modalRoleList input");
+      focusTarget?.focus({ preventScroll: true });
+    });
+
+    icons();
+  }
+
+  function nextCreateWizardStep() {
+    if (!isCreateWizard()) return;
+
+    if (createWizardStep === 1 && !validateIdentityStep()) return;
+    if (createWizardStep === 2 && !validatePassword()) {
+      state("Le mot de passe initial ne respecte pas les exigences.", true);
+      $("#userInitialPassword").focus();
+      return;
+    }
+
+    setCreateWizardStep(createWizardStep + 1, "next");
+  }
+
+  function previousCreateWizardStep() {
+    if (!isCreateWizard() || createWizardStep === 1) return;
+    setCreateWizardStep(createWizardStep - 1, "previous");
+  }
+
   function openCreateDialog() {
     editingUser = null;
+    createWizardStep = 1;
 
     $("#userDialogTitle").textContent = "Nouvel utilisateur";
     $("#userDialogSubtitle").textContent =
@@ -548,16 +648,21 @@
       $("#sendUserCredentialsEmail").checked = false;
     }
 
+    const dialog = $("#userDialog");
+    dialog.dataset.createWizard = "true";
+    $("#userCreateSteps").hidden = false;
+    $("#userIdentitySection").hidden = false;
     $("#initialPasswordSection").hidden = false;
     $("#initialRolesSection").hidden = false;
     $("#userStatusCreateField").hidden = false;
 
     renderModalRoles([]);
 
-    const dialog = $("#userDialog");
     if (!dialog.open) {
       dialog.showModal();
     }
+
+    setCreateWizardStep(1);
 
     try {
       generatePassword();
@@ -579,6 +684,12 @@
     if (!selectedUser) return;
 
     editingUser = selectedUser;
+    delete $("#userDialog").dataset.createWizard;
+    $("#userCreateSteps").hidden = true;
+    $("#userIdentitySection").hidden = false;
+    $("#userWizardPrevious").hidden = true;
+    $("#userWizardNext").hidden = true;
+    $("#saveUser").hidden = false;
 
     $("#userDialogTitle").textContent =
       `Modifier ${displayName(selectedUser)}`;
@@ -720,6 +831,11 @@
   async function saveUser(event) {
     event.preventDefault();
     hideState();
+
+    if (isCreateWizard() && createWizardStep < 3) {
+      nextCreateWizardStep();
+      return;
+    }
 
     if (editingUser) {
       try {
@@ -982,6 +1098,8 @@ const roleErrors = [];
     };
 
     $("#createUserButton").onclick = openCreateDialog;
+    $("#userWizardPrevious").onclick = previousCreateWizardStep;
+    $("#userWizardNext").onclick = nextCreateWizardStep;
     // La délégation résiste aux vues SPA réinjectées et aux remplacements Lucide.
     document.addEventListener("submit", event => {
       if (event.target.id === "userForm") saveUser(event);

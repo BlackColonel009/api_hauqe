@@ -185,6 +185,16 @@
           content: `<i></i><span>${e(calendarTitle(item))}</span>`,
           handler: openDetail,
         });
+      } else if (kind === "date") {
+        button = createDeadlineActionButton({
+          label: `Ouvrir l’échéance : ${displayText(item.titre, "Échéance")}`,
+          className: `deadline-date-item ${urgency(item)}`,
+          content: `<span><i data-lucide="calendar-clock"></i></span><div><strong>${e(displayText(item.titre, "Échéance"))}</strong><small>${e(displayText(item.resource_label || item.ressource_type, "Ressource non renseignée"))} · ${e(statusLabel(displayStatus(item)))}</small></div><em>${e(remaining(item))}</em>`,
+          handler: () => {
+            $("#deadlineDateDialog").close();
+            openDetail();
+          },
+        });
       } else if (kind === "upcoming") {
         button = createDeadlineActionButton({
           label: `Ouvrir l’échéance : ${displayText(item.titre, "Échéance")}`,
@@ -208,6 +218,85 @@
         });
       }
       slot.replaceChildren(button);
+    });
+  }
+
+  // Même patron que Gestion des campagnes : les contrôles statiques du
+  // calendrier sont recréés avec leur écouteur direct à chaque rendu. Cela
+  // élimine la « latence bouton » provoquée par des gestionnaires anciens.
+  function createCalendarNavigationButton({ id, label, iconName, className, disabled = false, handler }) {
+    const button = document.createElement("button");
+    button.id = id;
+    button.type = "button";
+    button.className = className;
+    button.disabled = disabled;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = iconName ? `<i data-lucide="${iconName}"></i>` : e(label);
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.disabled) return;
+      await handler();
+    });
+    return button;
+  }
+
+  function hydrateCalendarNavigation() {
+    const replace = (slotId, config) => {
+      const slot = $(`#${slotId}`);
+      if (slot) slot.replaceChildren(createCalendarNavigationButton(config));
+    };
+    replace("prevMonthSlot", {
+      id: "prevMonth", label: "Période précédente", iconName: "chevron-left",
+      className: "icon-button", handler: () => navigateMonth(-1),
+    });
+    replace("todayButtonSlot", {
+      id: "todayButton", label: "Aujourd’hui", className: "btn btn-outline-secondary app-btn",
+      handler: goToday,
+    });
+    replace("nextMonthSlot", {
+      id: "nextMonth", label: "Période suivante", iconName: "chevron-right",
+      className: "icon-button", handler: () => navigateMonth(1),
+    });
+    replace("calendarZoomInSlot", {
+      id: "calendarZoomIn", label: "Zoomer dans la période", iconName: "zoom-in",
+      className: "icon-button", disabled: calendarScale === "month", handler: zoomIn,
+    });
+    replace("calendarZoomOutSlot", {
+      id: "calendarZoomOut", label: "Dézoomer la période", iconName: "zoom-out",
+      className: "icon-button", disabled: calendarScale === "decade", handler: zoomOut,
+    });
+  }
+
+  function showDateDetails(value) {
+    const dayItems = items
+      .filter((item) => item.date_echeance === value)
+      .sort((a, b) => String(a.titre || "").localeCompare(String(b.titre || ""), "fr"));
+    $("#deadlineDateTitle").textContent = `Échéances du ${dateLabel(value)}`;
+    $("#deadlineDateSubtitle").textContent = dayItems.length
+      ? `${dayItems.length} échéance${dayItems.length > 1 ? "s" : ""} enregistrée${dayItems.length > 1 ? "s" : ""} à cette date.`
+      : "Aucune échéance n’est enregistrée à cette date.";
+    $("#deadlineDateBody").innerHTML = dayItems.length
+      ? `<div class="deadline-date-list">${dayItems.map((item) => `<span data-deadline-action-slot="date" data-deadline-payload="${e(serializeDeadline(item))}"></span>`).join("")}</div>`
+      : `<div class="deadline-date-empty"><i data-lucide="calendar-x-2"></i><strong>Aucune échéance ce jour</strong><small>Choisissez une autre date ou planifiez une échéance si votre rôle le permet.</small></div>`;
+    hydrateDeadlineActionButtons($("#deadlineDateBody"));
+    if (!$("#deadlineDateDialog").open) $("#deadlineDateDialog").showModal();
+    icons();
+  }
+
+  function hydrateCalendarDateCells() {
+    $$("#calendarGrid .calendar-day[data-date]").forEach((cell) => {
+      cell.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        showDateDetails(cell.dataset.date);
+      });
+      cell.querySelector("[data-calendar-date]")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        showDateDetails(cell.dataset.date);
+      });
     });
   }
 
@@ -279,7 +368,7 @@
 
       cells.push(`
         <div class="calendar-day ${iso(new Date()) === key ? "today" : ""}" data-date="${key}">
-          <span class="calendar-day-number">${day}</span>
+          <button class="calendar-day-number calendar-day-date-button" type="button" data-calendar-date aria-label="Voir les échéances du ${e(dateLabel(key))}">${day}</button>
           <div class="calendar-day-events">
             ${dayItems.slice(0, 3).map((item) => `<span data-deadline-action-slot="calendar" data-deadline-payload="${e(serializeDeadline(item))}"></span>`).join("")}
             ${dayItems.length > 3 ? `<small>+${dayItems.length - 3} autre(s)</small>` : ""}
@@ -291,6 +380,7 @@
     $("#calendarGrid").innerHTML = cells.join("");
 
     hydrateDeadlineActionButtons($("#calendarGrid"));
+    hydrateCalendarDateCells();
   }
 
   function renderYearCalendar() {
@@ -370,8 +460,7 @@
       renderMonthCalendar();
     }
     $("#calendarZoomControls").hidden = view !== "macro";
-    $("#calendarZoomIn").disabled = calendarScale === "month";
-    $("#calendarZoomOut").disabled = calendarScale === "decade";
+    hydrateCalendarNavigation();
     icons();
   }
 
@@ -590,6 +679,37 @@
     filters.range = "month";
     $("#deadlineRangeFilter").value = "month";
     renderCalendar();
+    await load();
+  }
+
+  async function goToday() {
+    const today = new Date();
+    cursor = new Date(today.getFullYear(), today.getMonth(), 1);
+    filters.range = "month";
+    $("#deadlineRangeFilter").value = "month";
+    renderCalendar();
+    await load();
+    $("#calendarGrid .calendar-day.today")?.scrollIntoView({
+      behavior: "smooth", block: "nearest", inline: "center",
+    });
+  }
+
+  async function zoomOut() {
+    if (calendarScale === "month") calendarScale = "year";
+    else if (calendarScale === "year") calendarScale = "decade";
+    view = "macro";
+    await load();
+  }
+
+  async function zoomIn() {
+    if (calendarScale === "decade") calendarScale = "year";
+    else if (calendarScale === "year") {
+      calendarScale = "month";
+      view = "calendar";
+      $$('[data-view]').forEach((item) => {
+        item.classList.toggle("active", item.dataset.view === "calendar");
+      });
+    }
     await load();
   }
 
@@ -873,26 +993,6 @@
       renderGlobalRegistry();
     };
 
-    $("#prevMonth").onclick = async () => {
-      await navigateMonth(-1);
-    };
-    $("#nextMonth").onclick = async () => {
-      await navigateMonth(1);
-    };
-    $("#todayButton").onclick = async () => {
-      const today = new Date();
-      cursor = new Date(today.getFullYear(), today.getMonth(), 1);
-      filters.range = "month";
-      $("#deadlineRangeFilter").value = "month";
-      renderCalendar();
-      await load();
-      $("#calendarGrid .calendar-day.today")?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    };
-
     $$("[data-view]").forEach((button) => {
       button.onclick = () => {
         view = button.dataset.view;
@@ -903,24 +1003,6 @@
       };
     });
 
-    $("#calendarZoomOut").onclick = async () => {
-      if (calendarScale === "month") calendarScale = "year";
-      else if (calendarScale === "year") calendarScale = "decade";
-      view = "macro";
-      await load();
-    };
-    $("#calendarZoomIn").onclick = async () => {
-      if (calendarScale === "decade") calendarScale = "year";
-      else if (calendarScale === "year") {
-        calendarScale = "month";
-        view = "calendar";
-        $$("[data-view]").forEach((item) => {
-          item.classList.toggle("active", item.dataset.view === "calendar");
-        });
-      }
-      await load();
-    };
-
     $$("[data-close-deadline-dialog]").forEach((b) => {
       b.onclick = () => $("#deadlineDialog").close();
     });
@@ -929,6 +1011,9 @@
     });
     $$("[data-close-deadline-reminder]").forEach((b) => {
       b.onclick = () => $("#deadlineReminderDialog").close();
+    });
+    $$("[data-close-deadline-date]").forEach((b) => {
+      b.onclick = () => $("#deadlineDateDialog").close();
     });
     $$("[data-close-deadline-connections]").forEach((b) => {
       b.onclick = () => $("#deadlineConnectionsDialog").close();

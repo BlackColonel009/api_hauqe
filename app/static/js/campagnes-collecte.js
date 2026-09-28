@@ -10,6 +10,7 @@
   let searchTimer = null;
   let loadSequence = 0;
   let actionInProgress = false;
+  let campaignWizardStep = 1;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -155,6 +156,62 @@
     }
   }
 
+  async function proposeCampaignCode() {
+    const field = $("#campaignCode");
+    field.placeholder = "Proposition automatique…";
+    try {
+      const proposal = await apiGet("/api/v1/collectes/codes/proposer?type=CAMPAGNE");
+      if (!field.value.trim()) field.value = proposal.code || "";
+    } catch {
+      // Le serveur attribuera le code à l'enregistrement si la proposition
+      // ne peut pas être chargée à cet instant.
+      field.placeholder = "Code attribué automatiquement à l’enregistrement";
+    }
+  }
+
+  function campaignWizardValidation(stepToValidate = campaignWizardStep) {
+    if (stepToValidate === 3) {
+      const start = $("#campaignStart").value;
+      const end = $("#campaignEnd").value;
+      if (start && end && end < start) {
+        showState("La date de fin ne peut pas précéder la date de début.", true);
+        $("#campaignWizardProgress").textContent = "La date de fin doit être postérieure ou égale à la date de début.";
+        $("#campaignWizardProgress").classList.add("campaign-wizard-error");
+        $("#campaignEnd").focus();
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function renderCampaignWizard() {
+    document.querySelectorAll("[data-campaign-wizard-step]").forEach((panel) => {
+      const active = Number(panel.dataset.campaignWizardStep) === campaignWizardStep;
+      panel.hidden = !active;
+      if (active) panel.scrollTop = 0;
+    });
+    document.querySelectorAll("[data-campaign-wizard-go]").forEach((button) => {
+      const target = Number(button.dataset.campaignWizardGo);
+      button.classList.toggle("active", target === campaignWizardStep);
+      button.disabled = target > campaignWizardStep;
+      button.setAttribute("aria-current", target === campaignWizardStep ? "step" : "false");
+    });
+    $("#campaignWizardPrevious").hidden = campaignWizardStep === 1;
+    $("#campaignWizardNext").hidden = campaignWizardStep === 3;
+    $("#campaignWizardSave").hidden = campaignWizardStep !== 3;
+    $("#campaignWizardProgress").textContent =
+      `Étape ${campaignWizardStep} sur 3 · les champs marqués * sont obligatoires.`;
+    $("#campaignWizardProgress").classList.remove("campaign-wizard-error");
+    refreshIcons();
+  }
+
+  function goToCampaignWizardStep(targetStep) {
+    const nextStep = Math.max(1, Math.min(3, Number(targetStep) || 1));
+    if (nextStep > campaignWizardStep && !campaignWizardValidation(campaignWizardStep)) return;
+    campaignWizardStep = nextStep;
+    renderCampaignWizard();
+  }
+
   function openDialog(campaign = null) {
     if (campaign === undefined) return;
     const dialog = $("#campaignDialog");
@@ -168,8 +225,13 @@
     $("#campaignGoal").value = campaign?.objectif || "";
     $("#campaignStart").value = campaign?.date_debut || "";
     $("#campaignEnd").value = campaign?.date_fin || "";
-    $("#campaignFormStatus").value = isActive(campaign?.statut) ? "ACTIVE" : "INACTIVE";
+    $("#campaignFormStatus").value = campaign
+      ? (isActive(campaign.statut) ? "ACTIVE" : "INACTIVE")
+      : "ACTIVE";
+    campaignWizardStep = 1;
+    renderCampaignWizard();
     if (!dialog.open) dialog.showModal();
+    if (!campaign) void proposeCampaignCode();
     refreshIcons();
   }
 
@@ -177,14 +239,19 @@
 
   async function saveCampaign(event) {
     event.preventDefault();
+    if (campaignWizardStep < 3) {
+      goToCampaignWizardStep(campaignWizardStep + 1);
+      return;
+    }
     const form = event.currentTarget;
     const code = $("#campaignCode").value.trim().toUpperCase();
     const start = $("#campaignStart").value;
     const end = $("#campaignEnd").value;
-    if (!code) { showState("Le code de campagne est obligatoire.", true); return; }
-    if (start && end && end < start) { showState("La date de fin ne peut pas précéder la date de début.", true); return; }
+    if (!campaignWizardValidation(1) || !campaignWizardValidation(3)) return;
     const payload = {
-      code,
+      // Le serveur attribue le prochain code si l'utilisateur laisse le
+      // champ vide (par exemple si la proposition n'a pas pu être chargée).
+      code: code || null,
       nom: $("#campaignName").value.trim() || null,
       objet: $("#campaignObject").value.trim() || null,
       objectif: $("#campaignGoal").value.trim() || null,
@@ -301,6 +368,11 @@
     $("#newCampaign").addEventListener("click", () => openDialog());
     bindRowActions();
     $("#campaignForm").addEventListener("submit", saveCampaign);
+    $("#campaignWizardPrevious").addEventListener("click", () => goToCampaignWizardStep(campaignWizardStep - 1));
+    $("#campaignWizardNext").addEventListener("click", () => goToCampaignWizardStep(campaignWizardStep + 1));
+    document.querySelectorAll("[data-campaign-wizard-go]").forEach((button) => {
+      button.addEventListener("click", () => goToCampaignWizardStep(button.dataset.campaignWizardGo));
+    });
     $("#missionReferenceForm").addEventListener("submit", saveMissionReference);
     document.querySelectorAll("[data-close-campaign-dialog]").forEach((button) => button.addEventListener("click", closeDialog));
     document.querySelectorAll("[data-close-mission-dialog]").forEach((button) => button.addEventListener("click", () => $("#missionReferenceDialog").close()));

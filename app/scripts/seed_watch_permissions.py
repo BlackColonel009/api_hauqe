@@ -171,6 +171,12 @@ async def seed():
                         by_code[code].id,
                     )
 
+            # La cloche et « Mes alertes » sont personnelles pour tous les
+            # rôles, sans ouvrir le registre général ALERTES.LIRE.
+            all_roles = await db.execute(select(Role))
+            for role in all_roles.scalars().all():
+                await ensure_link(db, role.id, by_code["NOTIFICATIONS.LIRE"].id)
+
             await db.commit()
             print("Permissions Veille synchronisées.")
 

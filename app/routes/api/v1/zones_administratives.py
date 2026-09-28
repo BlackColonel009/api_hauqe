@@ -21,12 +21,22 @@ from app.services.auth_service import AuthContext
 from app.services.zone_administrative_service import (
     ZoneAdministrativeService,
 )
+from app.services.collecte_code_service import CollecteCodeService
 
 
 router = APIRouter(
     prefix="/zones-administratives",
     tags=["Référentiels - Zones administratives"],
 )
+
+
+@router.get("/proposer-code")
+async def propose_zone_code(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("REFERENTIELS.LIRE")),
+):
+    """Propose le prochain code de zone, sans le réserver."""
+    return {"code": await CollecteCodeService.propose(db, "ZONE")}
 
 
 @router.get("", response_model=ZoneAdministrativeListResponse)

@@ -104,6 +104,23 @@ async def deadlines(
     )
 
 
+@router.get("/alerts/mine", response_model=AlertWorkspaceResponse)
+async def my_alerts(
+    type_alerte: str | None = Query(default=None, max_length=255),
+    niveau: int | None = Query(default=None, ge=1, le=4),
+    statut: str | None = Query(default=None, max_length=255),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("NOTIFICATIONS.LIRE")),
+):
+    return await WatchWorkspaceService.alerts(
+        db, type_alerte=type_alerte, niveau=niveau, responsable_id=None,
+        statut=statut, ressource_type=None, ressource_id=None,
+        limit=limit, offset=offset, current_user_id=actor.user.id,
+    )
+
+
 @router.get("/alerts", response_model=AlertWorkspaceResponse)
 async def alerts(
     type_alerte: str | None = Query(default=None, max_length=255),

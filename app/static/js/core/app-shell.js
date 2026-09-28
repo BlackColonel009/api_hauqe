@@ -1,10 +1,10 @@
 import { installActionLoader } from "./action-loader.js?v=20260802-1";
-import { installDialogManager } from "./dialog-manager.js?v=20260729-3";
+import { installDialogManager } from "./dialog-manager.js?v=20260927-1";
 import {
   getCurrentRoute,
   initRouter,
   refreshCurrentRoute,
-} from "./router.js?v=20260914-1";
+} from "./router.js?v=20260928-3";
 import { initSessionLock } from "./session-lock.js";
 import {
   getCurrentProfile,
@@ -91,7 +91,7 @@ async function refreshSidebarBadges() {
   if (!hasAccessToken()) return;
 
   const requests = [
-    apiGet("/api/v1/veille/workspace/alerts?limit=1&offset=0"),
+    apiGet("/api/v1/veille/workspace/alerts/mine?limit=1&offset=0"),
     apiGet("/api/v1/veille/workspace/deadlines?limit=1&offset=0"),
     apiGet("/api/v1/verifications/registry?limit=1&offset=0"),
     apiGet("/api/v1/validations/workspace/registry?limit=1&offset=0"),
@@ -384,7 +384,7 @@ if (hasAccessToken()) loadPageRefreshPreferences();
    SIDEBAR MOBILE ROBUSTE
    ------------------------------------------------------------
    - délégation stable, même si le shell évolue ;
-   - réaction dès le pointerdown sur écran tactile ;
+   - un seul clic par activation, y compris après un appui tactile ;
    - backdrop, fermeture par Échap et fermeture après navigation ;
    - synchronisation aria-expanded / aria-hidden ;
    - blocage du scroll arrière-plan pendant l'ouverture.
@@ -449,20 +449,7 @@ function initMobileSidebar() {
     setOpen(!sidebar.classList.contains("open"));
   }
 
-  let lastPointerToggleAt = 0;
-
-  menuToggle.addEventListener("pointerdown", (event) => {
-    lastPointerToggleAt = performance.now();
-    toggleSidebar(event);
-  });
-
-  menuToggle.addEventListener("click", (event) => {
-    if (performance.now() - lastPointerToggleAt < 650) {
-      event.preventDefault();
-      return;
-    }
-    toggleSidebar(event);
-  });
+  menuToggle.addEventListener("click", toggleSidebar);
 
   closeButton.addEventListener("click", () => setOpen(false));
   backdrop.addEventListener("click", () => setOpen(false));
@@ -479,7 +466,9 @@ function initMobileSidebar() {
     }
   });
 
-  window.addEventListener("hauqe:page-ready", () => setOpen(false));
+  // Une actualisation silencieuse émet aussi « page-ready » : elle ne doit
+  // jamais fermer un menu que l'utilisateur est en train de consulter.
+  window.addEventListener("hashchange", () => setOpen(false));
 
   const onMediaChange = () => setOpen(false);
   if (typeof media.addEventListener === "function") {
@@ -1260,7 +1249,9 @@ async function refreshNotifications({ silent = false } = {}) {
           }
 
           closeTopbarDropdowns();
-          location.hash = "#/alertes";
+          location.hash = item?.alerte_id
+            ? `#/alertes?alerte=${encodeURIComponent(item.alerte_id)}`
+            : "#/alertes";
           await refreshNotifications({ silent: true });
         });
       });

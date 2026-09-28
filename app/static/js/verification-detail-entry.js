@@ -9,7 +9,7 @@
   "use strict";
 
   const source = document.createElement("script");
-  source.src = "/static/js/verification-detail.js?v=20260924-2";
+  source.src = "/static/js/verification-detail.js?v=20260927-2";
   source.dataset.pageScript = "true";
   source.onload = async () => {
     try {

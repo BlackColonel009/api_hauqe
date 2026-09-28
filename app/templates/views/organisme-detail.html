@@ -48,4 +48,20 @@
   </div>
 
   <section id="bodyTabContent"></section>
+  <dialog id="organismeVerificationDialog" class="organisme-verification-dialog">
+    <form id="organismeVerificationForm">
+      <header class="organisme-verification-header">
+        <span><i data-lucide="badge-check"></i></span>
+        <div><small>Vérification de l’organisme</small><h2>Choisir une décision</h2></div>
+        <button type="button" class="dialog-close" id="organismeVerificationClose" aria-label="Fermer"><i data-lucide="x"></i></button>
+      </header>
+      <div class="organisme-verification-body">
+        <p>Le statut doit exprimer la décision prise après contrôle des pièces de l’organisme.</p>
+        <label><span>Décision</span><select id="organismeVerificationStatus" required><option value="A_VERIFIER">Pas encore vérifié — conserver « À vérifier »</option><option value="RECONNU">Reconnu — confirmer l’organisme</option></select></label>
+        <label><span>Motif ou référence du contrôle</span><textarea id="organismeVerificationReason" rows="4" required minlength="3" maxlength="2000" placeholder="Ex. Accréditation et coordonnées contrôlées le…"></textarea></label>
+        <p class="organisme-verification-error" id="organismeVerificationError" role="alert" hidden></p>
+      </div>
+      <footer><button type="button" class="btn btn-outline-secondary app-btn" id="organismeVerificationCancel">Annuler</button><button type="submit" class="btn btn-primary app-btn" id="organismeVerificationSave">Enregistrer la décision</button></footer>
+    </form>
+  </dialog>
 </div>

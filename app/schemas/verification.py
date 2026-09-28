@@ -33,6 +33,27 @@ class VerificationCloseRequest(BaseModel):
 
 class VerificationReopenRequest(BaseModel):
     motif: str = Field(min_length=1, max_length=2000)
+    # Une reprise FUCCS a un impact métier : le client doit la confirmer
+    # explicitement. Le serveur la vérifie également avant toute écriture.
+    confirmer_reprise_fuccs: bool = False
+
+
+class VerificationReopenAnalysisResponse(BaseModel):
+    """Décision de réouverture, calculée avant l'action utilisateur."""
+    mode: Literal[
+        "REOUVERTURE_SIMPLE",
+        "REPRISE_FUCCS",
+        "REVISION_OBLIGATOIRE",
+        "DEJA_OUVERT",
+    ]
+    titre: str
+    message: str
+    fiche_collecte_id: UUID
+    mission_id: UUID | None = None
+    entreprise_nom: str | None = None
+    controles_fuccs_finalises: int = 0
+    niveaux_validation: list[str] = Field(default_factory=list)
+    bnec_integre: bool = False
 
 class VerificationDossierResponse(BaseModel):
     id: UUID

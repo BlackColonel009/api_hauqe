@@ -188,6 +188,18 @@ class NotificationPreferencesResponse(BaseModel):
     actualisation_au_retour: bool
 
 
+class AdminSystemEmailPolicyUpdateRequest(BaseModel):
+    courriels_systeme_actifs: bool
+
+
+class AdminSystemEmailPolicyResponse(BaseModel):
+    utilisateur_id: UUID
+    nom: str
+    email: str
+    statut: str | None = None
+    courriels_systeme_actifs: bool
+
+
 # ============================================================
 # VERROUILLAGE DE REPRISE
 # ============================================================

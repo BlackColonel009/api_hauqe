@@ -28,9 +28,11 @@ import smtplib
 import sys
 from email.message import EmailMessage
 
+from app.audit.service import write_audit_event
 from app.config.logging import configure_logging
 from app.config.settings import settings
 from app.database.session import AsyncSessionLocal
+from app.repositories.account_repository import AccountRepository
 from app.repositories.veille_repository import WatchRepository
 from app.schemas.veille import NotificationResultRequest
 from app.services.veille_service import WatchService
@@ -39,6 +41,27 @@ logger = logging.getLogger(__name__)
 configure_logging()
 
 MAIL_BRAND = "HAUQE — Haute Autorité de la Qualité et de l'Environnement"
+
+SECURITY_SUBJECT_PREFIXES = (
+    "Votre mot de passe HAUQE Certif",
+    "Réinitialisation de votre mot de passe HAUQE Certif",
+    "Préavis d'inactivité de votre compte HAUQE Certif",
+)
+
+
+def is_account_security_email(notification) -> bool:
+    return notification.resultat == "SECURITE_COMPTE" or (
+        notification.alerte_id is None
+        and (notification.objet or "").startswith(SECURITY_SUBJECT_PREFIXES)
+    )
+
+
+def should_suppress_system_email(notification, *, enabled: bool) -> bool:
+    return bool(
+        notification.destinataire_utilisateur_id
+        and not enabled
+        and not is_account_security_email(notification)
+    )
 
 
 def hauqe_contact_lines() -> list[str]:
@@ -246,6 +269,22 @@ async def run(limit: int = 100) -> None:
                     )
                     continue
                 recipient = user.email
+                if not is_account_security_email(item):
+                    prefs = await AccountRepository.get_preferences(db, user.id)
+                    if should_suppress_system_email(
+                        item, enabled=prefs is None or prefs.courriels_systeme_actifs is not False,
+                    ):
+                        item.statut = "ANNULEE"
+                        item.resultat = "Courriel désactivé par un administrateur pour ce compte."
+                        item.message_erreur = None
+                        await write_audit_event(
+                            db, action="SYSTEM_EMAIL_SUPPRESSED", categorie="NOTIFICATIONS",
+                            resultat="SUCCES", utilisateur_id=None,
+                            ressource_type="notification", ressource_id=item.id,
+                            contexte={"destinataire_utilisateur_id": str(user.id)},
+                        )
+                        await db.commit()
+                        continue
 
             if not recipient:
                 await WatchService.record_notification_delivery(

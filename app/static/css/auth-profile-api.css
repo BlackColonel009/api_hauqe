@@ -567,6 +567,47 @@ body.auth-route-active {
   border-radius:16px;
   background:#fbfdfc;
 }
+.profile-admin-email-settings{
+  display:grid;
+  gap:12px;
+  margin-top:18px;
+  padding:16px;
+  border:1px solid #dce8e2;
+  border-radius:16px;
+  background:#fbfdfc;
+  min-width:0;
+}
+.profile-admin-email-settings h3{margin:0;font-size:1.04rem}
+.profile-admin-email-settings p{margin:5px 0 0;color:var(--muted)}
+.profile-admin-email-settings select{
+  width:100%;min-width:0;min-height:42px;padding:8px 11px;
+  border:1px solid #d8e3de;border-radius:11px;background:var(--surface,#fff);
+}
+.profile-admin-email-add{display:grid;gap:7px;min-width:0}
+.profile-admin-email-add>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;min-width:0}
+.profile-admin-email-add button{min-height:42px;max-width:100%;white-space:normal}
+.profile-admin-email-list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:3px}
+.profile-admin-email-list-head span{font-weight:800;color:#176b4d}
+.profile-admin-email-list{display:grid;gap:7px;max-height:min(42vh,330px);overflow-y:auto;overscroll-behavior:contain;padding:4px;min-width:0}
+.profile-admin-email-user{display:flex;justify-content:space-between;align-items:center;gap:12px;min-width:0;padding:10px 12px;border:1px solid #e0ebe5;border-radius:11px;background:#fff;cursor:pointer}
+.profile-admin-email-user-copy{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+.profile-admin-email-user-copy small,.profile-admin-email-note{color:var(--muted)}
+.profile-admin-email-user-control{display:flex;align-items:center;gap:8px;flex:0 0 auto;color:#176b4d;font-size:.82rem;font-weight:700}
+.profile-admin-email-user-control input{width:18px;height:18px;accent-color:#16845f;cursor:pointer}
+.profile-admin-email-empty{padding:14px;border:1px dashed #d8e3de;border-radius:11px;text-align:center}
+html[data-theme="dark"] .profile-admin-email-settings{
+  border-color:#294a41;background:#102d27;color:#e7f4ed;
+}
+html[data-theme="dark"] .profile-admin-email-settings select{
+  border-color:#456b5e;background:#173b31;color:#e7f4ed;
+}
+html[data-theme="dark"] .profile-admin-email-user{border-color:#294a41;background:#173b31;color:#e7f4ed}
+html[data-theme="dark"] .profile-admin-email-list-head span,
+html[data-theme="dark"] .profile-admin-email-user-control{color:#8cdbb7}
+@media(max-width:620px){
+  .profile-admin-email-add>div{grid-template-columns:1fr}
+  .profile-admin-email-user{align-items:flex-start;flex-direction:column}
+}
 .profile-refresh-settings>header{
   display:grid;
   grid-template-columns:40px minmax(0,1fr);

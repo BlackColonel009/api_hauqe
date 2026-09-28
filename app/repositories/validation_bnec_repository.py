@@ -22,6 +22,7 @@ from app.models.certification import Certification
 from app.models.certification_declaree import CertificationDeclaree
 from app.models.controle_fuccs import ControleFuccs
 from app.models.correction import Correction
+from app.models.document import Document
 from app.models.dossier_verification import DossierVerification
 from app.models.element_integration import ElementIntegration
 from app.models.entreprise import Entreprise
@@ -483,6 +484,29 @@ class ValidationBnecRepository:
         return list(result.scalars().all())
 
     @staticmethod
+    async def list_active_documents_for_declared_certifications(
+        db: AsyncSession,
+        declaration_ids: list[UUID],
+    ) -> list[Document]:
+        """Retourne les preuves encore rattachées aux déclarations terrain.
+
+        Elles sont déplacées vers la certification officielle uniquement au
+        moment où l'intégration BNEC est effectivement exécutée.
+        """
+        if not declaration_ids:
+            return []
+        result = await db.execute(
+            select(Document)
+            .where(
+                Document.ressource_type == "CERTIFICATION_DECLAREE",
+                Document.ressource_id.in_(declaration_ids),
+                or_(Document.statut.is_(None), Document.statut == "ACTIF"),
+            )
+            .order_by(Document.date_depot, Document.created_at)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
     async def get_enterprise(
         db: AsyncSession,
         enterprise_id: UUID,
@@ -511,6 +535,22 @@ class ValidationBnecRepository:
             select(OffreEntreprise).where(OffreEntreprise.id == target_id)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_enterprise_offer_categories(
+        db: AsyncSession,
+        enterprise_id: UUID,
+    ) -> list[str]:
+        result = await db.execute(
+            select(OffreEntreprise.categorie)
+            .where(
+                OffreEntreprise.entreprise_id == enterprise_id,
+                OffreEntreprise.categorie.is_not(None),
+                func.trim(OffreEntreprise.categorie) != "",
+            )
+            .order_by(OffreEntreprise.created_at, OffreEntreprise.id)
+        )
+        return [category.strip() for category in result.scalars().all()]
 
     @staticmethod
     async def find_official_offer(
@@ -592,6 +632,7 @@ class ValidationBnecRepository:
         organisme_id: UUID,
         norme_id: UUID,
         scope: str | None,
+        number: str | None = None,
     ) -> Certification | None:
         filters = [
             Certification.entreprise_id == enterprise_id,
@@ -602,6 +643,19 @@ class ValidationBnecRepository:
             filters.append(
                 func.lower(func.trim(Certification.portee))
                 == scope.strip().lower()
+            )
+        # Deux numéros explicites différents ne désignent jamais le même certificat.
+        if number and number.strip():
+            filters.append(
+                func.lower(func.trim(Certification.numero_certificat))
+                == number.strip().lower()
+            )
+        else:
+            filters.append(
+                or_(
+                    Certification.numero_certificat.is_(None),
+                    func.trim(Certification.numero_certificat) == "",
+                )
             )
         result = await db.execute(
             select(Certification)

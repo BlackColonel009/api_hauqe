@@ -6,12 +6,14 @@ from fastapi import HTTPException
 from app.audit.service import write_audit_event
 from app.models.constat_controle import ConstatControle
 from app.models.controle_fuccs import ControleFuccs
+from app.models.dossier_verification import DossierVerification
 from app.models.critere_fuccs import CritereFuccs
 from app.models.grille_fuccs import GrilleFuccs
 from app.models.note_critere import NoteCritere
 from app.models.rubrique_fuccs import RubriqueFuccs
 from app.repositories.fuccs_repository import FuccsRepository
 from app.schemas.fuccs import *
+from app.services.workflow_communication_service import WorkflowCommunicationService
 
 # ============================================================
 # MODELE HISTORIQUE DE RECETTE — 24 CRITERES
@@ -678,6 +680,17 @@ class FuccsService:
         await write_audit_event(db,action="FUCCS_CONTROL_FINALIZE",categorie="CONTROLE_FUCCS",resultat="SUCCES",
             utilisateur_id=actor.user.id,ressource_type="controle_fuccs",ressource_id=c.id,adresse_ip=ip(request),
             valeurs_apres={"score_brut":str(c.score_brut),"score_maximal":str(c.score_maximal),"taux":c.taux})
+        dossier = await db.get(DossierVerification, c.dossier_verification_id)
+        if dossier:
+            company, details = await WorkflowCommunicationService.fiche_context(db, dossier.fiche_collecte_id)
+            await WorkflowCommunicationService.emit(
+                db, event="CONTROLE_FINALISE", resource_type="CONTROLE_FUCCS",
+                resource_id=c.id, title=f"Contrôle FUCCS finalisé — {company}",
+                context=details, action="Prononcer les validations N1 puis N2 avec deux utilisateurs distincts.",
+                route=f"#/validations/{dossier.fiche_collecte_id}",
+                action_roles={"POINT_FOCAL_BNEC", "DIRECTION_TECHNIQUE"},
+                information_roles={"ADMIN_HAUQE"},
+            )
         await db.commit(); await db.refresh(c); return await FuccsService.control_response(db,c)
 
     @staticmethod

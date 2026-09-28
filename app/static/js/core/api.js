@@ -21,6 +21,7 @@ const CURRENT_USER_CACHE_KEY = "hauqe-current-user-cache";
 const CURRENT_PROFILE_CACHE_KEY = "hauqe-current-profile-cache";
 const AUTH_EVENT = "hauqe:auth-state";
 const LOCK_EVENT = "hauqe:session-locked";
+const DOSSIER_PARCOURS_EVENT = "hauqe:dossier-parcours-changed";
 
 export class ApiError extends Error {
   constructor(message, status = 0, detail = null, response = null) {
@@ -30,6 +31,13 @@ export class ApiError extends Error {
     this.detail = detail;
     this.response = response;
   }
+}
+
+function emitApiError(error, context = {}) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("hauqe:api-error", {
+    detail: { error, ...context },
+  }));
 }
 
 function storageAvailable(storage) {
@@ -193,6 +201,7 @@ export async function apiRequest(path, options = {}) {
   } = options;
 
   const headers = new Headers(customHeaders);
+  const requestMethod = String(fetchOptions.method || "GET").toUpperCase();
   const token = getAccessToken();
 
   if (auth && token) {
@@ -233,18 +242,22 @@ export async function apiRequest(path, options = {}) {
     clearTimeout(timer);
 
     if (error?.name === "AbortError") {
-      throw new ApiError(
+      const apiError = new ApiError(
         "Le serveur met trop de temps à répondre.",
         0,
         { code: "NETWORK_TIMEOUT" }
       );
+      emitApiError(apiError, { path, method: requestMethod });
+      throw apiError;
     }
 
-    throw new ApiError(
+    const apiError = new ApiError(
       "Impossible de joindre le serveur.",
       0,
       { code: "NETWORK_ERROR", cause: String(error) }
     );
+    emitApiError(apiError, { path, method: requestMethod });
+    throw apiError;
   }
 
   clearTimeout(timer);
@@ -268,7 +281,7 @@ export async function apiRequest(path, options = {}) {
       503: "Service temporairement indisponible.",
     };
 
-    throw new ApiError(
+    const apiError = new ApiError(
       extractApiMessage(
         payload,
         fallbackByStatus[response.status] || `Erreur API ${response.status}.`
@@ -277,6 +290,19 @@ export async function apiRequest(path, options = {}) {
       payload?.detail ?? payload,
       response
     );
+    emitApiError(apiError, { path, method: requestMethod });
+    throw apiError;
+  }
+
+  // Une écriture métier réussie doit mettre à jour immédiatement le parcours
+  // déjà visible, sans imposer un rechargement de route à l'utilisateur.
+  if (
+    typeof window !== "undefined"
+    && !["GET", "HEAD", "OPTIONS"].includes(requestMethod)
+  ) {
+    window.dispatchEvent(new CustomEvent(DOSSIER_PARCOURS_EVENT, {
+      detail: { path, method: requestMethod },
+    }));
   }
 
   return payload;
@@ -317,18 +343,22 @@ export async function apiBlob(path, options = {}) {
     clearTimeout(timer);
 
     if (error?.name === "AbortError") {
-      throw new ApiError(
+      const apiError = new ApiError(
         "Le serveur met trop de temps à répondre.",
         0,
         { code: "NETWORK_TIMEOUT" }
       );
+      emitApiError(apiError, { path, method: fetchOptions.method || "GET" });
+      throw apiError;
     }
 
-    throw new ApiError(
+    const apiError = new ApiError(
       "Impossible de joindre le serveur.",
       0,
       { code: "NETWORK_ERROR", cause: String(error) }
     );
+    emitApiError(apiError, { path, method: fetchOptions.method || "GET" });
+    throw apiError;
   }
 
   clearTimeout(timer);
@@ -347,12 +377,14 @@ export async function apiBlob(path, options = {}) {
       handleGlobalStatus(response.status, payload);
     }
 
-    throw new ApiError(
+    const apiError = new ApiError(
       extractApiMessage(payload, `Erreur API ${response.status}.`),
       response.status,
       payload?.detail ?? payload,
       response
     );
+    emitApiError(apiError, { path, method: fetchOptions.method || "GET" });
+    throw apiError;
   }
 
   return response.blob();

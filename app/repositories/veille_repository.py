@@ -504,8 +504,20 @@ class WatchRepository:
         ressource_id: UUID | None,
         limit: int,
         offset: int,
+        current_user_id: UUID | None = None,
     ) -> tuple[list[Alerte], int]:
         filters = []
+
+        if current_user_id is not None:
+            personal_notifications = select(Notification.alerte_id).where(
+                Notification.destinataire_utilisateur_id == current_user_id,
+                Notification.canal == "IN_APP",
+                Notification.alerte_id.is_not(None),
+            )
+            filters.append(or_(
+                Alerte.responsable_id == current_user_id,
+                Alerte.id.in_(personal_notifications),
+            ))
 
         if type_alerte:
             filters.append(Alerte.type_alerte == type_alerte.strip().upper())
@@ -618,7 +630,8 @@ class WatchRepository:
         offset: int,
     ) -> tuple[list[Notification], int, int]:
         filters = [
-            Notification.destinataire_utilisateur_id == current_user_id
+            Notification.destinataire_utilisateur_id == current_user_id,
+            Notification.canal == "IN_APP",
         ]
         if statut:
             filters.append(Notification.statut == statut.strip().upper())
@@ -638,6 +651,7 @@ class WatchRepository:
         unread_count = await db.execute(
             select(func.count(Notification.id)).where(
                 Notification.destinataire_utilisateur_id == current_user_id,
+                Notification.canal == "IN_APP",
                 Notification.date_lecture.is_(None),
             )
         )
@@ -655,6 +669,7 @@ class WatchRepository:
         result = await db.execute(
             select(func.count(Notification.id)).where(
                 Notification.destinataire_utilisateur_id == user_id,
+                Notification.canal == "IN_APP",
                 Notification.date_lecture.is_(None),
             )
         )
@@ -668,6 +683,7 @@ class WatchRepository:
         result = await db.execute(
             select(Notification).where(
                 Notification.destinataire_utilisateur_id == user_id,
+                Notification.canal == "IN_APP",
                 Notification.date_lecture.is_(None),
             )
         )
@@ -1023,6 +1039,7 @@ class WatchRepository:
         unread = await db.execute(
             select(func.count(Notification.id)).where(
                 Notification.destinataire_utilisateur_id == current_user_id,
+                Notification.canal == "IN_APP",
                 Notification.date_lecture.is_(None),
             )
         )

@@ -21,6 +21,7 @@ from app.schemas.zone_administrative import (
     ZoneAdministrativeUpdateRequest,
 )
 from app.services.auth_service import AuthContext
+from app.services.collecte_code_service import CollecteCodeService
 
 
 def client_ip(request: Request) -> str | None:
@@ -164,7 +165,10 @@ class ZoneAdministrativeService:
 
         nom = payload.nom.strip()
         type_zone = payload.type_zone.strip().upper()
-        code = normalize_code(payload.code)
+        code = normalize_code(payload.code) or await CollecteCodeService.allocate_next(
+            db,
+            "ZONE",
+        )
 
         duplicate = await ZoneAdministrativeRepository.duplicate(
             db,

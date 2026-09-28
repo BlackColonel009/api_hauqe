@@ -666,6 +666,9 @@
     $("#correctionReason").value = "";
     $("#correctionInstructions").value = "";
     $("#correctionDueDate").value = "";
+    $("#correctionDossierName").textContent =
+      $("#validationDetailTitle").textContent.trim() || "Dossier de validation";
+    $("#correctionFormError").hidden = true;
 
     $("#correctionDialog").showModal();
     refreshIcons();
@@ -769,12 +772,13 @@
       $("#correctionInstructions").value.trim();
 
     if (!motif || !instructions) {
-      showState(
-        "Motif et instructions sont obligatoires.",
-        { error: true }
-      );
+      const error = $("#correctionFormError");
+      error.textContent = "Motif et instructions sont obligatoires.";
+      error.hidden = false;
+      (!motif ? $("#correctionReason") : $("#correctionInstructions")).focus();
       return;
     }
+    $("#correctionFormError").hidden = true;
 
     const task = async () => {
       await apiPost(
@@ -805,10 +809,10 @@
         await task();
       }
     } catch (error) {
-      showState(
-        error?.message || "Demande impossible.",
-        { error: true }
-      );
+      const message = $("#correctionFormError");
+      message.textContent = error?.message || "Demande impossible.";
+      message.hidden = false;
+      message.scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -915,7 +919,7 @@
       return;
     }
 
-    const api = await import("/static/js/core/api.js");
+    const api = await import("/static/js/core/api.js?v=20260927-1");
 
     apiGet = api.apiGet;
     apiPost = api.apiPost;
@@ -928,7 +932,7 @@
       hideState();
       renderHeader();
       showTab("overview");
-      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
       await renderDossierParcours({
         target: "#validationDossierParcours",
         source: "fiche",

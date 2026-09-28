@@ -15,6 +15,7 @@ from app.models.echeance import Echeance
 from app.repositories.verification_repository import VerificationRepository
 from app.schemas.verification import *
 from app.services.auth_service import AuthContext
+from app.services.workflow_communication_service import WorkflowCommunicationService
 
 def ip(request): return request.client.host if request.client else None
 def txt(v): return (v.strip() or None) if isinstance(v, str) else v
@@ -194,6 +195,74 @@ class VerificationService:
         return x
 
     @staticmethod
+    def reopen_policy(*, is_closed, fuccs_finalized_count, validation_levels, bnec_integrated):
+        """Politique unique utilisée par l'aperçu et l'action de réouverture."""
+        if not is_closed:
+            return {
+                "mode": "DEJA_OUVERT",
+                "titre": "Dossier déjà ouvert",
+                "message": "Ce dossier est déjà disponible en vérification ; aucune réouverture n’est nécessaire.",
+            }
+        if bnec_integrated:
+            return {
+                "mode": "REVISION_OBLIGATOIRE",
+                "titre": "Révision de collecte requise",
+                "message": (
+                    "Ce dossier est déjà intégré dans la BNEC. La traçabilité de l’intégration "
+                    "ne peut pas être annulée depuis la vérification. Créez une révision de la "
+                    "fiche de collecte liée pour corriger ou compléter les données."
+                ),
+            }
+        if validation_levels:
+            labels = ", ".join(sorted(set(validation_levels)))
+            return {
+                "mode": "REVISION_OBLIGATOIRE",
+                "titre": "Révision de collecte requise",
+                "message": (
+                    f"Une validation définitive ({labels}) a déjà été prononcée. "
+                    "La vérification ne peut plus être réouverte directement ; créez une "
+                    "révision de la fiche de collecte liée."
+                ),
+            }
+        if fuccs_finalized_count:
+            return {
+                "mode": "REPRISE_FUCCS",
+                "titre": "Reprise du contrôle FUCCS nécessaire",
+                "message": (
+                    "Un contrôle FUCCS finalisé est lié à ce dossier. La réouverture remettra "
+                    "ce contrôle au statut Brouillon (les notes et constats sont conservés) ; "
+                    "il devra être revu puis finalisé à nouveau."
+                ),
+            }
+        return {
+            "mode": "REOUVERTURE_SIMPLE",
+            "titre": "Réouvrir la vérification",
+            "message": "Le dossier sera réouvert afin que les éléments de vérification puissent être complétés ou corrigés.",
+        }
+
+    @staticmethod
+    async def reopen_analysis(db, *, dossier_id):
+        x = await VerificationService.get(db, dossier_id)
+        dependencies = await VerificationRepository.reopen_dependencies(
+            db, dossier_id=x.id, fiche_id=x.fiche_collecte_id
+        )
+        policy = VerificationService.reopen_policy(
+            is_closed=x.date_fin is not None,
+            fuccs_finalized_count=len(dependencies["controls"]),
+            validation_levels=dependencies["validation_levels"],
+            bnec_integrated=dependencies["bnec_integre"],
+        )
+        return VerificationReopenAnalysisResponse(
+            **policy,
+            fiche_collecte_id=x.fiche_collecte_id,
+            mission_id=dependencies["mission_id"],
+            entreprise_nom=dependencies["entreprise_nom"],
+            controles_fuccs_finalises=len(dependencies["controls"]),
+            niveaux_validation=dependencies["validation_levels"],
+            bnec_integre=dependencies["bnec_integre"],
+        )
+
+    @staticmethod
     async def response(db, x):
         p,a,c,af = await VerificationRepository.counts(db, x.id)
         return VerificationDossierResponse(
@@ -268,17 +337,59 @@ class VerificationService:
             resultat="SUCCES",utilisateur_id=actor.user.id,ressource_type="dossier_verification",
             ressource_id=x.id,adresse_ip=ip(request),
             valeurs_apres={"avis":x.avis,"statut":x.statut,"date_fin":x.date_fin.isoformat()})
+        company, details = await WorkflowCommunicationService.fiche_context(db, x.fiche_collecte_id)
+        await WorkflowCommunicationService.emit(
+            db, event="VERIFICATION_TERMINEE", resource_type="DOSSIER_VERIFICATION",
+            resource_id=x.id, title=f"Vérification terminée — {company}",
+            context=details, action="Examiner le dossier et réaliser le contrôle FUCCS.",
+            route=f"#/verifications/{x.id}", action_roles={"CONTROLEUR_FUCCS"},
+            information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE"},
+        )
         await db.commit(); await db.refresh(x)
         return await VerificationService.response(db,x)
 
     @staticmethod
     async def reopen(db, *, dossier_id, payload, actor, request):
-        x=await VerificationService.get(db,dossier_id)
-        if x.date_fin is None: raise HTTPException(409,"Dossier déjà ouvert.")
+        # Le verrou empêche deux réouvertures simultanées d'outrepasser la
+        # décision affichée dans le modal.
+        x = await VerificationRepository.get_dossier_for_update(db, dossier_id)
+        if x is None: raise HTTPException(404, "Dossier de vérification introuvable.")
+        dependencies = await VerificationRepository.reopen_dependencies(
+            db, dossier_id=x.id, fiche_id=x.fiche_collecte_id, lock_controls=True
+        )
+        policy = VerificationService.reopen_policy(
+            is_closed=x.date_fin is not None,
+            fuccs_finalized_count=len(dependencies["controls"]),
+            validation_levels=dependencies["validation_levels"],
+            bnec_integrated=dependencies["bnec_integre"],
+        )
+        if policy["mode"] == "DEJA_OUVERT":
+            raise HTTPException(409, policy["message"])
+        if policy["mode"] == "REVISION_OBLIGATOIRE":
+            raise HTTPException(409, policy["message"])
+        if policy["mode"] == "REPRISE_FUCCS" and not payload.confirmer_reprise_fuccs:
+            raise HTTPException(409, "Confirmez la reprise du contrôle FUCCS avant de réouvrir ce dossier.")
+
         x.statut="OUVERT"; x.avis=None; x.date_fin=None
+        for control in dependencies["controls"]:
+            previous_status = control.statut
+            control.statut = "BROUILLON"
+            control.date_fin = None
+            await write_audit_event(
+                db, action="FUCCS_CONTROL_REOPEN_FROM_VERIFICATION", categorie="FUCCS",
+                resultat="SUCCES", utilisateur_id=actor.user.id,
+                ressource_type="controle_fuccs", ressource_id=control.id,
+                adresse_ip=ip(request), contexte={"motif_reouverture_verification": payload.motif.strip()},
+                valeurs_avant={"statut": previous_status},
+                valeurs_apres={"statut": control.statut, "date_fin": None},
+            )
         await write_audit_event(db,action="VERIFICATION_DOSSIER_REOPEN",categorie="VERIFICATION",
             resultat="SUCCES",utilisateur_id=actor.user.id,ressource_type="dossier_verification",
-            ressource_id=x.id,adresse_ip=ip(request),contexte={"motif":payload.motif.strip()})
+            ressource_id=x.id,adresse_ip=ip(request),contexte={
+                "motif":payload.motif.strip(),
+                "reprise_fuccs": policy["mode"] == "REPRISE_FUCCS",
+                "controles_fuccs_rouverts": len(dependencies["controls"]),
+            })
         await db.commit(); await db.refresh(x)
         return await VerificationService.response(db,x)
 

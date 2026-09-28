@@ -256,3 +256,57 @@ dialog.hauqe-dialog-managed .assign-close svg{
   background:#173c33;
   color:#d9e9e2;
 }
+
+/* Retour de validation dans le modal : la saisie reste toujours ouverte. */
+.modal-form-feedback{
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  gap:9px;
+  align-items:start;
+  margin:0 0 14px;
+  padding:11px;
+  border:1px solid #efc5bf;
+  border-radius:12px;
+  background:#fff5f3;
+  color:#7e3229;
+}
+
+.modal-form-feedback[hidden]{display:none!important}
+.modal-form-feedback-icon{
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  background:#fff;
+  color:#b54538;
+  font-weight:800;
+  font-size:16px;
+}
+.modal-form-feedback strong{display:block;font-size:11px;color:#85362d}
+.modal-form-feedback p{margin:2px 0 0;font-size:9px;line-height:1.45;color:#98443a}
+.modal-form-feedback small{display:block;margin-top:4px;font-size:8px;color:#a6594e}
+
+dialog.hauqe-dialog-managed :is(input,select,textarea).modal-field-invalid,
+.hauqe-custom-dialog-managed :is(input,select,textarea).modal-field-invalid{
+  border-color:#c65245!important;
+  box-shadow:0 0 0 3px rgba(198,82,69,.12)!important;
+}
+.modal-field-error{
+  display:block;
+  margin-top:4px;
+  color:#a44035!important;
+  font-size:8px!important;
+  line-height:1.35;
+}
+
+[data-theme=dark] .modal-form-feedback{
+  border-color:#88483f;
+  background:#442722;
+  color:#ffdcd6;
+}
+[data-theme=dark] .modal-form-feedback-icon{background:#573029;color:#ffd7d0}
+[data-theme=dark] .modal-form-feedback strong{color:#ffe0da}
+[data-theme=dark] .modal-form-feedback p{color:#f3c2ba}
+[data-theme=dark] .modal-form-feedback small,
+[data-theme=dark] .modal-field-error{color:#f1afa5!important}

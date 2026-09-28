@@ -36,6 +36,17 @@ PERMISSIONS = [
 
 
 ROLE_MATRIX = {
+    "CELLULE_VEILLE": {
+        "SCORING.LIRE",
+        "CLASSIFICATION.LIRE",
+        "CLASSIFICATION.CALCULER_VALIDER",
+        "INFC.LIRE",
+        "INFC.CALCULER",
+        "INFC.VALIDER",
+        "SNCC.LIRE",
+        "SNCC.CLASSER",
+        "SNCC.RECLASSER",
+    },
     "DIRECTION_TECHNIQUE": {
         "SCORING.LIRE",
         "SCORING.ADMINISTRER_MODELE",

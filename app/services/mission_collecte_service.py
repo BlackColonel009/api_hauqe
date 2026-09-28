@@ -39,6 +39,8 @@ from app.schemas.mission_collecte import (
 )
 from app.services.auth_service import AuthContext
 from app.services.campagne_service import CampagneService
+from app.services.collecte_code_service import CollecteCodeService
+from app.services.workflow_communication_service import WorkflowCommunicationService
 
 
 def client_ip(request: Request) -> str | None:
@@ -173,9 +175,21 @@ class MissionCollecteService:
             "réelle",
         )
 
+        supplied_code = clean_text(payload.code)
+        code = (
+            supplied_code.upper()
+            if supplied_code
+            else await CollecteCodeService.allocate_next(db, "MISSION")
+        )
+        if await MissionCollecteRepository.get_by_code(db, code):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Une mission possède déjà cette référence.",
+            )
+
         item = MissionCollecte(
             campagne_id=campagne_id,
-            code=clean_text(payload.code),
+            code=code,
             objet=clean_text(payload.objet),
             zone_id=payload.zone_id,
             date_debut_prevue=payload.date_debut_prevue,
@@ -284,6 +298,21 @@ class MissionCollecteService:
                 )
 
         changes = payload.model_dump(exclude_unset=True)
+
+        if "code" in changes:
+            proposed_code = clean_text(changes["code"])
+            if proposed_code:
+                proposed_code = proposed_code.upper()
+                owner = await MissionCollecteRepository.get_by_code(
+                    db,
+                    proposed_code,
+                )
+                if owner is not None and owner.id != item.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Une mission possède déjà cette référence.",
+                    )
+                changes["code"] = proposed_code
 
         if "zone_id" in changes and changes["zone_id"] is not None:
             if not await MissionCollecteRepository.zone_exists(
@@ -438,6 +467,13 @@ class MissionCollecteService:
             },
         )
 
+        mission_name, mission_details = await WorkflowCommunicationService.mission_context(db, mission_id)
+        await WorkflowCommunicationService.emit(
+            db, event="MISSION_AFFECTEE", resource_type="AFFECTATION_MISSION",
+            resource_id=item.id, title=f"Nouvelle mission — {mission_name}",
+            context=mission_details, action="Commencer la collecte des entreprises de cette mission.",
+            route=f"#/collectes/nouveau/{mission_id}", action_user_ids={item.utilisateur_id},
+        )
         await db.commit()
         await db.refresh(item)
         return build_assignment(item)
@@ -506,6 +542,14 @@ class MissionCollecteService:
                     "attribue_par_id": str(item.attribue_par_id),
                     "statut": item.statut,
                 },
+            )
+        mission_name, mission_details = await WorkflowCommunicationService.mission_context(db, mission_id)
+        for item in created:
+            await WorkflowCommunicationService.emit(
+                db, event="MISSION_AFFECTEE", resource_type="AFFECTATION_MISSION",
+                resource_id=item.id, title=f"Nouvelle mission — {mission_name}",
+                context=mission_details, action="Commencer la collecte des entreprises de cette mission.",
+                route=f"#/collectes/nouveau/{mission_id}", action_user_ids={item.utilisateur_id},
             )
         await db.commit()
         for item in created:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
@@ -163,6 +164,7 @@ class CollecteWorkspaceService:
             # formulaire Entreprise. L'intégration BNEC le remplacera après N2.
             identifiant_national=provisional_identifier,
             raison_sociale=name,
+            date_creation=date.today(),
             zone_siege_id=payload.zone_siege_id,
             adresse_siege=(
                 payload.adresse_siege

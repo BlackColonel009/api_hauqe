@@ -150,7 +150,7 @@
         <section class="operational-form-section">
           <div class="operational-section-heading"><span><i data-lucide="map"></i></span><div><strong>Informations de la mission</strong><small>Ces données appartiennent à la mission, pas à la campagne.</small></div><b>01</b></div>
           <div class="operational-form-grid">
-            <label class="operational-field"><span>Référence mission <b>*</b></span><input id="newMissionCode" required maxlength="255" placeholder="Ex. HAUQE-MIS-2026-001"></label>
+            <label class="operational-field"><span>Référence mission</span><input id="newMissionCode" maxlength="255" placeholder="Proposition automatique"><small>Proposée automatiquement, puis modifiable si nécessaire.</small></label>
             <label class="operational-field"><span>Zone administrative <b>*</b></span><span class="mission-zone-select"><select id="newMissionZone" required></select><button class="btn btn-outline-secondary app-btn" type="button" id="openMissionQuickZone" data-no-action-loader="true"><i data-lucide="map-pin-plus"></i>Créer</button></span></label>
             <label class="operational-field"><span>Début prévu</span><input id="newMissionStart" type="date"></label>
             <label class="operational-field"><span>Fin prévue</span><input id="newMissionEnd" type="date"></label>
@@ -183,7 +183,7 @@
   <dialog class="hauqe-dialog collecte-quick-dialog" id="missionQuickZoneDialog">
     <form id="missionQuickZoneForm" method="post">
       <header><div><p class="eyebrow">Mission de collecte</p><h2>Créer une zone administrative</h2></div><button class="dialog-close" type="button" data-close-mission-quick-zone aria-label="Fermer"><i data-lucide="x"></i></button></header>
-      <div class="dialog-body" data-dialog-scroll><div class="quick-form-grid"><label><span>Type <b>*</b></span><select id="missionQuickZoneType" required><option>LOCALITE</option><option>COMMUNE</option><option>PREFECTURE</option><option>REGION</option><option>AUTRE</option></select></label><label><span>Code</span><input id="missionQuickZoneCode" maxlength="255"></label><label class="full"><span>Nom <b>*</b></span><input id="missionQuickZoneName" maxlength="255" required></label><label class="full"><span>Zone parente</span><select id="missionQuickZoneParent"><option value="">Aucune</option></select></label></div></div>
+      <div class="dialog-body" data-dialog-scroll><div class="quick-form-grid"><label><span>Type <b>*</b></span><select id="missionQuickZoneType" required><option>LOCALITE</option><option>COMMUNE</option><option>PREFECTURE</option><option>REGION</option><option>AUTRE</option></select></label><label><span>Code de zone</span><input id="missionQuickZoneCode" maxlength="255" placeholder="Proposition automatique"><small>Proposé automatiquement, puis modifiable si nécessaire.</small></label><label class="full"><span>Nom <b>*</b></span><input id="missionQuickZoneName" maxlength="255" required></label><label class="full"><span>Zone parente</span><select id="missionQuickZoneParent"><option value="">Aucune</option></select></label></div></div>
       <footer><button class="btn btn-outline-secondary app-btn" type="button" data-close-mission-quick-zone>Annuler</button><button class="btn btn-primary app-btn" type="submit" data-no-action-loader="true"><i data-lucide="map-pin-plus"></i>Créer et sélectionner</button></footer>
     </form>
   </dialog>

@@ -7,6 +7,8 @@
   let tab = "personal";
   let profile = null;
   let notificationPreferences = null;
+  let adminEmailPolicies = [];
+  let adminEmailBusy = false;
   let securityLock = null;
   let sessions = [];
   let mfaStatus = null;
@@ -78,6 +80,12 @@
     const roles = Array.isArray(item?.roles) ? item.roles : [];
     if (item?.fonction) return item.fonction;
     return roles[0] || "Utilisateur HAUQE";
+  }
+
+  function canManageSystemEmails() {
+    return (profile?.roles || []).some((code) =>
+      ["ADMIN_HAUQE", "ADMIN_BNEC"].includes(String(code).toUpperCase())
+    );
   }
 
 
@@ -728,6 +736,27 @@ function securityLockFieldsChanged() {
             >
           </div>
         </section>
+        ${canManageSystemEmails() ? `
+          <section class="profile-admin-email-settings" aria-labelledby="adminSystemEmailTitle">
+            <header>
+              <h3 id="adminSystemEmailTitle">Courriels du système par agent</h3>
+              <p>Tous les utilisateurs sont inclus par défaut. Décochez un compte pour arrêter ses courriels fonctionnels ; vous pourrez l’ajouter de nouveau ci-dessous.</p>
+            </header>
+            <div class="profile-admin-email-add">
+              <label for="adminEmailUser">Ajouter un utilisateur retiré</label>
+              <div>
+                <select id="adminEmailUser"></select>
+                <button id="adminEmailAdd" type="button" class="btn btn-primary" data-no-action-loader="true">Ajouter à la liste</button>
+              </div>
+            </div>
+            <div class="profile-admin-email-list-head">
+              <strong>Utilisateurs recevant les courriels</strong>
+              <span id="adminEmailCount"></span>
+            </div>
+            <div id="adminEmailList" class="profile-admin-email-list" aria-live="polite"></div>
+            <small class="profile-admin-email-note">Les notifications dans l’application et les courriels de sécurité du compte ne sont pas désactivés.</small>
+          </section>
+        ` : ""}
       </div>
     `;
   }
@@ -844,6 +873,9 @@ function securityLockFieldsChanged() {
       notificationPreferences = await api.apiGet(
         "/api/v1/me/notification-preferences"
       );
+      adminEmailPolicies = canManageSystemEmails()
+        ? await api.apiGet("/api/v1/me/admin/system-email-policies")
+        : [];
     }
 
     if (tab === "sessions") {
@@ -1009,6 +1041,63 @@ function securityLockFieldsChanged() {
       render();
     } catch (error) {
       toast(api.describeApiError(error).message, true);
+    }
+  }
+
+  function renderAdminEmailList() {
+    const list = $("#adminEmailList");
+    const select = $("#adminEmailUser");
+    const count = $("#adminEmailCount");
+    const add = $("#adminEmailAdd");
+    if (!list || !select || !count || !add) return;
+
+    const enabled = adminEmailPolicies.filter((item) => item.courriels_systeme_actifs !== false);
+    const disabled = adminEmailPolicies.filter((item) => item.courriels_systeme_actifs === false);
+    const previous = select.value;
+    select.innerHTML = `<option value="">${disabled.length ? "Sélectionner un utilisateur" : "Tous les utilisateurs sont dans la liste"}</option>`
+      + disabled.map((item) => `<option value="${escapeHtml(item.utilisateur_id)}">${escapeHtml(item.nom)} — ${escapeHtml(item.email)}</option>`).join("");
+    if (disabled.some((item) => item.utilisateur_id === previous)) select.value = previous;
+    select.disabled = adminEmailBusy || !disabled.length;
+    add.disabled = adminEmailBusy || !select.value;
+    count.textContent = `${enabled.length} / ${adminEmailPolicies.length}`;
+    list.innerHTML = enabled.length
+      ? enabled.map((item) => `
+          <label class="profile-admin-email-user">
+            <span class="profile-admin-email-user-copy">
+              <strong>${escapeHtml(item.nom)}</strong>
+              <small>${escapeHtml(item.email)}</small>
+            </span>
+            <span class="profile-admin-email-user-control">
+              <span>Courriel actif</span>
+              <input type="checkbox" data-admin-email-remove="${escapeHtml(item.utilisateur_id)}" checked ${adminEmailBusy ? "disabled" : ""} aria-label="Retirer ${escapeHtml(item.nom)} de la liste des courriels">
+            </span>
+          </label>
+        `).join("")
+      : `<p class="profile-admin-email-empty">Aucun utilisateur ne reçoit actuellement les courriels fonctionnels.</p>`;
+    $$('[data-admin-email-remove]').forEach((input) => {
+      input.addEventListener('change', async () => {
+        if (!input.checked) await saveAdminEmailPolicy(input.dataset.adminEmailRemove, false);
+      });
+    });
+  }
+
+  async function saveAdminEmailPolicy(userId, enabled) {
+    const api = await import("/static/js/core/api.js");
+    if (!userId || adminEmailBusy) return;
+    adminEmailBusy = true;
+    renderAdminEmailList();
+    try {
+      const updated = await api.apiPatch(
+        `/api/v1/me/admin/system-email-policies/${encodeURIComponent(userId)}`,
+        { courriels_systeme_actifs: enabled }
+      );
+      adminEmailPolicies = adminEmailPolicies.map((item) => item.utilisateur_id === userId ? updated : item);
+      toast(enabled ? "Utilisateur ajouté à la liste des courriels" : "Utilisateur retiré de la liste des courriels");
+    } catch (error) {
+      toast(api.describeApiError(error).message, true);
+    } finally {
+      adminEmailBusy = false;
+      renderAdminEmailList();
     }
   }
 
@@ -1322,6 +1411,15 @@ async function uploadAvatar(file) {
   }
 
   function bindCurrentView() {
+    if (tab === "notifications" && canManageSystemEmails()) {
+      renderAdminEmailList();
+      $("#adminEmailUser")?.addEventListener("change", () => {
+        $("#adminEmailAdd").disabled = adminEmailBusy || !$("#adminEmailUser").value;
+      });
+      $("#adminEmailAdd")?.addEventListener("click", () => {
+        saveAdminEmailPolicy($("#adminEmailUser")?.value, true);
+      });
+    }
     if (tab === "security") {
       $("#changePasswordButton")?.addEventListener(
         "click",

@@ -380,7 +380,7 @@
       showState("Identifiant d’intégration absent.", true);
       return;
     }
-    const api = await import("/static/js/core/api.js");
+    const api = await import("/static/js/core/api.js?v=20260927-1");
     apiGet = api.apiGet;
     apiPost = api.apiPost;
     bindEvents();
@@ -393,7 +393,7 @@
       ]);
       hideState();
       renderAll();
-      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260921-1");
+      const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
       await renderDossierParcours({
         target: "#integrationDossierParcours",
         source: "integration",

@@ -23,6 +23,7 @@ from datetime import date, datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
@@ -32,6 +33,7 @@ from app.services.legal_identifiers_policy_service import (
 from app.models.certification import Certification
 from app.models.certification_declaree import CertificationDeclaree
 from app.models.correction import Correction
+from app.models.document import Document
 from app.models.element_integration import ElementIntegration
 from app.models.evenement_certification import EvenementCertification
 from app.models.integration_bnec import IntegrationBnec
@@ -41,6 +43,7 @@ from app.models.offre_entreprise import OffreEntreprise
 from app.models.organisme import Organisme
 from app.models.validation import Validation
 from app.repositories.validation_bnec_repository import ValidationBnecRepository
+from app.repositories.organismes_certifications_repository import CertificationRepository
 from app.rules.integration_deduplication import (
     certification_declaration_key,
     group_identical,
@@ -76,6 +79,7 @@ from app.schemas.validation_bnec import (
 from app.services.auth_service import AuthContext
 from app.services.codification_service import CodificationService
 from app.services.veille_service import WatchService
+from app.services.workflow_communication_service import WorkflowCommunicationService
 
 
 FAVORABLE = {"VALIDE", "VALIDE_SOUS_RESERVE"}
@@ -348,6 +352,15 @@ class ValidationBnecService:
             },
         )
 
+        if level == "NIVEAU_2" and item.decision in FAVORABLE:
+            company, details = await WorkflowCommunicationService.fiche_context(db, fiche_id)
+            await WorkflowCommunicationService.emit(
+                db, event="VALIDATION_N2_TERMINEE", resource_type="VALIDATION",
+                resource_id=item.id, title=f"Validation N2 terminée — {company}",
+                context=details, action="Effectuer l'intégration BNEC du dossier validé.",
+                route="#/integrations", action_roles={"ADMIN_BNEC"},
+                information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE"},
+            )
         await db.commit()
         await db.refresh(item)
         return validation_response(item)
@@ -688,10 +701,14 @@ class ValidationBnecService:
         zone, region = await ValidationBnecService._region_for_enterprise(
             db, entreprise
         )
+        categories = await ValidationBnecRepository.list_enterprise_offer_categories(
+            db, entreprise.id
+        )
+        distinct_categories = list(dict.fromkeys(
+            category.strip().upper() for category in categories if category.strip()
+        ))
         return {
-            "REGION": (
-                (region.code or region.nom) if region else ""
-            ),
+            "REGION": (region.nom or "") if region else "",
             "ZONE": ((zone.code or zone.nom) if zone else ""),
             "ENTREPRISE": (
                 entreprise.raison_sociale
@@ -699,7 +716,7 @@ class ValidationBnecService:
                 or "ENTREPRISE"
             ),
             "ENTREPRISE_ID": str(entreprise.id),
-            "SECTEUR": entreprise.activite_principale or "",
+            "SECTEUR": "ET".join(distinct_categories),
         }
 
     @staticmethod
@@ -1039,7 +1056,13 @@ class ValidationBnecService:
                     organisme_id=organisme.id,
                     norme_id=norme.id,
                     scope=declared.portee,
+                    number=declared.numero,
                 )
+            if target is not None and organisme is not None and norme is not None:
+                if target.organisme_id != organisme.id or target.norme_id != norme.id:
+                    blockers.append(
+                        "numéro de certificat déjà utilisé pour une autre norme ou un autre organisme : rapprochement manuel requis"
+                    )
 
             if (
                 target is None
@@ -1739,13 +1762,31 @@ class ValidationBnecService:
     @staticmethod
     def _certification_status(source: CertificationDeclaree) -> str:
         today = date.today()
-        if source.copie_disponible is not True or source.date_expiration is None:
-            return "A_VERIFIER"
-        if source.date_expiration < today:
+        if source.date_expiration is not None and source.date_expiration < today:
             return "EXPIREE"
-        if (source.situation_declaree or "").upper() == "ABSENTE":
-            return "A_VERIFIER"
-        return "ACTIVE"
+        # Une copie déclarée (ou son absence) ne prouve pas l'authenticité.
+        # Seule la vérification explicite peut ensuite rendre le certificat actif.
+        return "A_VERIFIER"
+
+    @staticmethod
+    def _same_certification_claim(
+        target: Certification,
+        source: CertificationDeclaree,
+        *,
+        organisme_id: UUID,
+        norme_id: UUID,
+    ) -> bool:
+        def normalized(value: str | None) -> str:
+            return (clean_text(value) or "").casefold()
+
+        return (
+            target.organisme_id == organisme_id
+            and target.norme_id == norme_id
+            and normalized(target.numero_certificat) == normalized(source.numero)
+            and normalized(target.portee) == normalized(source.portee)
+            and target.date_obtention == source.date_obtention
+            and target.date_expiration == source.date_expiration
+        )
 
     @staticmethod
     async def _execute_enterprise(
@@ -1917,9 +1958,32 @@ class ValidationBnecService:
                 organisme_id=organisme.id,
                 norme_id=norme.id,
                 scope=source.portee,
+                number=source.numero,
             )
 
         previous_status = target.statut if target else None
+        if target is not None and (
+            target.organisme_id != organisme.id or target.norme_id != norme.id
+        ):
+            raise ValueError(
+                "Numéro de certificat déjà utilisé pour une autre norme ou un autre organisme ; corriger le rapprochement avant intégration."
+            )
+        same_claim = bool(target and ValidationBnecService._same_certification_claim(
+            target, source, organisme_id=organisme.id, norme_id=norme.id,
+        ))
+        preserve_verification = bool(
+            same_claim
+            and (source.situation_declaree or "").upper() not in {
+                "ABSENTE", "SUSPENDUE", "RETIREE",
+            }
+            and target.authenticite_verifiee is True
+            and await CertificationRepository.has_active_document(db, target.id)
+        )
+        preserve_special_status = bool(
+            same_claim and (target.statut or "").upper() in {
+                "SUSPENDU", "SUSPENDUE", "RETIRE", "RETIREE",
+            }
+        )
         created = target is None
         if created:
             context = await ValidationBnecService._certification_code_context(
@@ -1960,19 +2024,29 @@ class ValidationBnecService:
         target.date_obtention = source.date_obtention
         target.date_effet = source.date_obtention
         target.date_expiration = source.date_expiration
-        target.statut = ValidationBnecService._certification_status(source)
-        target.motif_statut = (
-            f"Situation déclarée validée : {source.situation_declaree}"
-            if source.situation_declaree
-            else "Intégration d'une collecte validée N2"
-        )
-        target.authenticite_verifiee = source.copie_disponible is True
+        calculated_status = ValidationBnecService._certification_status(source)
+        if preserve_special_status:
+            target.statut = previous_status
+        elif preserve_verification and calculated_status != "EXPIREE":
+            target.statut = "ACTIVE"
+        else:
+            target.statut = calculated_status
+        if not (preserve_verification or preserve_special_status):
+            target.motif_statut = (
+                f"Situation déclarée validée : {source.situation_declaree}"
+                if source.situation_declaree
+                else "Intégration d'une collecte validée N2"
+            )
+        # Une nouvelle copie n'authentifie pas le certificat ; une vérification
+        # antérieure n'est conservée que si les données et la preuve sont stables.
+        target.authenticite_verifiee = preserve_verification
         target.source_donnee = "COLLECTE_VALIDEE"
         # Toutes les déclarations strictement identiques de la même fiche sont
         # reliées à l'unique certification officielle. Le plan ne crée ainsi
         # qu'une ressource BNEC tout en conservant la traçabilité des lignes
         # déclaratives d'origine.
         declaration_key = certification_declaration_key(source)
+        linked_declarations = []
         for declaration in await ValidationBnecRepository.list_declared_certifications(
             db, fiche.id
         ):
@@ -1982,6 +2056,71 @@ class ValidationBnecService:
             declaration.score_rapprochement = 100
             declaration.statut_rapprochement = (
                 "INTEGRE_BNEC" if created else "RAPPROCHE_AUTO"
+            )
+            linked_declarations.append(declaration)
+
+        # Les preuves déposées sur chaque ligne de certification pendant la
+        # collecte deviennent les documents de la certification BNEC. Les
+        # justificatifs généraux de la fiche restent, eux, sur la fiche.
+        proof_documents = (
+            await ValidationBnecRepository
+            .list_active_documents_for_declared_certifications(
+                db, [declaration.id for declaration in linked_declarations]
+            )
+        )
+        if proof_documents:
+            documents_before = [
+                {
+                    "document_id": str(document.id),
+                    "ressource_type": document.ressource_type,
+                    "ressource_id": str(document.ressource_id),
+                }
+                for document in proof_documents
+            ]
+            existing_proofs = list((await db.execute(
+                select(Document).where(
+                    Document.ressource_type == "CERTIFICATION",
+                    Document.ressource_id == target.id,
+                    or_(Document.statut.is_(None), Document.statut == "ACTIF"),
+                )
+            )).scalars().all())
+            known_checksums = {
+                document.checksum for document in existing_proofs
+                if document.checksum
+            }
+            transferred_count = 0
+            duplicate_count = 0
+            for document in proof_documents:
+                if document.checksum and document.checksum in known_checksums:
+                    document.statut = "INACTIF"
+                    document.source = "BNEC_PREUVE_DEJA_RATTACHEE"
+                    duplicate_count += 1
+                    continue
+                document.ressource_type = "CERTIFICATION"
+                document.ressource_id = target.id
+                document.source = "COLLECTE_CERTIFICATION_INTEGREE"
+                transferred_count += 1
+                if document.checksum:
+                    known_checksums.add(document.checksum)
+            await write_audit_event(
+                db,
+                action="BNEC_CERTIFICATION_PROOFS_TRANSFER",
+                categorie="DOCUMENTAIRE",
+                resultat="SUCCES",
+                utilisateur_id=actor.user.id,
+                ressource_type="certification",
+                ressource_id=target.id,
+                valeurs_avant={"preuves": documents_before},
+                valeurs_apres={
+                    "preuves_rattachees": transferred_count,
+                    "doublons_documentaires_ignores": duplicate_count,
+                    "ressource_type": "CERTIFICATION",
+                    "identifiant_certification": target.identifiant_national,
+                },
+                contexte={
+                    "fiche_collecte_id": str(fiche.id),
+                    "source": "COLLECTE_CERTIFICATION_DECLAREE",
+                },
             )
         element.ressource_cible_id = target.id
         db.add(
@@ -2289,6 +2428,15 @@ class ValidationBnecService:
                     if item.code_genere
                 ],
             },
+        )
+        company, details = await WorkflowCommunicationService.fiche_context(db, fiche.id)
+        await WorkflowCommunicationService.emit(
+            db, event="BNEC_INTEGREE", resource_type="INTEGRATION_BNEC",
+            resource_id=integration.id, title=f"Intégration BNEC effectuée — {company}",
+            context=details,
+            action="Suivre les certifications et lancer le Scoring, l'INFC et le SNCC selon les règles publiées.",
+            route="#/scoring", action_roles={"CELLULE_VEILLE"},
+            information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE", "ADMIN_BNEC"},
         )
         await db.commit()
         await db.refresh(integration)

@@ -9,23 +9,79 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.models.entreprise import Entreprise
+from app.models.fiche_collecte import FicheCollecte
 from app.permissions.auth import require_permission
+from app.repositories.document_repository import DocumentRepository
 from app.schemas.document import (
     DocumentListResponse,
     DocumentResponse,
     DocumentStatusRequest,
     DocumentVerificationRequest,
+    EntrepriseDocumentItem,
+    EntrepriseDocumentListResponse,
 )
 from app.services.auth_service import AuthContext
 from app.services.document_service import DocumentService, build_response
 
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
+
+
+@router.get("/entreprise/{entreprise_id}/linked", response_model=EntrepriseDocumentListResponse)
+async def list_entreprise_documents(
+    entreprise_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _documents_access: AuthContext = Depends(require_permission("DOCUMENTS.LIRE")),
+    _entreprise_access: AuthContext = Depends(require_permission("ENTREPRISES.LIRE")),
+):
+    exists = await db.scalar(select(Entreprise.id).where(Entreprise.id == entreprise_id))
+    if exists is None:
+        raise HTTPException(status_code=404, detail="Entreprise introuvable.")
+    rows = await DocumentRepository.list_for_entreprise(db, entreprise_id)
+    items = []
+    for row in rows:
+        context = None
+        if row.declared_name or row.declared_number:
+            context = " — ".join(filter(None, [
+                row.declared_name or "Certification déclarée",
+                f"n° {row.declared_number}" if row.declared_number else None,
+            ]))
+        elif row.certification_code or row.certification_number:
+            context = " — ".join(filter(None, [
+                "Certification intégrée",
+                row.certification_number or row.certification_code,
+            ]))
+        items.append(EntrepriseDocumentItem(
+            document=build_response(row.Document).model_copy(
+                update={"contexte_documentaire": context}
+            ),
+            fiche_collecte_id=row.fiche_collecte_id,
+            numero_revision=row.numero_revision,
+        ))
+    return EntrepriseDocumentListResponse(total=len(items), items=items)
+
+
+@router.get("/fiche/{fiche_id}/linked", response_model=DocumentListResponse)
+async def list_fiche_documents(
+    fiche_id: UUID,
+    limit: int = Query(default=200, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _actor: AuthContext = Depends(require_permission("DOCUMENTS.LIRE")),
+):
+    exists = await db.scalar(select(FicheCollecte.id).where(FicheCollecte.id == fiche_id))
+    if exists is None:
+        raise HTTPException(status_code=404, detail="Fiche de collecte introuvable.")
+    return await DocumentService.list_for_fiche(
+        db, fiche_id=fiche_id, limit=limit, offset=offset
+    )
 
 
 @router.get("", response_model=DocumentListResponse)

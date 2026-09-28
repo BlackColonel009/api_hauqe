@@ -300,25 +300,24 @@
   }
 
   function renderDocuments() {
-    const content = documents.length
-      ? documents.map((item) => `
-          <button
-            class="cert-doc-row"
-            type="button"
-            data-document-id="${escapeHtml(item.id)}"
-          >
-            <span>${icon("file-text")}</span>
-            <div>
-              <strong>${escapeHtml(item.nom_original || item.type_document || "Document")}</strong>
-              <small>
-                ${escapeHtml(item.type_document || "Document")}
-                · ${escapeHtml(item.statut_verification || "Non vérifié")}
-              </small>
-            </div>
-            <span class="more-button">${icon("download")}</span>
-          </button>
-        `).join("")
-      : `<div class="priority-empty">Aucun document rattaché à cet organisme.</div>`;
+    const owned = documents.filter((item) => !item.certification_id);
+    const certificateProofs = documents.filter((item) => item.certification_id);
+    const documentedCertifications = new Set(certificateProofs.map((item) => String(item.certification_id)));
+    const missing = certifications.filter((item) => !documentedCertifications.has(String(item.id)));
+    const documentRow = (entry) => {
+      const item = entry.document;
+      return `
+        <div class="cert-doc-row organisme-document-row">
+          <span>${icon("file-text")}</span>
+          <div>
+            <strong>${escapeHtml(item.nom_original || item.type_document || "Document")}</strong>
+            <small>${escapeHtml(item.type_document || "Document")} · ${escapeHtml(item.statut_verification || "Non vérifié")}</small>
+            ${entry.certification_id ? `<small>${escapeHtml(entry.entreprise_name || "Entreprise")} · ${escapeHtml(entry.certification_code || "Certification")}</small>` : ""}
+          </div>
+          ${entry.certification_id ? `<a class="btn btn-outline-secondary app-btn" href="#/certifications/${escapeHtml(entry.certification_id)}">Voir le certificat</a>` : ""}
+          <button class="btn btn-outline-secondary app-btn" type="button" data-document-id="${escapeHtml(item.id)}" aria-label="Télécharger ${escapeHtml(item.nom_original || "le document")}">${icon("download")}</button>
+        </div>`;
+    };
 
     $("#bodyTabContent").innerHTML = `
       <article class="panel mt-3">
@@ -328,7 +327,16 @@
             <p>Preuves et pièces enregistrées</p>
           </div>
         </div>
-        <div class="cert-doc-list">${content}</div>
+        <div class="organisme-document-group">
+          <h3>Pièces propres à l’organisme</h3>
+          <div class="cert-doc-list">${owned.length ? owned.map(documentRow).join("") : '<div class="priority-empty">Aucune pièce propre à l’organisme.</div>'}</div>
+        </div>
+        <div class="organisme-document-group">
+          <h3>Preuves des certifications délivrées</h3>
+          <p>Ces fichiers restent liés à chaque certification : ils ne sont ni copiés ni déplacés.</p>
+          <div class="cert-doc-list">${certificateProofs.length ? certificateProofs.map(documentRow).join("") : '<div class="priority-empty">Aucune preuve de certification liée pour le moment.</div>'}</div>
+          ${missing.length ? `<div class="organisme-document-missing"><strong>${missing.length} certification(s) sans preuve liée</strong>${missing.map((item) => `<a href="#/certifications/${escapeHtml(item.id)}">${escapeHtml(item.identifiant_national || item.numero_certificat || "Voir la certification")}</a>`).join("")}</div>` : ""}
+        </div>
       </article>
     `;
 
@@ -373,35 +381,46 @@
   }
 
   async function verifyCurrent(event) {
-    const status = window.prompt(
-      "Nouveau statut de l’organisme :",
-      organisme.statut || "A_VERIFIER"
-    );
+    event.preventDefault();
+    if (!organisme || !apiPost) {
+      showState("Le dossier est encore en cours de chargement.");
+      return;
+    }
+    const dialog = $("#organismeVerificationDialog");
+    $("#organismeVerificationStatus").value = organisme?.statut === "RECONNU" ? "RECONNU" : "A_VERIFIER";
+    $("#organismeVerificationReason").value = "";
+    $("#organismeVerificationError").hidden = true;
+    dialog.showModal();
+  }
 
-    if (!status?.trim()) return;
-
-    const motif = window.prompt(
-      "Motif / référence de la vérification :"
-    );
-
-    if (!motif?.trim()) return;
+  async function saveVerification(event) {
+    event.preventDefault();
+    const status = $("#organismeVerificationStatus").value;
+    const motif = $("#organismeVerificationReason").value.trim();
+    const errorNode = $("#organismeVerificationError");
+    if (motif.length < 3) {
+      errorNode.textContent = "Précisez le motif du contrôle (au moins trois caractères).";
+      errorNode.hidden = false;
+      return;
+    }
 
     const task = async () => {
       organisme = await apiPost(
         `/api/v1/organismes/${organisme.id}/verification`,
         {
-          statut: status.trim(),
-          motif: motif.trim(),
+          statut: status,
+          motif,
         }
       );
       renderHeader();
       showTab("overview");
+      $("#organismeVerificationDialog").close();
     };
 
     try {
       if (window.HAUQE_ACTION_LOADER) {
         await window.HAUQE_ACTION_LOADER.run(task, {
-          button: event.currentTarget,
+          button: $("#organismeVerificationSave"),
           title: "Vérification de l’organisme",
           message: "Enregistrement de la décision",
           detail: "La date de vérification et l’audit seront mis à jour.",
@@ -410,7 +429,8 @@
         await task();
       }
     } catch (error) {
-      showState(error?.message || "Vérification impossible.", { error: true });
+      errorNode.textContent = error?.message || "Vérification impossible.";
+      errorNode.hidden = false;
     }
   }
 
@@ -419,6 +439,14 @@
       showState("Identifiant organisme absent.", { error: true });
       return;
     }
+
+    document.querySelectorAll(".detail-tabs button").forEach((button) => {
+      button.addEventListener("click", () => showTab(button.dataset.tab));
+    });
+    $("#bodyVerify").addEventListener("click", verifyCurrent);
+    $("#organismeVerificationForm").addEventListener("submit", saveVerification);
+    $("#organismeVerificationClose").addEventListener("click", () => $("#organismeVerificationDialog").close());
+    $("#organismeVerificationCancel").addEventListener("click", () => $("#organismeVerificationDialog").close());
 
     const api = await import("/static/js/core/api.js");
     apiGet = api.apiGet;
@@ -430,7 +458,7 @@
         apiGet(`/api/v1/organismes/${organismeId}`),
         apiGet(`/api/v1/organismes/${organismeId}/accreditations`),
         apiGet(`/api/v1/certifications?organisme_id=${encodeURIComponent(organismeId)}&limit=200&offset=0`),
-        apiGet(`/api/v1/documents?ressource_type=ORGANISME&ressource_id=${encodeURIComponent(organismeId)}&limit=100&offset=0`),
+        apiGet(`/api/v1/organismes/${encodeURIComponent(organismeId)}/documents`),
       ]);
 
       organisme = org;
@@ -458,12 +486,6 @@
       showState(error?.message || "Erreur de chargement.", { error: true });
       return;
     }
-
-    document.querySelectorAll(".detail-tabs button").forEach((button) => {
-      button.addEventListener("click", () => showTab(button.dataset.tab));
-    });
-
-    $("#bodyVerify").addEventListener("click", verifyCurrent);
 
     refreshIcons();
   }

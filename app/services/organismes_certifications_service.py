@@ -609,8 +609,7 @@ class OrganismeService:
                 if item.date_derniere_verification else None
             ),
         }
-        if payload.statut is not None:
-            item.statut = payload.statut.strip()
+        item.statut = payload.statut
         item.date_derniere_verification = date.today()
 
         await write_audit_event(
@@ -1122,6 +1121,12 @@ class CertificationService:
         item.authenticite_verifiee = payload.authenticite_verifiee
         if payload.nouveau_statut is not None:
             item.statut = payload.nouveau_statut.strip()
+            item.motif_statut = payload.motif.strip()
+        elif (old_status or "").upper() in {"A_VERIFIER", "ACTIVE", "EXPIREE"}:
+            if item.date_expiration and item.date_expiration < date.today():
+                item.statut = "EXPIREE"
+            else:
+                item.statut = "ACTIVE" if payload.authenticite_verifiee else "A_VERIFIER"
             item.motif_statut = payload.motif.strip()
 
         await CertificationEventService.record(

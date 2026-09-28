@@ -4,7 +4,7 @@
       <p class="eyebrow">Centre opérationnel</p>
       <h1>Alertes & notifications</h1>
       <p>
-        Traitez les alertes réelles, affectez un responsable et suivez les notifications du compte connecté.
+        Retrouvez vos alertes et notifications personnelles. Le registre général reste réservé aux rôles habilités.
       </p>
     </div>
 
@@ -23,13 +23,17 @@
   <section class="alert-stats" id="alertKpis"></section>
 
   <div class="detail-tabs alert-center-tabs">
-    <button class="active" data-alert-tab="alerts" type="button">Alertes</button>
+    <button class="active" data-alert-tab="alerts" type="button">Mes alertes</button>
     <button data-alert-tab="notifications" type="button">
       Mes notifications <b id="notificationUnreadBadge">0</b>
     </button>
   </div>
 
   <section id="alertsTab">
+    <div class="alert-scope-switch" aria-label="Périmètre des alertes">
+      <button class="active" id="myAlertsScope" type="button">Mes alertes</button>
+      <button id="allAlertsScope" type="button" hidden>Registre général</button>
+    </div>
     <section class="alert-toolbar panel">
       <label class="alert-search">
         <i data-lucide="search"></i>
@@ -67,7 +71,7 @@
         <div class="alerts-list-head">
           <div>
             <strong id="alertCount">0 alerte</strong>
-            <small>File réelle de traitement</small>
+            <small id="alertScopeCaption">Alertes destinées à votre compte</small>
           </div>
         </div>
 

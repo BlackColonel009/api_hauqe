@@ -324,7 +324,16 @@
   function renderDocuments() {
     if (state.restricted.has("documents")) return restrictedBox("Votre rôle ne possède pas DOCUMENTS.LIRE.");
 
-    return `<article class="panel detail-section-panel mt-3"><div class="panel-heading"><div><h2>Documents du dossier</h2><p>Documents liés directement à l’entreprise</p></div>${hasPermission("DOCUMENTS.DEPOSER") ? `<button class="btn btn-primary app-btn" id="addCompanyDocument" type="button">${icon("upload")}Ajouter un document</button>` : ""}</div><div class="document-list">${state.documents.length ? state.documents.map((item) => `<div class="document-row"><span class="document-icon">${icon("file-text")}</span><div><strong>${escapeHtml(item.nom_original || item.nom_stockage || "Document")}</strong><small>${escapeHtml([item.type_document, item.format, documentSize(item.taille_octets)].filter(Boolean).join(" · "))}</small></div><div class="document-meta"><strong>${escapeHtml(formatDate(item.date_document || item.date_depot))}</strong><small>${escapeHtml(item.statut_verification || item.statut || "")}</small></div>${hasPermission("DOCUMENTS.TELECHARGER") ? `<button class="more-button" type="button" data-download-document="${escapeHtml(item.id)}" data-filename="${escapeHtml(item.nom_original || item.nom_stockage || "document")}">${icon("download")}</button>` : ""}</div>`).join("") : emptyBox("Aucun document", "Aucun document n’est directement rattaché à cette entreprise.", "files")}</div></article>`;
+    const rows = state.documents.map((entry) => {
+      const item = entry.document;
+      const origin = item.contexte_documentaire
+        ? [entry.fiche_collecte_id ? `Collecte · révision ${entry.numero_revision ?? "—"}` : null, item.contexte_documentaire].filter(Boolean).join(" · ")
+        : entry.fiche_collecte_id
+          ? `Collecte · révision ${entry.numero_revision ?? "—"}`
+          : "Document de l’entreprise";
+      return `<div class="document-row"><span class="document-icon">${icon("file-text")}</span><div><strong>${escapeHtml(item.nom_original || item.nom_stockage || "Document")}</strong><small>${escapeHtml([origin, item.type_document, item.format, documentSize(item.taille_octets)].filter(Boolean).join(" · "))}</small></div><div class="document-meta"><strong>${escapeHtml(formatDate(item.date_document || item.date_depot))}</strong><small>${escapeHtml(item.statut_verification || item.statut || "")}</small></div>${hasPermission("DOCUMENTS.TELECHARGER") ? `<button class="more-button" type="button" data-download-document="${escapeHtml(item.id)}" data-filename="${escapeHtml(item.nom_original || item.nom_stockage || "document")}">${icon("download")}</button>` : ""}</div>`;
+    });
+    return `<article class="panel detail-section-panel mt-3"><div class="panel-heading"><div><h2>Documents du dossier</h2><p>Pièces de l’entreprise et justificatifs de ses collectes, sans déplacer les fichiers.</p></div>${hasPermission("DOCUMENTS.DEPOSER") ? `<button class="btn btn-primary app-btn" id="addCompanyDocument" type="button">${icon("upload")}Ajouter un document</button>` : ""}</div><div class="document-list">${rows.length ? rows.join("") : emptyBox("Aucun document", "Aucune pièce directement liée à l’entreprise ou à ses collectes.", "files")}</div></article>`;
   }
 
   function auditLabel(item) {
@@ -530,7 +539,7 @@
 
     const task = async () => {
       await apiRequest("/api/v1/documents/upload", { method: "POST", body: form });
-      const docs = await apiGet(`/api/v1/documents?ressource_type=ENTREPRISE&ressource_id=${state.id}&limit=100`);
+      const docs = await apiGet(`/api/v1/documents/entreprise/${state.id}/linked`);
       state.documents = docs.items || [];
       renderKpis();
       renderTab("documents");
@@ -594,7 +603,7 @@
         apiGet(`/api/v1/certifications?entreprise_id=${state.id}&limit=200`),
         apiGet(`/api/v1/entreprises/${state.id}/classifications/latest`),
         apiGet(`/api/v1/entreprises/${state.id}/controls-summary`),
-        apiGet(`/api/v1/documents?ressource_type=ENTREPRISE&ressource_id=${state.id}&limit=100`),
+        apiGet(`/api/v1/documents/entreprise/${state.id}/linked`),
         apiGet(`/api/v1/audit/events?ressource_type=entreprise&ressource_id=${state.id}&limit=100`),
       ]);
 

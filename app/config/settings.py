@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     mfa_fernet_key: str | None = None
     password_reset_url_template: str | None = None
+    # Durée volontairement courte : un lien de réinitialisation ne doit pas
+    # rester exploitable au-delà de la fenêtre annoncée dans le courriel.
+    password_reset_expire_minutes: int = Field(default=3, ge=1, le=60)
 
     timezone: str = "Africa/Lome"
 

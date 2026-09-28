@@ -177,14 +177,16 @@
   </dialog>
 
   <dialog
-    class="hauqe-dialog"
+    class="hauqe-dialog validation-correction-dialog"
     id="correctionDialog"
   >
     <form method="dialog" id="correctionForm">
-      <header>
-        <div>
+      <header class="validation-action-header">
+        <span class="validation-action-icon"><i data-lucide="file-pen-line"></i></span>
+        <div class="validation-action-title">
           <p class="eyebrow">Correction</p>
           <h2>Demander une correction</h2>
+          <small>Précisez les éléments à reprendre et le résultat attendu.</small>
         </div>
 
         <button
@@ -197,21 +199,18 @@
         </button>
       </header>
 
-      <div class="dialog-body">
-        <label>
-          <span>Motif <b>*</b></span>
-          <textarea id="correctionReason" rows="3" required></textarea>
-        </label>
-
-        <label>
-          <span>Instructions <b>*</b></span>
-          <textarea id="correctionInstructions" rows="4" required></textarea>
-        </label>
-
-        <label>
-          <span>Date d’échéance</span>
-          <input id="correctionDueDate" type="date">
-        </label>
+      <div class="dialog-body validation-action-body">
+        <section class="validation-action-context" aria-label="Dossier concerné">
+          <i data-lucide="folder-check"></i>
+          <div><strong id="correctionDossierName">Dossier de validation</strong><small>La demande sera rattachée à cette validation et historisée.</small></div>
+        </section>
+        <section class="validation-action-fields" aria-label="Informations à renseigner">
+          <div class="validation-action-section-title"><i data-lucide="list-checks"></i><div><strong>Informations à renseigner</strong><small>Les champs marqués * sont obligatoires.</small></div></div>
+          <label for="correctionReason"><span>Motif <b>*</b></span><textarea id="correctionReason" rows="3" required placeholder="Ex. : justificatif manquant ou information incohérente"></textarea><small>Expliquez pourquoi une reprise est nécessaire.</small></label>
+          <label for="correctionInstructions"><span>Instructions <b>*</b></span><textarea id="correctionInstructions" rows="4" required placeholder="Indiquez précisément les corrections et pièces attendues"></textarea><small>Le destinataire doit savoir quoi corriger.</small></label>
+          <label for="correctionDueDate"><span>Date d’échéance <em>facultative</em></span><input id="correctionDueDate" type="date"><small>Laissez vide si aucune date n’est imposée.</small></label>
+          <p class="validation-action-error" id="correctionFormError" role="alert" hidden></p>
+        </section>
       </div>
 
       <footer>

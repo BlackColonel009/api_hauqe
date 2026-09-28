@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.certification_declaree import CertificationDeclaree
+from app.models.accreditation import Accreditation
 from app.models.entreprise import Entreprise
 from app.models.evenement_collecte import EvenementCollecte
 from app.models.fiche_collecte import FicheCollecte
@@ -56,6 +57,40 @@ class FicheCollecteRepository:
                 )
             )
             .order_by(Organisme.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def find_accreditation_by_identity(
+        db: AsyncSession,
+        *,
+        organisme_id: UUID,
+        accrediteur: str,
+        numero: str | None,
+    ) -> Accreditation | None:
+        """Évite de dupliquer l'accréditation saisie depuis le terrain."""
+        filters = [
+            Accreditation.organisme_id == organisme_id,
+            func.lower(func.trim(Accreditation.accrediteur))
+            == accrediteur.strip().lower(),
+        ]
+        if numero:
+            filters.append(
+                func.lower(func.trim(Accreditation.numero))
+                == numero.strip().lower()
+            )
+        else:
+            filters.append(
+                or_(
+                    Accreditation.numero.is_(None),
+                    func.trim(Accreditation.numero) == "",
+                )
+            )
+        result = await db.execute(
+            select(Accreditation)
+            .where(and_(*filters))
+            .order_by(Accreditation.updated_at.desc())
             .limit(1)
         )
         return result.scalar_one_or_none()

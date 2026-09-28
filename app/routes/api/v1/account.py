@@ -29,6 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.permissions.auth import get_current_auth
 from app.schemas.account import (
+    AdminSystemEmailPolicyResponse,
+    AdminSystemEmailPolicyUpdateRequest,
     ChangePasswordRequest,
     MfaDisableRequest,
     MfaEnableResponse,
@@ -291,6 +293,33 @@ async def verify_login_mfa(
 # ============================================================
 # PRÉFÉRENCES DE NOTIFICATION
 # ============================================================
+
+@account_router.get(
+    "/admin/system-email-policies",
+    response_model=list[AdminSystemEmailPolicyResponse],
+)
+async def admin_system_email_policies(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(get_current_auth),
+):
+    return await AccountService.admin_system_email_policies(db, actor)
+
+
+@account_router.patch(
+    "/admin/system-email-policies/{user_id}",
+    response_model=AdminSystemEmailPolicyResponse,
+)
+async def update_admin_system_email_policy(
+    user_id: UUID,
+    payload: AdminSystemEmailPolicyUpdateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(get_current_auth),
+):
+    return await AccountService.update_admin_system_email_policy(
+        db, actor=actor, user_id=user_id,
+        enabled=payload.courriels_systeme_actifs, request=request,
+    )
 
 @account_router.get(
     "/notification-preferences",

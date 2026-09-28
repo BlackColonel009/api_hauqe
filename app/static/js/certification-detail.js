@@ -85,7 +85,7 @@
     state.innerHTML = `
       ${icon(error ? "triangle-alert" : "info")}
       <div>
-        <strong>${error ? "Impossible de charger le dossier" : "Information"}</strong>
+        <strong>${error ? "Opération impossible" : "Information"}</strong>
         <span>${escapeHtml(message)}</span>
       </div>
     `;
@@ -875,12 +875,59 @@
         <div class="panel-heading">
           <div>
             <h2>Documents</h2>
-            <p>Justificatifs et preuves documentaires</p>
+            <p>Justificatifs et preuves documentaires. La présence d’un fichier ne confirme pas à elle seule son authenticité.</p>
           </div>
+        </div>
+        <div class="cert-proof-upload">
+          <label for="certProofFile">1. Choisir une preuve propre à ce certificat</label>
+          <input id="certProofFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" aria-describedby="certProofSelection" />
+          <span id="certProofSelection" class="cert-proof-selection" aria-live="polite">Aucun fichier sélectionné.</span>
+          <button class="btn btn-primary app-btn" id="certProofUpload" type="button">2. Déposer la preuve</button>
+          <span id="certProofFeedback" class="cert-proof-feedback" role="alert" hidden></span>
+          <small>Les pièces jointes seulement à la fiche de collecte doivent être déposées ici pour lever le manque documentaire de ce certificat.</small>
         </div>
         <div class="cert-doc-list">${content}</div>
       </article>
     `;
+
+    const proofInput = $("#certProofFile");
+    const proofSelection = $("#certProofSelection");
+    const proofFeedback = $("#certProofFeedback");
+    proofInput.addEventListener("change", () => {
+      proofSelection.textContent = proofInput.files?.[0]?.name || "Aucun fichier sélectionné.";
+      proofFeedback.hidden = true;
+    });
+    $("#certProofUpload").addEventListener("click", async (event) => {
+      const file = proofInput.files?.[0];
+      if (!file) {
+        proofFeedback.textContent = "Choisissez d’abord un fichier ; la fenêtre de sélection va s’ouvrir.";
+        proofFeedback.hidden = false;
+        proofInput.click();
+        return;
+      }
+      const task = async () => {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("type_document", "PREUVE_CERTIFICATION");
+        form.set("ressource_type", "CERTIFICATION");
+        form.set("ressource_id", certificationId);
+        form.set("confidentialite", "INTERNE");
+        form.set("source", "INTERFACE_CERTIFICATION");
+        await apiRequest("/api/v1/documents/upload", { method: "POST", body: form });
+        const response = await apiGet(`/api/v1/documents?ressource_type=CERTIFICATION&ressource_id=${encodeURIComponent(certificationId)}&limit=200&offset=0`);
+        documents = Array.isArray(response?.items) ? response.items : [];
+        statusAnalysis = await apiGet(`/api/v1/certifications/${certificationId}/status-analysis`).catch(() => statusAnalysis);
+        showTab("documents");
+        showState("Preuve déposée. L’authenticité reste à vérifier explicitement.");
+      };
+      try {
+        if (window.HAUQE_ACTION_LOADER) await window.HAUQE_ACTION_LOADER.run(task, { button: event.currentTarget, title: "Preuve de certification", message: "Dépôt de la pièce", detail: "Rattachement au certificat sélectionné." });
+        else await task();
+      } catch (error) {
+        proofFeedback.textContent = error?.message || "Dépôt impossible.";
+        proofFeedback.hidden = false;
+      }
+    });
 
     document
       .querySelectorAll("[data-document-id]")

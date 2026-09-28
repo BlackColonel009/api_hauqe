@@ -13,6 +13,8 @@
 let installed = false;
 let lastFocusedElement = null;
 let observer = null;
+let lastModalForm = null;
+const pendingInvalidForms = new Map();
 
 const DIALOG_CLOSE_SELECTOR = [
   "[data-dialog-close]",
@@ -64,6 +66,254 @@ function allOpenDialogs() {
 function allOpenCustomDialogs() {
   return [...document.querySelectorAll(CUSTOM_DIALOG_SELECTOR)]
     .filter((element) => !element.hidden && getComputedStyle(element).display !== "none");
+}
+
+function isVisibleDialogRoot(root) {
+  if (!(root instanceof Element)) return false;
+  if (root instanceof HTMLDialogElement) return root.open;
+  return !root.hidden && getComputedStyle(root).display !== "none";
+}
+
+function activeDialogRoot() {
+  if (lastModalForm?.isConnected) {
+    const remembered = closestDialogOrOverlay(lastModalForm);
+    if (isVisibleDialogRoot(remembered)) return remembered;
+  }
+
+  return allOpenDialogs().at(-1)
+    || allOpenCustomDialogs().at(-1)
+    || null;
+}
+
+function formForDialog(dialog) {
+  if (!dialog) return null;
+  return dialog.querySelector("form") || null;
+}
+
+function cleanLabel(value) {
+  return String(value || "")
+    .replace(/\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fieldLabel(field) {
+  if (!(field instanceof HTMLElement)) return "Ce champ";
+  const explicit = field.labels?.[0]?.textContent;
+  const ancestor = field.closest("label")?.textContent;
+  return cleanLabel(explicit || ancestor || field.getAttribute("aria-label") || field.name || field.id)
+    || "Ce champ";
+}
+
+function validationMessage(field) {
+  if (field.validity?.valueMissing) return "Ce champ est obligatoire.";
+  if (field.validity?.typeMismatch) return "Le format renseigné n’est pas valide.";
+  if (field.validity?.tooShort) return `Saisissez au moins ${field.minLength} caractères.`;
+  if (field.validity?.tooLong) return `Saisissez au plus ${field.maxLength} caractères.`;
+  if (field.validity?.rangeUnderflow || field.validity?.rangeOverflow) return "La valeur doit respecter la plage autorisée.";
+  if (field.validity?.patternMismatch) return "Le format renseigné ne respecte pas le format attendu.";
+  return field.validationMessage || "La valeur renseignée est invalide.";
+}
+
+function feedbackRegion(form, dialog) {
+  const scope = form || dialog;
+  if (!scope) return null;
+  return scope.querySelector([
+    ".hauqe-dialog-scroll-region",
+    ".dialog-body",
+    ".operational-dialog-body",
+    ".dialog-form",
+    ".assign-alert-form",
+    ".reference-form",
+    ".modal-body",
+    ".form-body",
+    ".dialog-content",
+    "[data-dialog-scroll]",
+  ].join(",")) || form || dialog;
+}
+
+function feedbackBox(form, dialog) {
+  const scope = form || dialog;
+  if (!scope) return null;
+  let box = scope.querySelector(".modal-form-feedback");
+  if (box) return box;
+
+  box = document.createElement("section");
+  box.className = "modal-form-feedback";
+  box.hidden = true;
+  box.setAttribute("role", "alert");
+  box.setAttribute("aria-live", "assertive");
+  feedbackRegion(form, dialog)?.prepend(box);
+  return box;
+}
+
+function clearFieldFeedback(field) {
+  if (!(field instanceof HTMLElement)) return;
+  field.classList.remove("modal-field-invalid");
+  field.removeAttribute("aria-invalid");
+  const message = field.parentElement?.querySelector(`:scope > .modal-field-error[data-for="${CSS.escape(field.id || field.name || "")}"]`)
+    || field.nextElementSibling?.matches?.(".modal-field-error") && field.nextElementSibling;
+  message?.remove?.();
+}
+
+function markFieldInvalid(field, message) {
+  if (!(field instanceof HTMLElement)) return;
+  const key = field.id || field.name || "";
+  clearFieldFeedback(field);
+  field.classList.add("modal-field-invalid");
+  field.setAttribute("aria-invalid", "true");
+
+  const help = document.createElement("small");
+  help.className = "modal-field-error";
+  if (key) help.dataset.for = key;
+  help.textContent = message;
+  field.insertAdjacentElement("afterend", help);
+}
+
+function clearModalFeedback(form, { fields = false } = {}) {
+  if (!form) return;
+  const box = form.querySelector(".modal-form-feedback");
+  if (box) {
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+  if (fields) {
+    form.querySelectorAll(".modal-field-invalid").forEach(clearFieldFeedback);
+  }
+}
+
+function showModalFeedback({ form, dialog, message, issues = [] }) {
+  const targetDialog = dialog || closestDialogOrOverlay(form) || activeDialogRoot();
+  const targetForm = form || formForDialog(targetDialog);
+  if (!targetDialog || !isVisibleDialogRoot(targetDialog) || !targetForm) return false;
+
+  lastModalForm = targetForm;
+  const usableIssues = issues.filter((issue) => issue?.field instanceof HTMLElement);
+  usableIssues.forEach((issue) => markFieldInvalid(issue.field, issue.message));
+
+  const box = feedbackBox(targetForm, targetDialog);
+  if (!box) return false;
+  const summary = message || "Certaines informations sont à corriger.";
+  box.hidden = false;
+  box.innerHTML = `
+    <span class="modal-form-feedback-icon" aria-hidden="true">!</span>
+    <div>
+      <strong>Informations à corriger</strong>
+      <p>${summary}</p>
+      ${usableIssues.length > 1 ? `<small>${usableIssues.length} champs nécessitent une correction.</small>` : ""}
+    </div>`;
+
+  const first = usableIssues[0]?.field || targetForm.querySelector(".modal-field-invalid");
+  requestAnimationFrame(() => {
+    box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    first?.focus?.({ preventScroll: true });
+  });
+  return true;
+}
+
+function findField(form, name) {
+  if (!form || !name) return null;
+  const normalized = String(name).replace(/\[\d+\]/g, "").split(".").at(-1);
+  return form.querySelector(`[name="${CSS.escape(normalized)}"],#${CSS.escape(normalized)},[data-field="${CSS.escape(normalized)}"]`);
+}
+
+function apiIssuesForForm(form, detail) {
+  if (!Array.isArray(detail)) return [];
+  return detail.map((item) => {
+    const location = Array.isArray(item?.loc) ? item.loc : [];
+    const field = findField(form, location.at(-1));
+    return field ? { field, message: item?.msg || "La valeur renseignée est invalide." } : null;
+  }).filter(Boolean);
+}
+
+function rememberModalForm(event) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const dialog = closestDialogOrOverlay(target);
+  const form = target.closest("form") || formForDialog(dialog);
+  if (dialog && isVisibleDialogRoot(dialog) && form) lastModalForm = form;
+}
+
+function flushInvalidFeedback(form) {
+  const issues = pendingInvalidForms.get(form) || [];
+  pendingInvalidForms.delete(form);
+  if (!issues.length) return;
+  showModalFeedback({
+    form,
+    message: issues.length === 1
+      ? `${fieldLabel(issues[0].field)} : ${issues[0].message}`
+      : "Certains champs obligatoires ou invalides doivent être corrigés avant de continuer.",
+    issues,
+  });
+}
+
+function handleInvalid(event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement)) return;
+  const dialog = closestDialogOrOverlay(field);
+  const form = field.closest("form") || formForDialog(dialog);
+  if (!dialog || !isVisibleDialogRoot(dialog) || !form) return;
+
+  event.preventDefault();
+  const issues = pendingInvalidForms.get(form) || [];
+  if (!issues.some((item) => item.field === field)) {
+    issues.push({ field, message: validationMessage(field) });
+  }
+  pendingInvalidForms.set(form, issues);
+  queueMicrotask(() => flushInvalidFeedback(form));
+}
+
+function handleFieldInput(event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement) || !field.matches("input, select, textarea")) return;
+  const form = field.closest("form");
+  const dialog = closestDialogOrOverlay(field);
+  if (!form || !dialog || !isVisibleDialogRoot(dialog)) return;
+
+  clearFieldFeedback(field);
+  if (!form.querySelector(".modal-field-invalid")) clearModalFeedback(form);
+}
+
+function handleApiError(event) {
+  const error = event.detail?.error;
+  const dialog = activeDialogRoot();
+  const form = formForDialog(dialog);
+  if (!dialog || !form || !isVisibleDialogRoot(dialog)) return;
+  showModalFeedback({
+    form,
+    dialog,
+    message: error?.message || "L’enregistrement est impossible. Corrigez les informations puis réessayez.",
+    issues: apiIssuesForForm(form, error?.detail),
+  });
+}
+
+function copyPageStateError(element) {
+  if (!(element instanceof Element) || !element.matches(".dashboard-api-state.error,.company-form-api-state.error,.companies-api-state.error")) return;
+  if (element.hidden || !element.textContent.trim()) return;
+  const dialog = activeDialogRoot();
+  const form = formForDialog(dialog);
+  if (!dialog || !form || !isVisibleDialogRoot(dialog)) return;
+  showModalFeedback({
+    form,
+    dialog,
+    message: cleanLabel(element.querySelector("span")?.textContent || element.textContent) || "L’enregistrement est impossible.",
+  });
+}
+
+function syncPageErrorMutation(mutation) {
+  const candidates = new Set();
+  const addCandidate = (node) => {
+    if (!(node instanceof Element)) return;
+    if (node.matches(".dashboard-api-state.error,.company-form-api-state.error,.companies-api-state.error")) {
+      candidates.add(node);
+    }
+    node.querySelectorAll?.(".dashboard-api-state.error,.company-form-api-state.error,.companies-api-state.error")
+      .forEach((element) => candidates.add(element));
+  };
+
+  addCandidate(mutation.target);
+  if (mutation.type === "childList") mutation.addedNodes.forEach(addCandidate);
+  candidates.forEach(copyPageStateError);
 }
 
 function syncBodyLock() {
@@ -168,6 +418,9 @@ function normalizeDialog(dialog) {
   dialog.dataset.hauqeDialogBound = "true";
 
   dialog.addEventListener("close", () => {
+    const form = formForDialog(dialog);
+    clearModalFeedback(form, { fields: true });
+    if (lastModalForm === form) lastModalForm = null;
     syncBodyLock();
     window.dispatchEvent(new CustomEvent("hauqe:dialog-closed", {
       detail: { id: dialog.id || null },
@@ -338,11 +591,29 @@ export function installDialogManager() {
   normalizeTree(document);
 
   document.addEventListener("click", handleClick, true);
+  document.addEventListener("click", rememberModalForm, true);
+  document.addEventListener("submit", rememberModalForm, true);
+  document.addEventListener("invalid", handleInvalid, true);
+  document.addEventListener("input", handleFieldInput, true);
+  document.addEventListener("change", handleFieldInput, true);
   document.addEventListener("keydown", handleKeydown, true);
   document.addEventListener("hauqe:dialog-opened", handleOpenEvent, true);
+  window.addEventListener("hauqe:api-error", handleApiError);
+
+  window.HAUQE_MODAL_FEEDBACK = Object.freeze({
+    show(message, options = {}) {
+      const dialog = options.dialog || activeDialogRoot();
+      const form = options.form || formForDialog(dialog);
+      return showModalFeedback({ form, dialog, message, issues: options.issues || [] });
+    },
+    clear(form = lastModalForm) {
+      clearModalFeedback(form, { fields: true });
+    },
+  });
 
   window.addEventListener("hauqe:page-ready", () => {
     closeAllDialogs();
+    lastModalForm = null;
     normalizeTree(document.querySelector("#pageContent") || document);
   });
 
@@ -355,6 +626,7 @@ export function installDialogManager() {
           if (node instanceof Element) normalizeTree(node);
         });
       }
+      syncPageErrorMutation(mutation);
     }
     syncBodyLock();
   });

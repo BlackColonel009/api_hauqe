@@ -571,7 +571,17 @@
       .join("");
   }
 
-  function openCreateMissionDialog(campaign) {
+  async function proposeCollecteCode(type, field) {
+    field.placeholder = "Proposition automatique…";
+    try {
+      const proposal = await apiGet(`/api/v1/collectes/codes/proposer?type=${encodeURIComponent(type)}`);
+      if (!field.value.trim()) field.value = proposal.code || "";
+    } catch {
+      field.placeholder = "Code attribué automatiquement à l’enregistrement";
+    }
+  }
+
+  async function openCreateMissionDialog(campaign) {
     if (!canManageMission()) return;
     const dialog = $("#createMissionDialog");
     const form = $("#createMissionForm");
@@ -590,6 +600,7 @@
       <label><input type="checkbox" name="mission_agent" value="${escapeHtml(agent.id)}"><span>${escapeHtml(agent.label)}</span></label>
     `).join("") || "<small>Aucun collecteur actif n’est disponible.</small>";
     dialog.showModal();
+    void proposeCollecteCode("MISSION", $("#newMissionCode"));
     refreshIcons();
   }
 
@@ -647,7 +658,7 @@
     }
   }
 
-  function openMissionQuickZoneDialog() {
+  async function openMissionQuickZoneDialog() {
     $("#missionQuickZoneName").value = "";
     $("#missionQuickZoneCode").value = "";
     $("#missionQuickZoneType").value = "LOCALITE";
@@ -656,6 +667,7 @@
       "Aucune"
     );
     $("#missionQuickZoneDialog").showModal();
+    void proposeCollecteCode("ZONE", $("#missionQuickZoneCode"));
     refreshIcons();
   }
 
@@ -701,7 +713,7 @@
     }
     try {
       await apiPost(`/api/v1/campagnes/${form.dataset.campaignId}/missions`, {
-        code: $("#newMissionCode").value.trim(),
+        code: $("#newMissionCode").value.trim() || null,
         objet: $("#newMissionObject").value.trim() || null,
         zone_id: $("#newMissionZone").value,
         date_debut_prevue: start,

@@ -56,28 +56,23 @@
     });
   }
 
-  // Un bouton provenant d'un innerHTML peut être remplacé lors d'un rendu ou
-  // capturé par le chargeur global. On le recrée donc avant de lui donner son
-  // écouteur local : une action répond ainsi dès le premier clic.
+  // Même contrat que Gestion des campagnes : le bouton réel reçoit un seul
+  // écouteur local et est explicitement ignoré du chargeur global. Le cloner
+  // au moment du clic créait une fenêtre où l'action pouvait être perdue après
+  // un rendu ou un changement d'onglet.
   function bindDirectRuleButtons(selector, handler, root = document) {
     root.querySelectorAll(selector).forEach((source) => {
       if (!(source instanceof HTMLButtonElement)) return;
+      if (source.dataset.rulesDirectButton === "true") return;
 
-      const button = document.createElement("button");
-      Array.from(source.attributes).forEach((attribute) => {
-        button.setAttribute(attribute.name, attribute.value);
-      });
-      button.type = source.getAttribute("type") || "button";
-      button.innerHTML = source.innerHTML;
-      button.setAttribute("data-no-action-loader", "true");
-      button.dataset.rulesDirectButton = "true";
-      button.classList.add("rules-action-button");
-      source.replaceWith(button);
-      button.addEventListener("click", (event) => {
+      source.setAttribute("data-no-action-loader", "true");
+      source.dataset.rulesDirectButton = "true";
+      source.classList.add("rules-action-button");
+      source.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        void Promise.resolve(handler(button, event)).catch((error) => {
+        void Promise.resolve(handler(source, event)).catch((error) => {
           console.error("[HAUQE Règles & codification] Action impossible", error);
           state(error?.message || "Opération impossible.", true);
         });
@@ -430,7 +425,7 @@
       completenessDraft = null;
       $("#publishCompleteness").hidden = true;
       snccDraft = null;
-      $("#publishSnccMatrix").hidden = true;
+      updateSnccPublishState();
 
       await Promise.all([
         loadReadiness(),
@@ -694,7 +689,7 @@
   function renderSnccMatrix(rows = SNCC_TEMPLATE_ROWS) {
     const target = $("#snccMatrixRows");
     if (!target) return;
-    target.innerHTML = rows.map((row) => `
+    target.innerHTML = rows.length ? rows.map((row) => `
       <tr data-sncc-class="${e(row.classe)}">
         <td><strong>${e(row.classe)}</strong></td>
         <td><small>${e(row.label)}</small></td>
@@ -703,8 +698,34 @@
         <td><select data-sncc-status aria-label="Statut normal ${e(row.classe)}">${selectOptions(SNCC_STATUS_OPTIONS, row.statut)}</select></td>
         <td><select data-sncc-risk aria-label="Risque ${e(row.classe)}">${selectOptions(SNCC_RISK_OPTIONS, row.risque)}</select></td>
       </tr>
-    `).join("");
+    `).join("") : '<tr><td colspan="6" class="sncc-matrix-empty">Cliquez sur « Charger le préremplissage » pour voir les cinq classes proposées.</td></tr>';
     icons();
+  }
+
+  function updateSnccPrefillState(message, loaded = false) {
+    const node = $("#snccPrefillState");
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("loaded", loaded);
+  }
+
+  function updateSnccPublishState() {
+    const button = $("#publishSnccMatrix");
+    const guidance = $("#snccPublishGuidance");
+    if (!button) return;
+    const canPublish = has("GOUVERNANCE.ADMINISTRER_REGLES");
+    button.hidden = false;
+    button.disabled = !snccDraft?.id || !canPublish;
+    button.title = !canPublish
+      ? "Permission de publication requise"
+      : snccDraft?.id
+        ? "Publier le brouillon SNCC après approbation HAUQE"
+        : "Enregistrez d’abord un brouillon SNCC";
+    if (guidance) guidance.textContent = !canPublish
+      ? "La publication est réservée à l’administration des règles."
+      : snccDraft?.id
+        ? `Brouillon v${snccDraft.version || "—"} prêt : la publication demandera une référence d’approbation.`
+        : "Publication disponible après l’enregistrement du brouillon.";
   }
 
   function snccMatrixPayload() {
@@ -740,12 +761,78 @@
     return { rows: ordered, errors: [...new Set(errors)] };
   }
 
-  function renderSnccValidation(errors = []) {
+  function snccScore(value) {
+    const score = Number(value);
+    return Number.isFinite(score)
+      ? score.toLocaleString("fr-FR", { maximumFractionDigits: 2 })
+      : "—";
+  }
+
+  function snccRowsSummary(rows = []) {
+    if (!Array.isArray(rows) || !rows.length) return "";
+    return `
+      <div class="sncc-result-rows" aria-label="Résultat de la matrice SNCC">
+        ${rows.map((row) => `
+          <div class="sncc-result-row">
+            <strong>${e(row.classe)}</strong>
+            <span>${snccScore(row.min)} à ${snccScore(row.max)}</span>
+            <small>${e(row.statut_administratif || row.statut || "—")} · ${e(row.niveau_risque || row.risque || "—")}</small>
+          </div>
+        `).join("")}
+      </div>`;
+  }
+
+  function renderSnccValidation(result = null) {
     const node = $("#snccMatrixValidation");
     if (!node) return;
+    if (!result) {
+      node.innerHTML = `<div class="priority-empty compact">Cliquez sur « Vérifier la matrice » pour obtenir le résultat détaillé du contrôle.</div>`;
+      return;
+    }
+
+    const { rows = [], errors = [] } = result;
+    const matrixRows = snccRowsSummary(rows);
     node.innerHTML = errors.length
-      ? `<div class="validation-summary invalid"><strong>Matrice à corriger</strong><ul class="validation-errors">${errors.map((item) => `<li>${e(item)}</li>`).join("")}</ul></div>`
-      : `<div class="validation-summary valid"><strong>Matrice cohérente</strong><p>Les cinq classes couvrent le score INFC de 0 à 100. La matrice décide de la classe, du risque et du statut normal VA/RE ; les statuts EX, VE, SU et RT sont appliqués automatiquement lorsque la situation du certificat l’impose.</p></div>`;
+      ? `
+        <div class="validation-summary invalid">
+          <span><i data-lucide="triangle-alert"></i></span>
+          <div><strong>Matrice à corriger</strong><small>${errors.length} point${errors.length > 1 ? "s" : ""} empêche${errors.length > 1 ? "nt" : ""} la création du brouillon.</small></div>
+        </div>
+        <ul class="validation-errors">${errors.map((item) => `<li>${e(item)}</li>`).join("")}</ul>
+        ${matrixRows}`
+      : `
+        <div class="validation-summary valid">
+          <span><i data-lucide="badge-check"></i></span>
+          <div><strong>Matrice cohérente : brouillon prêt à créer</strong><small>Les cinq classes couvrent l’INFC de 0 à 100, sans chevauchement ni intervalle non couvert.</small></div>
+        </div>
+        ${matrixRows}
+        <p class="sncc-validation-note">La matrice décide de la classe, du risque et du statut normal VA/RE. Les statuts EX, VE, SU et RT restent prioritaires lorsqu’ils sont imposés par la situation réelle du certificat.</p>`;
+    icons();
+  }
+
+  function renderSnccDraftSummary(draft = null) {
+    const node = $("#snccDraftSummary");
+    if (!node) return;
+    if (!draft) {
+      node.hidden = true;
+      node.innerHTML = "";
+      return;
+    }
+
+    const rows = Array.isArray(draft.parametres?.rows) ? draft.parametres.rows : [];
+    node.hidden = false;
+    node.innerHTML = `
+      <div class="sncc-draft-summary-head">
+        <span><i data-lucide="file-check-2"></i></span>
+        <div><strong>Brouillon SNCC enregistré</strong><small>Il est conservé comme brouillon et ne produit aucun classement tant qu’il n’est pas publié.</small></div>
+      </div>
+      <dl class="sncc-draft-details">
+        <div><dt>Version</dt><dd>v${e(draft.version || "—")}</dd></div>
+        <div><dt>Statut</dt><dd>Brouillon</dd></div>
+        <div class="full"><dt>Libellé</dt><dd>${e(draft.libelle || "Matrice SNCC")}</dd></div>
+      </dl>
+      ${snccRowsSummary(rows)}
+      <p class="sncc-draft-next"><i data-lucide="arrow-right"></i>Étape suivante : contrôlez les seuils, puis cliquez sur « Publier la matrice » après approbation HAUQE.</p>`;
     icons();
   }
 
@@ -778,7 +865,8 @@
     if (!draft) {
       version.disabled = false;
       saveButton.innerHTML = '<i data-lucide="save"></i>Créer le brouillon SNCC';
-      publishButton.hidden = true;
+      updateSnccPublishState();
+      renderSnccDraftSummary();
       return;
     }
 
@@ -790,13 +878,15 @@
     const rows = Array.isArray(draft.parametres?.rows) ? draft.parametres.rows : [];
     if (rows.length) renderSnccMatrix(rows);
     saveButton.innerHTML = '<i data-lucide="save"></i>Enregistrer le brouillon SNCC';
-    publishButton.hidden = false;
+    updateSnccPublishState();
+    updateSnccPrefillState(`Brouillon v${draft.version || "—"} chargé : cinq classes enregistrées.`, true);
+    renderSnccDraftSummary(draft);
     icons();
   }
 
   async function validateSnccMatrix() {
     const payload = snccMatrixPayload();
-    renderSnccValidation(payload.errors);
+    renderSnccValidation(payload);
     return payload;
   }
 
@@ -826,11 +916,13 @@
           message: isExistingDraft ? "Enregistrement du brouillon" : "Création du brouillon",
         }
       );
-      $("#publishSnccMatrix").hidden = false;
+      updateSnccPublishState();
+      renderSnccValidation({ rows, errors: [] });
+      renderSnccDraftSummary(snccDraft);
       state(
         isExistingDraft
-          ? `Brouillon ${snccDraft.code} enregistré. Il peut maintenant être publié.`
-          : `Brouillon ${snccDraft.code} créé. Vérifiez-le puis publiez la version approuvée.`
+          ? `Le brouillon SNCC v${snccDraft.version || "—"} est enregistré. Il peut maintenant être publié.`
+          : `Le brouillon SNCC v${snccDraft.version || "—"} est créé. Vérifiez-le puis publiez la version approuvée.`
       );
       await Promise.all([loadRules(), loadReadiness()]);
       renderSnccMatrixStatus();
@@ -2576,7 +2668,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
       ANNEE4: String(now.getFullYear()),
       MOIS: String(now.getMonth() + 1).padStart(2, "0"),
       TYPE_OBJET: params.objet,
-      CODE_ENTREPRISE: "HAUQEBNECTGMAR20260001",
+      CODE_ENTREPRISE: `HAUQEBNECTGMAR${now.getFullYear()}0001`,
       ENTREPRISE: "AGROTOGO",
       CERTIF: normalizeCodificationSegment(params.constantes?.CERTIF, "CERT"),
       ORGANISME: "AFNOR",
@@ -2984,8 +3076,10 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     bindDirectRuleButtons("#savePublicationDataRule", savePublicationDataRule);
     bindDirectRuleButtons("#prefillSnccMatrix", () => {
       renderSnccMatrix();
-      renderSnccValidation([]);
-      state("Préremplissage SNCC chargé : ajustez les seuils si nécessaire avant publication.");
+      renderSnccValidation(snccMatrixPayload());
+      updateSnccPrefillState("Préremplissage chargé : cinq classes visibles dans le tableau. Modifications non enregistrées.", true);
+      $("#snccPrefillDialog").showModal();
+      icons();
     });
     bindDirectRuleButtons("#validateSnccMatrix", validateSnccMatrix);
     bindDirectRuleButtons("#saveSnccMatrixDraft", saveSnccMatrixDraft);
@@ -3108,25 +3202,14 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     bindDirectRuleButtons("[data-inst-tab]", (button) => switchTab(button.dataset.instTab));
     bindDirectRuleButtons("[data-close-inst-dialog]", (button) => document.getElementById(button.dataset.closeInstDialog)?.close());
 
-    // Les boutons créés par les rendus successifs ne doivent jamais attendre
-    // le prochain appel à icons() pour devenir immédiatement cliquables.
+    // Chaque fonction de rendu appelle bindDirectRuleButtons immédiatement
+    // après son innerHTML. Aucun MutationObserver global n'est nécessaire :
+    // il évite toute activité de fond qui pourrait donner une impression de
+    // latence quand une grille FUCCS ou une liste est longue.
     window.__HAUQE_RULES_BUTTON_OBSERVER__?.disconnect?.();
-    const root = $(".rules-page");
-    if (root) {
-      const observer = new MutationObserver((records) => {
-        records.forEach((record) => record.addedNodes.forEach((node) => {
-          if (node.nodeType !== Node.ELEMENT_NODE) return;
-          if (node.matches?.("button")) {
-            node.setAttribute("data-no-action-loader", "true");
-            node.classList.add("rules-action-button");
-          }
-          stabilizeRuleButtons(node);
-        }));
-      });
-      observer.observe(root, { childList: true, subtree: true });
-      window.__HAUQE_RULES_BUTTON_OBSERVER__ = observer;
-      stabilizeRuleButtons(root);
-    }
+    window.__HAUQE_RULES_BUTTON_OBSERVER__ = null;
+    const page = $(".rules-page");
+    if (page) stabilizeRuleButtons(page);
   }
 
   try {
@@ -3202,7 +3285,7 @@ function prefillFuccsHistorical22NoLegalIdentifiers(event) {
     ]);
 
     renderRequirements();
-    if (!snccDraft) renderSnccMatrix();
+    if (!snccDraft) renderSnccMatrix([]);
     renderSnccMatrixStatus();
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);

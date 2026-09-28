@@ -11,7 +11,98 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 11 août 2026 — sécurité de connexion, session verrouillée et changement de mot de passe |
+| Dernière mise à jour | 28 septembre 2026 — menu mobile et préférences du Profil |
+
+### Menu mobile — ouverture/fermeture involontaire (28 septembre 2026)
+
+- Ne jamais basculer la sidebar à la fois sur `pointerdown` et sur `click` avec une fenêtre arbitraire de 650 ms : selon le navigateur tactile, le clic retardé inverse aussitôt l'ouverture.
+- Un seul gestionnaire `click` ouvre/ferme le menu. Les actualisations silencieuses (`hauqe:page-ready`) ne ferment plus la sidebar ; une vraie navigation (`hashchange`, lien du menu), le fond, la croix ou Échap la ferment. Le routeur ne retire plus directement la classe `.open` lors d'une actualisation.
+- Recette `tests/frontend/mobile_sidebar_smoke.cjs` en émulation tactile : appui, clic retardé, actualisation silencieuse et fermeture volontaire. Modification frontend seulement ; aucune migration ni seed.
+
+### Échéances — registre consolidé (28 septembre 2026)
+
+- Le statut `EN_RETARD` affiché dans « Toutes les échéances enregistrées » utilise une pastille rouge en thèmes clair et sombre ; `TERMINEE` reste vert. Vérifié par `tests/frontend/deadline_overdue_status_smoke.cjs` sur les styles calculés du navigateur.
+
+### Profil — courriels du système par agent (28 septembre 2026)
+
+- Dans l'onglet Notifications, le bloc « Courriels du système par agent » apparaît uniquement pour `ADMIN_HAUQE` ou `ADMIN_BNEC`. Tous les comptes sont listés par défaut comme destinataires ; décocher une ligne la retire et désactive ses courriels fonctionnels. Le sélecteur propose alors les comptes retirés, avec un bouton pour les réajouter. Chaque action est enregistrée immédiatement via l'API, sans modifier les comptes.
+- Ce réglage n'affecte pas les notifications internes ni les messages de sécurité du compte. Le serveur revalide le rôle administrateur ; masquer le bloc ne constitue pas une autorisation.
+- Recette isolée `tests/frontend/admin_system_email_profile_smoke.cjs` : tous les comptes visibles par défaut, retrait et réajout dès le premier clic, absence du bloc pour un non-administrateur et absence de débordement à largeur réduite ; API simulée, aucune donnée réelle modifiée.
+- Correctif de visibilité : renouveler toute la chaîne de cache `index.html` → `app-shell.js` → `router.js` → `profil.js` lorsqu'une nouvelle rubrique du profil est ajoutée ; ne pas se limiter à la version de `profil.js`.
+
+### Navigation et communication du parcours — 27 septembre 2026
+
+- La page Alertes ouvre d'abord « Mes alertes », filtrées **côté serveur** par destinataire IN_APP ou responsable. Le registre général n'est proposé qu'aux comptes ayant `ALERTES.LIRE` ; `NOTIFICATIONS.LIRE` ne donne jamais accès à ce registre.
+- La cloche et le badge latéral se fondent sur les notifications et alertes personnelles. Les lignes EMAIL de transport ne comptent plus comme des notifications non lues dans l'interface.
+- La CVC reçoit l'accès opérationnel à la classification entreprise, à l'INFC et au SNCC, sans droit d'administration des modèles publiés.
+- Les boutons « Mes alertes » / « Registre général » ont des écouteurs directs. Recette isolée `tests/frontend/personal_alerts_smoke.cjs` : premier clic, visibilité selon permissions et largeur 850/640 px contrôlés avec API simulée. Aucune donnée réelle écrite.
+- À confirmer en recette authentifiée : les alertes et courriels générés lors des six transitions métier, avec deux comptes de rôles différents.
+
+### Modals Validation et INFC — 27 septembre 2026
+
+- « Demander une correction » et « Valider le résultat calculé » reprennent le thème des modals Échéances : en-tête illustré, contexte métier lisible, bloc de saisie, pied d’actions distinct.
+- Le contexte affiché est dynamique (dossier pour la correction ; entreprise, certification, score et niveau pour l’INFC). Aucun UUID brut n’est présenté.
+- Les erreurs de soumission apparaissent dans le modal, sans perte de saisie ; les boutons continuent d’utiliser leurs écouteurs directs au premier clic.
+- Le bloc de saisie défile au zoom ; à très faible hauteur, le formulaire entier reste défilable. Contrôle visuel local réalisé avec les vrais fragments HTML à 1280 × 720, 850 × 480, 640 × 360 et 320 × 200, en thème clair et sombre : ouverture/fermeture au premier clic, aucun débordement horizontal, actions accessibles après défilement. Le parcours métier authentifié et l’enregistrement réel restent à vérifier sur une session de test.
+- Modification frontend uniquement : aucune migration PostgreSQL, aucun seed.
+
+## Règle permanente et non contournable pour toute mise à jour frontend
+
+Cette règle s'applique à **chaque page ou bloc modifié**, même si la demande
+porte sur un simple libellé, un style ou un correctif backend qui change le
+comportement visible. Elle fait partie des critères de fin de tâche.
+
+1. **Contrôler les boutons de la page concernée contre le « bouton latence ».**
+   Tester au premier clic les actions déjà présentes et celles ajoutées ou
+   recréées : navigation, ouverture et fermeture de modal, menus déroulants,
+   ajout et retrait de ligne, enregistrement, validation et publication.
+   Répéter après un nouveau rendu, une recherche ou un changement d'onglet.
+   Les boutons issus d'un rendu dynamique reçoivent immédiatement un écouteur
+   direct sur le bouton affiché, suivant la correction validée dans **Gestion
+   des campagnes**. Ne pas utiliser le clonage d'un bouton au clic ni un
+   `MutationObserver` global comme substitut à ce contrôle.
+2. **Vérifier tout modal créé ou touché en situation réelle.** Son contenu
+   doit respecter le thème HAUQE adopté pour les modals d'**Échéances** :
+   en-tête, hiérarchie des informations, espaces, actions et messages d'erreur
+   lisibles. Contrôler son ouverture, ses boutons, sa fermeture autorisée et
+   la conservation des saisies après erreur.
+3. **Vérifier le zoom et le défilement.** Contrôler au minimum les zooms
+   navigateur 100 %, 150 % et 200 %, puis un affichage étroit ou un zoom plus
+   fort si le formulaire le nécessite. Aucun champ, message, bouton ou pied
+   de modal ne doit être coupé. Le bloc de saisie doit pouvoir défiler
+   verticalement, y compris lorsque le clavier ou le zoom réduit la hauteur
+   disponible. Vérifier aussi le thème sombre lorsque la page le prend en
+   charge.
+4. **Ne pas déclarer la correction terminée sur la seule base du code.**
+   Vérifier le rendu et l'interaction sur la page concernée. Si l'accès à une
+   session connectée empêche cette vérification, l'indiquer explicitement
+   dans le rapport comme point non vérifié, avec le parcours exact à tester.
+
+Cette règle prévaut sur les descriptions d'anciennes pages ou de correctifs
+ponctuels ci-dessous. Aucune nouvelle livraison frontend ne doit la contourner.
+
+### Contrôle ciblé `/collectes/nouveau` — 27 septembre 2026
+
+- Corrigé : les actions fixes de l'assistant sont branchées avant le chargement
+  asynchrone, afin que le premier clic fonctionne dès que la page est visible.
+- Corrigé : les formulaires de précréation écoutent leurs propres soumissions ;
+  les anciennes visites ne laissent plus d'écouteurs globaux susceptibles de
+  créer plusieurs requêtes pour un seul clic. Une soumission en cours est
+  protégée contre le double clic.
+- Corrigé : la zone créée reste sélectionnée après réaffichage. Les erreurs de
+  précréation sont présentées dans le modal ouvert, sans perdre les saisies.
+- Ajusté : les cartes de recherche d'organisme et de preuve de certification
+  occupent toute la largeur utile ; les lignes d'offres/certifications se
+  réorganisent lorsque la largeur disponible diminue. Les actions d'en-tête
+  se répartissent sans couper leurs libellés. Les actions non permises
+  restent réellement masquées ; une nouvelle collecte n'est plus titrée
+  « Modification » avant la création de sa fiche.
+- Vérification automatisée avec API simulée : premier clic, ajout et retrait
+  d'offres et certifications, ouverture/fermeture des modals, soumission unique,
+  erreur affichée dans le modal et largeurs équivalentes aux zooms 100, 150 et
+  200 %. Aucune écriture dans la base réelle. Le parcours métier connecté
+  complet et le zoom manuel dans le navigateur de l'utilisateur restent à
+  confirmer lors de la recette.
 
 ## Architecture d'intégration retenue
 
@@ -4133,6 +4224,174 @@ versionnés pour empêcher qu'une copie navigateur ancienne masque le correctif.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
 
+### Dossiers certification et organisme — preuves, statut et tableau de bord (27/09/2026)
+
+**Dossier entreprise — justificatifs de collecte (27/09/2026) :** l’onglet Documents affiche désormais à la fois les documents déposés directement sur l’entreprise et les justificatifs généraux de toutes ses fiches de collecte explicitement liées. Chaque ligne indique « Document de l’entreprise » ou « Collecte · révision N » et conserve le téléchargement privé existant. Les boutons d’ajout et de téléchargement restent branchés au rendu de l’onglet ; version du script incrémentée pour éviter l’ancien cache navigateur. Une fiche historique sans `entreprise_id` explicite n’est pas rattachée par supposition.
+
+**Rectificatif interface dépôt de preuve (27/09/2026) :** le bouton « Déposer la preuve » ouvrait auparavant une erreur de dossier si aucun fichier n'était sélectionné. Le champ fichier est maintenant visible et présenté comme étape 1, le dépôt comme étape 2. Un clic prématuré ouvre le sélecteur de fichier ; le nom sélectionné et les erreurs sont affichés dans le bloc de dépôt. Le bandeau général n'intitule plus ces erreurs « Impossible de charger le dossier ». Ressources front-end versionnées pour éviter l'ancien script en cache.
+
+- L’onglet **Documents** de l’organisme distingue ses propres pièces et les preuves des certifications délivrées. Il s’agit d’une vue liée, sans duplication des fichiers.
+- La fiche certification permet le dépôt d’une preuve directement sur le certificat. Une pièce ancienne attachée uniquement à la fiche de collecte n’est pas attribuée automatiquement à un certificat ambigu : l’utilisateur doit déposer la bonne pièce sur la certification concernée.
+- La décision de vérification de l’organisme se fait dans un modal HAUQE avec deux choix explicites, **Reconnu** et **Pas encore vérifié**, et un motif obligatoire. Boutons liés dès l’ouverture de la page ; contenu et actions restent accessibles au zoom grâce au défilement interne.
+- La liste du tableau de bord inclut désormais les certificats expirés ; le nombre de jours est calculé depuis la date courante. Le `0` des échéances à 90 jours ne comprend pas les certificats déjà expirés, affichés séparément.
+- Régression à vérifier après chaque retouche : premier clic des boutons, validation du modal, défilement au zoom, actualisation des pièces et des statuts.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — organisme certificateur et preuves par certification (27/09/2026)
+
+Dans **Collecte & contrôle > Nouvelle collecte > Certifications déclarées**,
+la saisie de l’organisme certificateur déclenche une recherche après deux
+caractères. Les organismes du registre sont proposés sous le champ ; un clic
+les rattache à la déclaration. Si aucun résultat n’existe — ou si l’organisme
+recherché n’est pas dans la liste — le lien discret **Précréer « … »** ouvre le
+modal HAUQE existant, prérempli avec le nom saisi. Le gros bouton de
+précréation affiché dans chaque ligne est retiré.
+
+Chaque certification déclarée possède désormais sa propre zone **Preuves de
+cette certification**. L’ajout enregistre au besoin la déclaration brouillon,
+puis rattache le fichier à cette ligne plutôt qu’à toute la fiche. Les preuves
+générales restent disponibles dans l’étape **Preuves & observations**.
+
+Le rendu suit le langage visuel HAUQE : cartes compactes, libellés lisibles,
+choix existants clairement séparés, action de précréation secondaire et prise
+en charge du thème sombre. Aucun grand bouton structurel ne doit encombrer une
+ligne de certification.
+
+Correctif visuel du 27/09/2026 : `.organisme-lookup` et
+`.declared-cert-evidence` sont des enfants directs de la grille des
+certifications déclarées. Leur classe `full` ne suffisait pas, car les règles
+de largeur complète ne ciblaient que `.form-field.full`. Les deux blocs
+occupent explicitement `grid-column: 1 / -1`, à toutes les largeurs et au
+zoom. La zone de preuve est placée après les autres champs. À éviter : ajouter
+un nouveau bloc dans une grille à 13 colonnes sans vérifier son placement
+réel au navigateur ou sur capture d’écran.
+
+Dans **Règles et codification > Classement SNCC**, la matrice commence vide
+lorsqu’aucun brouillon n’existe. Le préremplissage affiche alors ses cinq
+classes dans le tableau, un état de réussite visible et un petit modal HAUQE
+expliquant que les valeurs restent modifiables et ne sont pas enregistrées.
+Le bouton **Publier la matrice** est toujours visible : il devient disponible
+après enregistrement du brouillon et une aide indique l’étape attendue.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Compte et sécurité — lien de réinitialisation limité à trois minutes (27/09/2026)
+
+Le courriel de réinitialisation HAUQE indique désormais clairement : « ce
+lien est valable 3 minutes et une seule fois ; passé ce délai, il ne sera plus
+valable ». La durée affichée provient de la configuration serveur : elle ne
+peut donc pas diverger de l’expiration réellement vérifiée par l’API.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — codes proposés pour supprimer la saisie répétitive (27/09/2026)
+
+Dans **Nouvelle campagne**, **Nouvelle mission**, **Nouvelle collecte** et les
+deux créations de **zone administrative**, l'interface propose immédiatement
+le prochain code lisible : `HAUQE-CAMP-AAAA-NNNN`,
+`HAUQE-MIS-AAAA-NNNN` ou `HAUQE-ZON-AAAA-NNNN`.
+
+Le champ n'est jamais bloquant : l'utilisateur peut le corriger si une règle
+interne le demande et, si la proposition est momentanément indisponible, le
+serveur l'attribue à l'enregistrement. Les scripts versionnés garantissent que
+le nouveau comportement est rechargé sans conserver une ancienne version en
+cache.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — précréer et lier l’organisme certificateur (27/09/2026)
+
+Chaque ligne de **Certifications déclarées** affiche une action directe
+**Précréer l’organisme**. Elle ouvre le modal HAUQE de précréation terrain :
+coordonnées essentielles de l’organisme puis accréditation déclarée
+(accréditeur, numéro, domaine, portée et dates lorsque connus). Après succès,
+le nom reste lisible dans la ligne et le lien `organisme_id` est conservé avec
+la certification déclarée.
+
+Le bouton est créé après chaque rendu avec le patron d’écouteur direct de
+Gestion des campagnes afin d’éviter le bug de latence. Modifier manuellement
+le nom de l’organisme retire le lien existant et affiche clairement qu’un
+nouveau rapprochement est requis. Le modal respecte le thème HAUQE et son
+corps défile verticalement au zoom.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; seed : aucun.**
+
+### Administration — assistant « Nouvel utilisateur » lisible au zoom (27/09/2026)
+
+Le modal **Administration > Nouvel utilisateur** utilise une hauteur bornée à
+la fenêtre et un défilement vertical unique dans son corps. Les sections
+**Identité professionnelle**, **Mot de passe initial** et **Rôles initiaux**
+conservent désormais leur hauteur naturelle : aucun champ ne doit être rogné
+lorsque l'utilisateur augmente le zoom du navigateur. L'option **Envoyer
+directement les identifiants par courriel** dispose de son propre espace et ne
+peut pas écraser sa case à cocher. La liste des rôles
+garde son propre défilement uniquement lorsqu'elle contient beaucoup de rôles.
+
+La création est organisée en trois étapes : **Identité professionnelle**,
+**Mot de passe initial** puis **Rôles initiaux**. Les boutons **Continuer** et
+**Précédent** font entrer la carte suivante par une courte transition latérale.
+Le bouton **Créer le compte** n’est présenté qu’à la dernière étape. Chaque
+étape valide ses prérequis avant de continuer ; le formulaire de modification
+d’un compte conserve, lui, son affichage simple.
+
+Le modal porte `data-static="true"` : le clic sur son fond et la touche
+Échap ne doivent jamais annuler une saisie. Seules la croix de fermeture et
+le bouton **Annuler** peuvent le fermer volontairement.
+
+Ne pas réintroduire de `max-height` sur une carte isolée de ce modal : cela
+masquerait à nouveau ses derniers champs au zoom. Le défilement doit rester
+porté par `.dialog-body`.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Parcours de traitement — actualisation sans rechargement (27/09/2026)
+
+Le composant partagé **Suivi du dossier / Parcours de traitement** s’enregistre
+lorsqu’il est affiché. Après toute écriture API réussie, il reçoit un événement
+commun et relit son état côté serveur, avec un léger regroupement des actions
+successives. Cela couvre les fiches de collecte, vérifications, contrôles
+FUCCS, validations N1/N2 et intégrations BNEC, sans actualisation manuelle de
+la page.
+
+Les conteneurs d’une page quittée sont supprimés du registre. Aucun observateur
+DOM global n’est utilisé : la mise à jour ne doit ni déclencher de boucle de
+rendu ni rendre les boutons moins réactifs.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Échéances — navigation réactive et détail par date (27/09/2026)
+
+Les chevrons précédent/suivant, Aujourd’hui et les commandes de zoom du
+calendrier sont recréés après chaque rendu avec un écouteur direct. Ils suivent
+le patron validé de **Gestion des campagnes** : pas de délégation fragile ni de
+bouton conservant un ancien gestionnaire, afin d’éviter la « latence bouton ».
+
+Un clic sur le numéro ou l’espace libre d’une date ouvre un modal HAUQE qui
+liste toutes ses échéances. Un clic sur une échéance du calendrier reste dédié
+à son détail individuel ; les deux interactions ne se confondent pas.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Vérification — modal de réouverture guidée (27/09/2026)
+
+Le bouton **Réouvrir** ouvre désormais un modal HAUQE suivant le thème des
+échéances. Il explique l’impact réel avant toute écriture : réouverture simple,
+reprise FUCCS confirmée ou révision obligatoire après validation/BNEC.
+
+Lorsqu’une révision est obligatoire, le modal ne propose aucune action
+destructive : son bouton **Ouvrir la collecte à réviser** mène directement à
+la fiche liée, où l’utilisateur crée la nouvelle révision. Une flèche animée
+met visuellement en évidence cette étape. Le bouton Réouvrir est aligné sur la
+permission `VERIFICATION.CLOTURER`, et non sur la permission d’affectation.
+
+**Règle d’interface :** ne jamais présenter une réouverture comme une simple
+modification quand un jalon aval (FUCCS, validation, BNEC) existe. Le serveur
+reste la source de décision.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
 ### Cellule de veille — relance : validation texte fiable (25/09/2026)
 
 Le formulaire **Nouvelle relance** lit directement ses champs par leurs
@@ -4542,6 +4801,17 @@ actualiser sa session afin que l'interface recharge ses permissions.
 **Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
 aucune ; script : `python -m app.scripts.sync_verificateur_collecte_read`.**
 
+### Direction technique — lecture du parcours de dossier (27/09/2026)
+
+La Direction technique peut ouvrir les pages **Collecte & contrôle** et
+**Vérifications** en consultation. Les boutons opérationnels (création,
+modification, soumission, affectation, traitement et clôture) restent absents
+ou refusés par l'API, car le rôle possède seulement `COLLECTE.LIRE` et
+`VERIFICATION.LIRE` pour ces modules.
+
+**Base PostgreSQL modifiée : oui, données RBAC uniquement ; migration :
+aucune ; script : `python -m app.scripts.sync_direction_consultation_dossiers`.**
+
 ### Scoring, INFC et SNCC automatiques avec rapport (25/09/2026)
 
 Les boutons **Évaluer automatiquement**, **Calculer automatiquement** et
@@ -4619,5 +4889,164 @@ Le tableau de bord compte toute certification ayant une date d'expiration,
 indépendamment de son statut documentaire : un certificat à vérifier mais déjà
 expiré apparaît bien dans le compteur **Expirées** et dans les échéances à
 surveiller.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Gestion des campagnes — assistant « Nouvelle campagne » (27/09/2026)
+
+Le modal **Nouvelle campagne** est un assistant HAUQE en trois étapes :
+**Identification**, **Cadre opérationnel** et **Période prévisionnelle**.
+L’utilisateur utilise Précédent / Continuer et ne peut pas passer une étape
+future tant que son contrôle n’est pas valide. Le code est proposé
+automatiquement et reste facultatif à la saisie ; la date de fin ne peut pas
+précéder la date de début.
+
+Les étapes déjà validées restent consultables depuis l’indicateur du modal.
+Le bouton **Enregistrer** n’apparaît qu’à l’étape finale. Une nouvelle
+campagne est proposée avec le statut **Active** par défaut. Le modal conserve
+le thème HAUQE, le défilement vertical et le rendu sombre.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — harmonisation des modals de précréation (27/09/2026)
+
+Les modals de précréation d’**entreprise**, de **zone administrative** et
+d’**organisme certificateur** utilisent le même thème HAUQE : entête vert et
+icône, message de portée, sections numérotées, champs regroupés, pied de
+modal stable et zone de contenu à défilement vertical. Le rendu mobile et le
+thème sombre sont pris en charge.
+
+Les identifiants de champs, les actions de géolocalisation, les validations et
+les appels API existants ne changent pas : il s’agit uniquement d’une
+amélioration de lisibilité et d’ordonnancement.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — défilement du modal « Créer une mission » (27/09/2026)
+
+Le contenu de **Créer une mission** défile désormais à l'intérieur du bloc de
+saisie, tandis que l'entête et les boutons Annuler / Créer la mission restent
+visibles. Au zoom élevé, les champs de mission et la liste des agents ne sont
+donc plus coupés. Le même comportement est appliqué au modal de gestion des
+agents d'une mission, qui utilise le même composant.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Règles et codification — prévention du « bouton latence » (27/09/2026)
+
+Les boutons de **COLLECTE_COMPLETUDE**, codification BNEC, règles métier,
+scoring, SNCC et grilles FUCCS utilisent un écouteur direct unique sur le
+bouton réellement affiché. Les listes recréées après une recherche ou une
+modification reçoivent leur écouteur immédiatement après le rendu.
+
+À éviter : cloner un bouton déjà affiché pour lui attacher un écouteur, ou
+surveiller en permanence toute la page avec un `MutationObserver`. Ces deux
+pratiques peuvent créer un délai apparent ou perdre le premier clic. Pour les
+actions FUCCS générées dynamiquement, créer le bouton JavaScript avec son
+écouteur direct au moment du rendu, comme dans Gestion des campagnes.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### SNCC — résultat visible de la vérification et du brouillon (27/09/2026)
+
+Dans **Règles et codification > Classement SNCC**, le bouton **Vérifier la
+matrice** affiche désormais son résultat directement sous les actions :
+contrôle réussi ou liste précise des corrections à apporter, puis rappel des
+cinq plages avec leur classe, statut et risque.
+
+Après **Créer le brouillon SNCC**, une fiche visible confirme ce qui vient
+d’être enregistré : version, statut *Brouillon*, libellé et plages retenues.
+Elle rappelle clairement que ce brouillon n’a aucun effet sur les classements
+tant que le bouton **Publier la matrice** n’a pas été utilisé après approbation
+HAUQE. Aucun UUID ni détail interne n’est exposé à l’utilisateur.
+
+Les actions conservent l’écouteur direct unique défini pour corriger le
+« bouton latence ».
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Système entier — erreurs de formulaires directement dans les modals (27/09/2026)
+
+Le gestionnaire de modals HAUQE applique un comportement commun à tous les
+formulaires ouverts dans un modal. Une erreur de champ ne doit jamais imposer
+la fermeture du modal, ni perdre la saisie déjà réalisée :
+
+- un encadré rouge apparaît en haut de la zone de saisie du modal ;
+- le ou les champs concernés reçoivent une bordure rouge et leur explication
+  directement sous le champ ;
+- le modal défile vers la première correction et le focus y est placé ;
+- dès qu’un champ est corrigé, son erreur locale est retirée ;
+- les erreurs FastAPI (`400`, `409`, `422`, `5xx`, réseau) sont renvoyées dans
+  le modal actif, y compris lorsque l’écran les affichait auparavant seulement
+  dans son bandeau général.
+
+**Périmètre cartographié :** les modals des alertes, échéances, entreprises,
+certifications, organismes, campagnes et missions, fiche de collecte et ses
+précréations, vérifications, contrôles FUCCS, validations, intégrations BNEC,
+scoring, INFC, SNCC, veille, publications, règles et codification, qualité des
+données, sauvegardes, zones administratives et administration utilisateurs.
+Les modals purement informatifs (historique, aperçu, détail) restent sans
+message de formulaire puisqu’ils ne saisissent aucune donnée.
+
+**Règle à respecter dans les nouveaux écrans :** tout appel API privé passe
+par `core/api.js`, et tout nouveau formulaire modal doit rester dans un
+`dialog` HAUQE ou un modal reconnu par `dialog-manager.js`. Pour une erreur
+locale qui n’est pas issue d’une API, le module peut appeler
+`window.HAUQE_MODAL_FEEDBACK.show("…")` au lieu d’un bandeau de page.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Compte et sécurité — réinitialisation du mot de passe (27/09/2026)
+
+Le formulaire **Mot de passe oublié > Choisir un nouveau mot de passe** attend
+désormais explicitement le chargement du client API avant d’appeler
+`/api/v1/auth/password/reset`. Cela corrige l’erreur JavaScript `api is not
+defined` qui pouvait apparaître après la saisie du nouveau mot de passe et de
+sa confirmation. Les contrôles métier existants restent inchangés : le jeton,
+la confirmation, la révocation des anciennes sessions et la notification de
+sécurité continuent d’être traités côté serveur.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Collecte — preuves et précréation entreprise (27/09/2026)
+
+Dans « Certifications déclarées », les fichiers choisis sont maintenant listés
+avant leur enregistrement. L'agent confirme ou annule la sélection ; les
+preuves enregistrées restent visibles sur la ligne du certificat. Après le
+premier dépôt réussi, « Copie disponible » passe automatiquement à « Oui ».
+Le modal « Précréer l'entreprise » garde ses champs accessibles au zoom élevé :
+le formulaire complet défile lorsque l'en-tête et les actions prennent toute
+la hauteur disponible. Vérifier systématiquement le premier clic des boutons
+et le défilement des modals aux zooms usuels et élevés après chaque évolution.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Précréations de collecte — zoom et défilement des trois modals (27/09/2026)
+
+La correction de zoom concerne ensemble **zone administrative**, **entreprise**
+et **organisme certificateur**. À hauteur normale, le corps du modal défile et
+son pied reste visible. À hauteur très réduite (fort zoom), tout le formulaire
+défile, y compris l'en-tête et le pied, afin de pouvoir atteindre les derniers
+champs et les actions. Les lignes de la grille de contenu gardent leur hauteur
+réelle ; elles ne doivent jamais comprimer une section et masquer ses inputs.
+Contrôle navigateur effectué sur les trois vrais formulaires à 1280 × 800 et
+320 × 200 px, avec accès vérifié jusqu'aux actions du bas.
+
+**Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Documents de la fiche — preuves par certification (27/09/2026)
+
+Vérifications > Documents et Points, Contrôle FUCCS > Preuve documentaire et
+Entreprise > Documents utilisent désormais les preuves des certifications
+déclarées en plus des justificatifs généraux. Chaque preuve affiche le nom et,
+si disponible, le numéro du certificat concerné. Après intégration BNEC, la
+preuve reste consultable depuis la certification officielle et la vue de la
+fiche liée ; elle n'est pas copiée pour l'affichage. Dans FUCCS, un bouton
+permet d'ouvrir la preuve sélectionnée avant l'enregistrement de la note.
+
+Éviter à l'avenir de limiter « Documents de la fiche » au seul type
+`FICHE_COLLECTE` : il faut également considérer `CERTIFICATION_DECLAREE` et
+les `CERTIFICATION` officiellement rapprochées. Un document apparaît une
+fois par dossier et son contexte métier reste lisible, sans UUID affiché.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**

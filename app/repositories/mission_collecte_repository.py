@@ -21,6 +21,18 @@ from app.models.zone_administrative import ZoneAdministrative
 class MissionCollecteRepository:
 
     @staticmethod
+    async def get_by_code(
+        db: AsyncSession,
+        code: str,
+    ) -> MissionCollecte | None:
+        result = await db.execute(
+            select(MissionCollecte)
+            .where(MissionCollecte.code == code)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_by_id(
         db: AsyncSession,
         mission_id: UUID,

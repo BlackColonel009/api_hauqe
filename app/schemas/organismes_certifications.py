@@ -22,7 +22,7 @@ pourront ensuite être pilotées par les référentiels/règles métier.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -89,8 +89,8 @@ class OrganismeUpdateRequest(BaseModel):
 
 
 class OrganismeVerificationRequest(BaseModel):
-    statut: str | None = Field(default=None, max_length=255)
-    motif: str | None = Field(default=None, max_length=2000)
+    statut: Literal["RECONNU", "A_VERIFIER"]
+    motif: str = Field(min_length=3, max_length=2000)
 
 
 class OrganismeResponse(BaseModel):

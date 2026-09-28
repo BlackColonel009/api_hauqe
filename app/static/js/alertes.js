@@ -10,6 +10,8 @@
   let selected = null;
   let options = null;
   let timer = null;
+  let alertScope = "mine";
+  let routedAlertHandled = false;
 
   const filters = {
     search: "",
@@ -244,14 +246,34 @@
 
   async function loadAlerts() {
     try {
-      const payload = await api.apiGet(`/api/v1/veille/workspace/alerts?${params()}`);
+      const endpoint = alertScope === "all" && perm("ALERTES.LIRE")
+        ? "/api/v1/veille/workspace/alerts"
+        : "/api/v1/veille/workspace/alerts/mine";
+      const payload = await api.apiGet(`${endpoint}?${params()}`);
       alerts = payload.items || [];
       renderKpis(payload.summary || {});
+      if (!perm("ALERTES.LIRE")) {
+        fill($("#alertType"), "Tous les types", [...new Set(alerts.map(x => x.type_alerte).filter(Boolean))]);
+        fill($("#alertStatus"), "Tous les statuts", [...new Set(alerts.map(x => x.statut).filter(Boolean))]);
+        $("#alertType").value = filters.type_alerte;
+        $("#alertStatus").value = filters.statut;
+      }
 
       if (selected && !alerts.some((x) => x.id === selected.id)) selected = null;
 
       renderList();
       renderDetail();
+      const targetId = new URLSearchParams(location.hash.split("?")[1] || "").get("alerte");
+      if (targetId && alertScope === "mine" && !routedAlertHandled) {
+        routedAlertHandled = true;
+        const target = alerts.find((item) => String(item.id) === targetId);
+        if (target && !$("#alertDetailDialog").open) {
+          selected = target;
+          renderList();
+          renderDetail();
+          $("#alertDetailDialog").showModal();
+        }
+      }
     } catch (error) {
       state(error?.message || "Chargement impossible.", true);
     }
@@ -264,6 +286,7 @@
   }
 
   async function loadFilters() {
+    if (!perm("ALERTES.LIRE")) return;
     const data = await api.apiGet("/api/v1/veille/workspace/alert-filters");
     fill($("#alertType"), "Tous les types", data.alert_types);
     fill($("#alertStatus"), "Tous les statuts", data.alert_statuses);
@@ -464,6 +487,7 @@
                 <p>${e(item.contenu || "")}</p>
                 <small>${e(item.canal || "—")} · ${e(notificationTime(item.created_at))} · ${e(item.statut || "—")}</small>
               </div>
+              ${item.alerte_id ? `<a class="btn btn-outline-secondary app-btn" href="#/alertes?alerte=${e(item.alerte_id)}">Ouvrir l’alerte</a>` : ""}
               ${!item.date_lecture ? `<button class="btn btn-outline-secondary app-btn" type="button" data-read="${e(item.id)}">Marquer lue</button>` : ""}
             </article>
           `).join("")
@@ -496,6 +520,21 @@
   }
 
   function bind() {
+    $("#allAlertsScope").hidden = !perm("ALERTES.LIRE");
+    ["myAlertsScope", "allAlertsScope"].forEach((id) => {
+      $("#" + id).addEventListener("click", async () => {
+        const requested = id === "allAlertsScope" ? "all" : "mine";
+        if (alertScope === requested) return;
+        alertScope = requested;
+        selected = null;
+        $("#myAlertsScope").classList.toggle("active", requested === "mine");
+        $("#allAlertsScope").classList.toggle("active", requested === "all");
+        $("#alertScopeCaption").textContent = requested === "all"
+          ? "Registre général des alertes"
+          : "Alertes destinées à votre compte";
+        await loadAlerts();
+      });
+    });
     $("#newSpecialAlert").hidden = !perm("ALERTES.CREER");
     $("#newSpecialAlert").onclick = openSpecial;
 

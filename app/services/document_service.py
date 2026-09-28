@@ -135,6 +135,44 @@ def build_response(item: Document) -> DocumentResponse:
 
 class DocumentService:
     @staticmethod
+    def declaration_label(declaration) -> str:
+        name = (
+            (declaration.nom_certification or "").strip()
+            or (declaration.norme_declaree or "").strip()
+            or "Certification déclarée"
+        )
+        number = (declaration.numero or "").strip()
+        return f"{name} — n° {number}" if number else name
+
+    @staticmethod
+    async def list_for_fiche(
+        db: AsyncSession, *, fiche_id: UUID, limit: int, offset: int
+    ) -> DocumentListResponse:
+        documents, declarations, total = await DocumentRepository.list_for_fiche(
+            db, fiche_id, limit=limit, offset=offset
+        )
+        labels = {item.id: DocumentService.declaration_label(item) for item in declarations}
+        for item in declarations:
+            if item.certification_officielle_id is not None:
+                labels.setdefault(
+                    item.certification_officielle_id,
+                    DocumentService.declaration_label(item),
+                )
+        items = []
+        for document in documents:
+            context = (
+                "Justificatif général de la fiche"
+                if document.ressource_type == "FICHE_COLLECTE"
+                else labels.get(document.ressource_id, "Certification déclarée")
+            )
+            items.append(build_response(document).model_copy(
+                update={"contexte_documentaire": context}
+            ))
+        return DocumentListResponse(
+            total=total, limit=limit, offset=offset, items=items
+        )
+
+    @staticmethod
     async def ensure_resource_exists(
         db: AsyncSession,
         *,

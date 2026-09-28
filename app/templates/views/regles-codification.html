@@ -165,9 +165,10 @@
         </div>
         <div class="requirement-builder sncc-matrix-builder">
           <div class="requirement-builder-head">
-            <div><h3>Seuils de classement</h3><p>Le préremplissage est une proposition modifiable. Vérifiez les seuils puis publiez avec la référence d’approbation HAUQE.</p></div>
+            <div><h3>Seuils de classement</h3><p>Le préremplissage place cinq lignes modifiables dans le formulaire. Pour les utiliser, vérifiez-les, enregistrez le brouillon, puis publiez-le après approbation HAUQE.</p></div>
             <button class="btn btn-outline-secondary app-btn" id="prefillSnccMatrix" type="button"><i data-lucide="wand-sparkles"></i>Charger le préremplissage</button>
           </div>
+          <p class="sncc-prefill-state" id="snccPrefillState">Aucun seuil chargé dans le formulaire.</p>
           <div class="sncc-matrix-table-wrap">
             <table class="sncc-matrix-table">
               <thead><tr><th>Classe</th><th>Signification</th><th>Score min.</th><th>Score max.</th><th>Statut normal</th><th>Risque</th></tr></thead>
@@ -179,9 +180,11 @@
         <div class="institutional-actions">
           <button class="btn btn-outline-secondary app-btn" id="validateSnccMatrix" type="button"><i data-lucide="scan-search"></i>Vérifier la matrice</button>
           <button class="btn btn-primary app-btn" id="saveSnccMatrixDraft" type="button"><i data-lucide="save"></i>Créer le brouillon SNCC</button>
-          <button class="btn btn-primary app-btn" id="publishSnccMatrix" type="button" hidden><i data-lucide="rocket"></i>Publier la matrice</button>
+          <button class="btn btn-primary app-btn" id="publishSnccMatrix" type="button" disabled title="Enregistrez d’abord un brouillon SNCC"><i data-lucide="rocket"></i>Publier la matrice</button>
         </div>
+        <p class="sncc-publish-guidance" id="snccPublishGuidance">Publication disponible après l’enregistrement du brouillon.</p>
         <div class="validation-report" id="snccMatrixValidation"><div class="priority-empty compact">Chargez le préremplissage, ajustez les seuils et vérifiez la matrice.</div></div>
+        <div class="sncc-draft-summary" id="snccDraftSummary" hidden></div>
       </article>
       <aside class="panel institutional-side">
         <header><div><h2>Règle de décision</h2><p>Le SNCC ne dépend pas d’un seuil caché dans le code.</p></div></header>
@@ -192,6 +195,17 @@
       </aside>
     </div>
   </section>
+
+  <dialog class="hauqe-dialog institutional-dialog sncc-feedback-dialog" id="snccPrefillDialog">
+    <form method="dialog">
+      <header><div><p class="eyebrow">Classement SNCC</p><h2>Préremplissage chargé</h2><small>La proposition est visible dans le tableau des seuils.</small></div><button class="dialog-close" type="button" data-close-inst-dialog="snccPrefillDialog" aria-label="Fermer"><i data-lucide="x"></i></button></header>
+      <div class="dialog-body">
+        <div class="sncc-prefill-confirmation"><i data-lucide="circle-check"></i><div><strong>Cinq classes ajoutées au formulaire</strong><p>A+ à D couvrent les scores de 0 à 100. Les bornes, statuts et risques peuvent encore être modifiés.</p></div></div>
+        <p>Le préremplissage n’a pas enregistré ni publié de règle. Vérifiez la matrice, créez le brouillon, puis utilisez « Publier la matrice » après approbation.</p>
+      </div>
+      <footer><button class="btn btn-primary app-btn" type="button" data-close-inst-dialog="snccPrefillDialog"><i data-lucide="check"></i>Voir les seuils</button></footer>
+    </form>
+  </dialog>
 
 
   <section id="codificationTab" hidden>
