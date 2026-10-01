@@ -395,6 +395,7 @@ class OrganismeService:
             items.append(
                 OrganismeRegistryItem(
                     id=organisme.id,
+                    created_at=organisme.created_at,
                     identifiant_national=organisme.identifiant_national,
                     nom_officiel=organisme.nom_officiel,
                     sigle=organisme.sigle,

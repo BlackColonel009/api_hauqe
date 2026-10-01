@@ -11,7 +11,29 @@
 | API prévue | FastAPI — Python |
 | Base de données prévue | PostgreSQL |
 | Principe de réalisation | Maquettes validées, frontend avec données simulées, puis raccordement progressif à l'API |
-| Dernière mise à jour | 28 septembre 2026 — menu mobile et préférences du Profil |
+| Dernière mise à jour | 1er octobre 2026 — badge d'attente INFC du classement SNCC corrigé |
+
+### Classement SNCC — badge d'attente INFC (01/10/2026)
+
+- La règle générique `.scoring-entity-row > span` dimensionnait toutes les balises `span` à 36 × 36 px, y compris le badge « En attente INFC ». Le texte débordait sous la ligne. Réserver la boîte carrée au premier `span` (icône de certification) et laisser au badge sa largeur naturelle.
+- Sur petit écran, le badge passe sur une ligne complète de la fiche ; aucun libellé ne doit être coupé ni sortir du cadre. Recette : `tests/frontend/sncc_ineligible_layout_smoke.cjs` à 1490/800/390 px et zoom 200 %.
+- Changement de présentation uniquement : aucun calcul SNCC, aucune action et aucune donnée modifiés. **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Alertes — actions de « Mes notifications » (01/10/2026)
+
+- Une ligne de notification affichait quatre enfants dans une grille à trois colonnes : « Marquer lue » tombait dans la première colonne de la ligne suivante et son texte était comprimé. Regrouper « Ouvrir l’alerte » et « Marquer lue » dans une seule zone d’actions, sans rupture du libellé.
+- À largeur réduite et au zoom 200 %, placer la zone d’actions sous le contenu de notification, avec retour à la ligne contrôlé et sans débordement horizontal. Préserver le clic dès la première tentative sur « Marquer lue ».
+- Recettes : `tests/frontend/notification_actions_layout_smoke.cjs` (géométrie 1490/720/390 px et zoom 200 %) et `tests/frontend/personal_alerts_smoke.cjs` (marquage lu dès le premier clic).
+- **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Rapports et exports — catalogue historique raccordé (01/10/2026)
+
+- Les filtres de période, de zone administrative (entreprises), de statut et de référentiel (certifications) sont alimentés par les données réelles. Les filtres non applicables au modèle choisi sont désactivés, sans options fictives.
+- L'aperçu et les téléchargements PDF, Excel compatible et CSV reposent sur les mêmes lignes filtrées. Les cases de contenu déterminent les colonnes présentes ; les identifiants techniques UUID ne sont jamais exposés comme colonnes métier.
+- « Enregistrer la configuration » appelle `POST /api/v1/reports/configurations` et n'affiche le succès qu'après confirmation du serveur. « Mes rapports enregistrés » relit les préférences personnelles avec `GET /api/v1/reports/configurations` et restaure filtres, sections et format.
+- Les registres des certifications et organismes exposent désormais leur date d'enregistrement pour appliquer le filtre de période, sans altérer les données existantes.
+- Recette `tests/frontend/bnec_reports_smoke.cjs` : aperçu et CSV concordants sur période/zone/statut/référentiel, colonnes sélectionnées, configuration enregistrée puis rechargée, boutons dès le premier clic.
+- **Base PostgreSQL : écritures dans `rapports_generes` et journal d'audit lors de l'enregistrement d'une configuration ; schéma inchangé, migration aucune, seed aucun.**
 
 ### Menu mobile — ouverture/fermeture involontaire (28 septembre 2026)
 
@@ -45,6 +67,13 @@
 - Les erreurs de soumission apparaissent dans le modal, sans perte de saisie ; les boutons continuent d’utiliser leurs écouteurs directs au premier clic.
 - Le bloc de saisie défile au zoom ; à très faible hauteur, le formulaire entier reste défilable. Contrôle visuel local réalisé avec les vrais fragments HTML à 1280 × 720, 850 × 480, 640 × 360 et 320 × 200, en thème clair et sombre : ouverture/fermeture au premier clic, aucun débordement horizontal, actions accessibles après défilement. Le parcours métier authentifié et l’enregistrement réel restent à vérifier sur une session de test.
 - Modification frontend uniquement : aucune migration PostgreSQL, aucun seed.
+
+### Échéances — navigation du calendrier sans « bouton latence » (29/09/2026)
+
+- Les boutons précédent, Aujourd'hui et suivant avaient déjà un écouteur direct, mais `renderCalendar()` les supprimait et les recréait à chaque chargement ; une navigation pouvait déclencher deux rendus successifs et remplacer le bouton pendant le clic suivant.
+- Le bouton est maintenant créé une seule fois dans son emplacement neutre après chargement de la vue ; les rendus ultérieurs conservent **la même instance et le même écouteur**, et ne modifient que l'état `disabled` des commandes de zoom. Classe CSS locale avec `pointer-events: auto` et SVG non interactif.
+- Test navigateur isolé : trois commandes de navigation au premier clic, identité DOM inchangée après plusieurs rendus et état des commandes de zoom actualisé. La recette de la page authentifiée reste à faire lors de l'essai utilisateur.
+- Frontend uniquement ; aucune migration PostgreSQL ni seed. Changer les versions de cache de `echeances.js`, du routeur et de `echeances.css` lors du déploiement.
 
 ## Règle permanente et non contournable pour toute mise à jour frontend
 
@@ -4224,6 +4253,43 @@ versionnés pour empêcher qu'une copie navigateur ancienne masque le correctif.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
 
+### Rapports et exports — bilans périodiques BNEC (01/10/2026)
+
+- La rubrique « Rapports et exports » propose en tête trois bilans : mensuel,
+  trimestriel et annuel. L'année et le mois/trimestre choisis sont transmis au
+  serveur ; « Vérifier les indicateurs » montre la période réelle et les valeurs
+  calculées avant « Générer et télécharger ».
+- Les tableaux de bord avancés mensuel, trimestriel et annuel offrent un accès
+  direct à la création du bilan en conservant la période affichée. Le PDF,
+  l'Excel ou le CSV généré est conservé dans l'historique et retéléchargeable.
+- Les exports de registres interrogent les données courantes et les filtrent
+  selon la période métier affichée. Ils ne sont pas archivés comme bilans BNEC.
+  Aucun UUID ne doit être montré comme nom du demandeur.
+- Vérifier les trois types de bilan, l'aperçu, le premier clic de génération,
+  le téléchargement et l'absence de débordement à 100 % et 200 % de zoom.
+  Recette : `tests/frontend/bnec_reports_smoke.cjs`.
+- L'aperçu ne doit jamais exposer une sérialisation technique du type
+  « Indicateurs clés 1 / Valeur ». Afficher d'abord « En bref », puis un
+  libellé métier et une explication pour chaque chiffre. Les textes longs
+  doivent revenir à la ligne, y compris à fort zoom.
+- Recette du 01/10 : l'aperçu mensuel/trimestriel/annuel doit s'ouvrir
+  plusieurs fois sans rechargement. Une requête lente affiche « Calcul… » ;
+  un changement de type ou de période invalide son ancienne réponse pour
+  qu'un aperçu trimestriel tardif n'écrase pas l'annuel. Distinguer « Aperçu
+  du bilan BNEC » de « Aperçu de l'export » (registre courant). Le modal de
+  ce dernier garde ses actions accessibles par défilement en hauteur réduite.
+- L'aperçu annuel indique visiblement « bilan provisoire » et la date d'arrêté
+  quand l'année est en cours. Il ne doit pas faire passer le 31 décembre futur
+  pour une date d'observation effective. Recette avec une année en cours et
+  des trimestres sans résultat INFC validé.
+- Ne jamais retirer ou masquer les commandes du catalogue historique en
+  ajoutant un nouveau bilan. La tentative du 01/10/2026 avait caché
+  « Périmètre et filtres », « Contenu du rapport » et « Enregistrer la
+  configuration » ; ces blocs sont restaurés et désormais raccordés.
+  Un bouton de sauvegarde ne doit jamais annoncer un succès fictif.
+
+**Base PostgreSQL : schéma inchangé ; migration : aucune ; seed : aucun.**
+
 ### Dossiers certification et organisme — preuves, statut et tableau de bord (27/09/2026)
 
 **Dossier entreprise — justificatifs de collecte (27/09/2026) :** l’onglet Documents affiche désormais à la fois les documents déposés directement sur l’entreprise et les justificatifs généraux de toutes ses fiches de collecte explicitement liées. Chaque ligne indique « Document de l’entreprise » ou « Collecte · révision N » et conserve le téléchargement privé existant. Les boutons d’ajout et de téléchargement restent branchés au rendu de l’onglet ; version du script incrémentée pour éviter l’ancien cache navigateur. Une fiche historique sans `entreprise_id` explicite n’est pas rattachée par supposition.
@@ -4859,7 +4925,7 @@ mesure saisie. Toute erreur est affichée dans le modal sans fermer celui-ci.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
 
-### Administration — copie des identifiants initiaux (24/09/2026)
+### Administration — copie des identifiants initiaux (01/10/2026)
 
 Après création d'un utilisateur, les icônes de copie du courriel et du mot de
 passe initial utilisent d'abord `navigator.clipboard` en HTTPS/localhost,
@@ -4867,6 +4933,19 @@ puis un secours par sélection temporaire et `document.execCommand("copy")`.
 La copie reste donc utilisable via une adresse HTTP du réseau local, où l'API
 moderne du presse-papiers est volontairement bloquée par le navigateur. Une
 valeur vide ou indisponible affiche un message clair.
+
+Correctif du 01/10 : sélectionner directement la valeur visible **dans le
+dialog modal ouvert**, jamais un champ temporaire ajouté à `document.body`
+rendu inactif par `showModal()`. Si l'API moderne refuse malgré HTTPS,
+tenter aussi le secours. En cas de refus total, laisser la valeur
+sélectionnée pour `Ctrl+C`. Afficher succès ou échec **dans le modal**, pas
+dans l'état de page masqué derrière. Les trois boutons de copie (mot de passe
+avant création, courriel et mot de passe après création) utilisent un seul
+écouteur `click` en capture sur `document`, remplacé proprement à chaque
+réinjection SPA : un bouton recréé fonctionne encore au premier clic.
+Recette : `tests/frontend/user_credentials_copy_smoke.cjs` (copie réelle dans
+Chrome/Edge sur HTTPS et HTTP, interface locale servie par l'application,
+bouton recréé, échec visible).
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
 
@@ -5050,3 +5129,31 @@ les `CERTIFICATION` officiellement rapprochées. Un document apparaît une
 fois par dossier et son contexte métier reste lisible, sans UUID affiché.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+### Veille — confirmation de clôture et préférence du point focal (01/10/2026)
+
+Le modal HAUQE de clôture charge avant confirmation les nombres de relances,
+d'échéances, d'alertes et de courriels non envoyés concernés. Le bouton de
+confirmation reste inactif jusqu'au chargement et le motif reste obligatoire.
+Le contenu du modal défile au zoom, sans cacher les actions. La rubrique
+« Courriels du système par agent » du profil est visible et modifiable par le
+point focal BNEC, en plus des administrateurs autorisés. À vérifier après
+déploiement : premier clic, zoom, thème sombre et rafraîchissement du cache JS.
+### Modals au zoom et identité visuelle officielle (01/10/2026)
+
+Les modals « Alerte spéciale » et « Planifier une échéance » utilisent un
+défilement continu sur le formulaire complet, y compris quand le navigateur
+réduit fortement l'espace disponible. Le formulaire d'échéance présente
+désormais trois étapes : certification, organisation du suivi et contexte.
+Le formulaire « Alerte spéciale » présente également trois étapes : source du
+signalement, criticité et contenu. Le passage à l'étape suivante contrôle les
+champs obligatoires de l'étape courante ; le retour conserve les valeurs saisies.
+Les boutons Précédent/Continuer répondent au premier clic et les champs
+obligatoires de chaque étape sont contrôlés avant progression. Les données
+saisies sont conservées en revenant à l'étape précédente.
+
+Le fichier officiel `app/static/logo.jpg` remplace les monogrammes « HQ » dans
+la connexion, la session sécurisée, la navigation, la sauvegarde, l'aperçu des
+rapports et les anciens écrans HTML conservés. Les exports PDF et Excel
+incorporent l'image ; les courriels HTML la contiennent en pièce liée inline
+(CID), et gardent une version texte sans image. Recharger complètement les
+fichiers CSS/JS versionnés après déploiement. **Base PostgreSQL modifiée : non.**

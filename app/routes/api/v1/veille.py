@@ -43,6 +43,7 @@ from app.schemas.veille import (
     NotificationResponse,
     NotificationResultRequest,
     WatchCaseCloseRequest,
+    WatchCaseClosePreviewResponse,
     WatchCaseCreateRequest,
     WatchCaseListResponse,
     WatchCaseResponse,
@@ -597,6 +598,18 @@ async def update_watch_case(
         actor=actor,
         request=request,
     )
+
+
+@watch_router.get(
+    "/dossiers/{case_id}/close-preview",
+    response_model=WatchCaseClosePreviewResponse,
+)
+async def close_watch_case_preview(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("VEILLE.CLOTURER")),
+):
+    return await WatchService.close_watch_case_preview(db, case_id)
 
 
 @watch_router.post(

@@ -18,9 +18,11 @@ Le journal d'audit n'expose aucune route de mutation.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -28,6 +30,7 @@ from app.permissions.auth import require_permission
 from app.schemas.governance import *
 from app.services.auth_service import AuthContext
 from app.services.governance_service import GovernanceService
+from app.services.bnec_report_service import BnecReportService
 from app.tasks.process_backup import execute_backup_run
 
 
@@ -725,6 +728,59 @@ async def retire_publication(
 # ============================================================
 # RAPPORTS GÉNÉRÉS
 # ============================================================
+
+@report_router.get("/configurations", response_model=GeneratedReportListResponse)
+async def list_report_configurations(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("RAPPORTS.LIRE")),
+):
+    return await GovernanceService.list_report_configurations(db, actor=actor)
+
+
+@report_router.post("/configurations", response_model=GeneratedReportResponse)
+async def save_report_configuration(
+    payload: ReportConfigurationSaveRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("RAPPORTS.DEMANDER")),
+):
+    return await GovernanceService.save_report_configuration(
+        db, payload=payload, actor=actor, request=request,
+    )
+
+@report_router.get("/bnec/preview")
+async def preview_bnec_report(
+    type: Literal["MENSUEL", "TRIMESTRIEL", "ANNUEL"],
+    year: int = Query(ge=2000, le=2100),
+    month: int | None = Query(default=None, ge=1, le=12),
+    quarter: int | None = Query(default=None, ge=1, le=4),
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("RAPPORTS.LIRE")),
+):
+    return await BnecReportService.build(db, kind=type, year=year, month=month, quarter=quarter)
+
+
+@report_router.post("/bnec/generate", response_model=GeneratedReportResponse, status_code=status.HTTP_201_CREATED)
+async def generate_bnec_report(
+    payload: BnecPeriodicReportRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("RAPPORTS.DEMANDER")),
+):
+    return await BnecReportService.generate(
+        db, kind=payload.type, year=payload.year, month=payload.month,
+        quarter=payload.quarter, format=payload.format, actor=actor, request=request,
+    )
+
+
+@report_router.get("/{report_id}/download")
+async def download_bnec_report(
+    report_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(require_permission("RAPPORTS.LIRE")),
+):
+    path, filename, media_type = await BnecReportService.download(db, report_id)
+    return FileResponse(path, media_type=media_type, filename=filename)
 
 @report_router.get(
     "",

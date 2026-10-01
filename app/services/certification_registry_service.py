@@ -36,6 +36,7 @@ class CertificationRegistryService:
 
         return CertificationRegistryItem(
             id=certification.id,
+            created_at=certification.created_at,
             identifiant_national=certification.identifiant_national,
             numero_certificat=certification.numero_certificat,
             entreprise_id=certification.entreprise_id,

@@ -1,10 +1,20 @@
 # Plan de développement - Guide global d'utilisation SNGSC / HAUQE
 
-**Statut :** guide opérationnel V2 illustré et détaillé pour la formation ; recette métier finale à poursuivre
-**Dernière mise à jour :** 21 septembre 2026
+**Statut :** guide opérationnel V3 Word disponible ; recette métier finale et mise à jour des captures à poursuivre
+**Dernière mise à jour :** 29 septembre 2026
 **Livrable cible :** document Word `.docx` modifiable et prêt pour impression
 
 ## Avancement documentaire - 21 septembre 2026
+
+### Version 3 du guide global - 29 septembre 2026
+
+- Nouveau livrable : `output/docx/Guide_global_utilisation_SNGSC_HAUQE_v3.docx`, établi depuis la V2 finale illustrée sans modifier le fichier source.
+- Procédures actualisées pour les missions à collectes multiples, l'affectation des agents, la précréation des organismes, les preuves propres à chaque certification, la réouverture gouvernée, le plan d'intégration BNEC et les séquences proposées dans un même périmètre.
+- Scoring, INFC et SNCC décrits avec leurs propositions automatiques fondées sur les règles publiées, le contrôle humain du résultat et la priorité des statuts métier.
+- Communications de parcours, courriels fonctionnels par compte, lien de réinitialisation valable 3 minutes, échéances et relances actualisés.
+- Exemple fictif corrigé : RCCM/NIF facultatifs ; preuve de certificat séparée des justificatifs généraux.
+- Présentation des textes noir et blanc, captures historiques conservées, listes de procédures renumérotées par rubrique et pagination dynamique réparée.
+- Contrôle effectué par export Word : 54 pages. Le moteur LibreOffice empaqueté n'est pas disponible sur cet hôte Windows ; des captures historiques de la V2 restent à remplacer lorsque les écrans stabilisés seront validés.
 
 - une version rédigée du guide global a été produite dans
   `docs_md/guide_global_utilisation_SNGSC_HAUQE_version_redigee.docx` ;
@@ -147,3 +157,10 @@ collecte, vérification documentaire, contrôle FUCCS, validation N1,
 validation N2 et intégration BNEC. Il met en évidence l'étape en cours, la
 prochaine action, les blocages éventuels et les étapes restantes, sans exposer
 d'identifiant technique.
+### À intégrer dans la prochaine édition du guide (01/10/2026)
+
+- Illustrer la création d'une échéance en trois étapes : certification,
+  suivi, contexte, avec retour arrière sans perdre la saisie.
+- Montrer le défilement des modals Alertes et Échéances au zoom.
+- Utiliser le logo officiel HAUQE dans les nouvelles captures et préciser
+  que les rapports et courriels HTML portent cette identité.

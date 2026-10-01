@@ -1104,6 +1104,16 @@
   color:#28795c;
 }
 
+.user-copy-feedback{
+  display:block;
+  margin:7px 0 0;
+  color:#176b4d;
+  font-size:12px;
+  font-weight:700;
+}
+.user-copy-feedback[hidden]{display:none}
+.user-copy-feedback.error{color:#a33c35}
+
 .credential-errors{
   padding:10px 12px;
   border:1px solid #edcfca;

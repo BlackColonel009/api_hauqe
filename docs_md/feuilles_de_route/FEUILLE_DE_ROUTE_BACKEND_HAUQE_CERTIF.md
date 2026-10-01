@@ -2,12 +2,68 @@
 
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
-**Dernière mise à jour :** 2026-09-28 — courriels du système par agent
+**Dernière mise à jour :** 2026-10-01 — bilans BNEC et configurations personnelles des exports
 **Statut global :** backend métier principal implémenté ; verrou de reprise/session intégré côté authentification et interaction avec le timeout d’inactivité ajustée ; MFA-login, réactivation RM-33 et validation runtime globale restent à finaliser pendant la recette API ↔ frontend. SMTP e-mail volontairement différé.
 
 ---
 
 ## 1. Règle de continuité du projet
+
+### Configurations personnelles des exports (01/10/2026)
+
+- `GET /api/v1/reports/configurations` renvoie uniquement les modèles enregistrés par l'utilisateur courant (`RAPPORTS.LIRE`). `POST /api/v1/reports/configurations` enregistre ou actualise son réglage par modèle (`RAPPORTS.DEMANDER`). Les filtres, sections et format sont conservés dans `rapports_generes` avec `categorie=EXPORT_CONFIG` et `statut=CONFIGURATION`, et l'action est auditée.
+- Les configurations ne sont ni des rapports générés ni des pièces documentaires ; elles n'apparaissent pas dans l'historique des générations. Les dates d'enregistrement sont exposées dans les listes certifications/organismes afin que le filtre temporel du catalogue fonctionne.
+- Test unitaire : `tests/unit/test_report_configurations.py` (périmètre utilisateur, écriture, audit).
+- **Base PostgreSQL modifiée : données oui lors d'un enregistrement, schéma non ; migration Alembic aucune ; seed aucun.**
+
+### Bilans mensuels, trimestriels et annuels BNEC (01/10/2026)
+
+- `GET /api/v1/reports/bnec/preview` calcule les indicateurs depuis les
+  tableaux de bord serveur pour l'année et le mois ou trimestre demandés.
+  `POST /api/v1/reports/bnec/generate` produit un PDF, XLSX ou CSV avec les
+  mêmes valeurs, enregistre le fichier dans le stockage documentaire privé,
+  crée les entrées `documents` et `rapports_generes` et trace l'opération.
+  `GET /api/v1/reports/{id}/download` retélécharge le fichier archivé.
+- Les activités sont bornées à la période choisie. Les indicateurs de stock et
+  les alertes actives décrivent l'état du registre **au jour de génération** ;
+  cette nuance est indiquée dans l'aperçu et le fichier. Un bilan historique
+  n'est donc pas une photographie exhaustive du stock à la date passée.
+- La sortie du tableau de bord ne doit pas être exportée comme une liste de
+  clés JSON. Construire une lecture métier : résumé « En bref », libellés
+  complets, définition des mesures, comparaison à la période précédente quand
+  elle existe, répartition et synthèse textuelle déjà calculées par le moteur.
+  Ne pas inventer d'analyse ou de seuils non présents dans les données.
+- Pour l'année en cours, le bilan est **provisoire** et annonce la date d'arrêté
+  des données. Les trimestres non commencés ne sont pas présentés comme des
+  zéros ; un trimestre en cours est signalé. La série INFC annuelle doit
+  distinguer un vrai score nul de l'absence de résultat validé en relisant la
+  moyenne du trimestre depuis la source. Les répartitions de statuts, SNCC et
+  régions sont explicitement qualifiées de photographie actuelle du registre,
+  non de situation figée à la fin de l'année demandée.
+- Permissions existantes : `RAPPORTS.LIRE` pour aperçu/téléchargement et
+  `RAPPORTS.DEMANDER` pour génération. Aucun nouveau rôle ni seed. La
+  génération utilise ReportLab, nouvelle dépendance de `requirements.txt`.
+- Tests : `tests/unit/test_bnec_report_service.py` (bornes de période,
+  formats, calcul serveur, archivage) ; recette des tableaux de bord en
+  lecture seule contre la base locale.
+
+**Base PostgreSQL modifiée : schéma non ; écritures métier oui, uniquement
+lorsqu'un utilisateur génère un rapport (`documents`, `rapports_generes`,
+journal d'audit). Migration Alembic : aucune ; seed : aucun.**
+
+### Aperçu des codes BNEC — séquences du même périmètre (29 septembre 2026)
+
+- Une même intégration peut contenir plusieurs certifications dont les codes complets diffèrent par la norme. L'ancien aperçu excluait seulement les **codes complets** déjà affichés et pouvait donc proposer deux fois `-003` dans le même modèle/périmètre.
+- L'aperçu conserve désormais, pour toute la construction du plan, les triplets `(version de règle, périmètre, séquence)` déjà proposés. Il suggère `-003`, puis `-004` dans un même périmètre ; des périmètres distincts peuvent chacun utiliser `-003`. Le code complet reste également vérifié contre les données existantes.
+- La réservation définitive transactionnelle, le verrou PostgreSQL et les contraintes d'unicité ne changent pas. Un aperçu reste une proposition : une intégration concurrente peut occuper une séquence avant la confirmation et le code final est alors recalculé.
+- **Base PostgreSQL modifiée : non par cette correction ; schéma : non ; migration Alembic : aucune ; seed : aucun.**
+
+### Complément à l'intégration BNEC — 29 septembre 2026
+
+- Pour une collecte ancienne déjà soumise, le plan d'intégration annonce les compléments possibles avant exécution. L'étape entreprise remplit l'activité principale uniquement si elle est vide et si une seule description d'offre distincte peut servir de source ; elle crée ou complète le contact du déclarant sans remplacer une valeur présente ni rapprocher une identité ambiguë.
+- L'étape certification conserve le rapprochement existant et complète le nom officiel d'un organisme lié seulement s'il est vide et si le nom figure dans la certification déclarée. Aucun pays, accréditeur, numéro d'accréditation ou statut `RECONNU` n'est inventé.
+- Chaque complément réalisé est audité avec sa source ; il est dans le savepoint de l'intégration et est annulé si celle-ci échoue. Une intégration déjà `INTEGREE` n'est pas rejouée : le rattrapage de ces dossiers exigerait une opération séparée avec aperçu.
+- **Base PostgreSQL modifiée : oui lors des prochaines intégrations concernées, données uniquement. Schéma modifié : non. Migration Alembic : aucune. Seed/script de rattrapage : aucun.**
 
 ### Courriels du système par agent — 28 septembre 2026
 
@@ -2635,6 +2691,32 @@ saisie ou validée dans le dossier entreprise, n’est jamais écrasée. Les tro
 actions sont inscrites dans le journal d’audit.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+### Dossiers de veille : ouverture et clôture coordonnées (01/10/2026)
+
+L'ouverture d'un dossier notifie dans l'application et par courriel l'agent
+responsable, les membres actifs de la cellule de veille, le point focal et
+l'administrateur HAUQE. Un utilisateur cumulant plusieurs rôles n'est ciblé
+qu'une fois. La clôture demande un motif, conserve les relances déjà envoyées
+ou répondues, arrête les relances en attente, annule les échéances et alertes
+actives propres au dossier, ainsi que les courriels de relance encore en file.
+Les échéances des certifications et les autres dossiers de la même entreprise
+ne sont jamais modifiés. Le motif, l'auteur et les nombres annulés sont
+journalisés. Une nouvelle notification contextualisée annonce la clôture aux
+mêmes destinataires. Les préférences individuelles de courriel sont appliquées
+par le worker SMTP ; les notifications internes restent disponibles.
+Le point focal BNEC peut désormais consulter et modifier ces préférences par
+utilisateur depuis son profil, au même titre que les administrateurs autorisés.
+
+`notifications.relance_veille_id` est une nouvelle liaison nullable vers
+`relances_veille.id` ; la migration rapproche les anciens courriels uniquement
+lorsqu'une correspondance unique et exacte est démontrable. Aucun ancien
+message ni aucune donnée n'est supprimé. Les courriels historiques non
+rapprochables restent inchangés et doivent être revus manuellement si un
+dossier ancien est clôturé avant leur envoi.
+
+**Base PostgreSQL modifiée : oui ; migration :
+`k6a0c4e8f2b3_watch_followup_notification_link.py` ; seed : aucun.**
 
 ### Collecte — précréation contrôlée d’un organisme certificateur (27/09/2026)
 
@@ -7020,3 +7102,11 @@ La sélection SQL part de la fiche ou de l'entreprise : elle n'agrège jamais
 les preuves d'une autre entreprise simplement parce que le nom est identique.
 
 **Base PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+### Logo officiel dans les sorties (01/10/2026)
+
+Le transport SMTP joint `app/static/logo.jpg` en image inline CID au corps
+HTML de tous les courriels ; le corps texte reste intact. Si le fichier est
+absent sur le serveur, un avertissement est journalisé et le courriel part
+sans image. Les bilans BNEC PDF et XLSX incorporent le même fichier ; aucun
+document historique n'est réécrit. **Base PostgreSQL modifiée : non ;
+migration : aucune ; seed : aucun.**

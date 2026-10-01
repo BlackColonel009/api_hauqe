@@ -336,8 +336,9 @@
       <div class="dialog-body">
         <div class="watch-close-warning">
           <span><i data-lucide="folder-lock"></i></span>
-          <div><strong>Clôture du suivi actif</strong><small>Vérifiez que les relances, réponses et actions attendues ont été traitées avant de confirmer.</small></div>
+          <div><strong>Clôture du suivi actif</strong><small>Les actions encore en attente seront arrêtées. Les messages déjà envoyés et les réponses resteront dans l’historique.</small></div>
         </div>
+        <div class="watch-close-impact" id="watchCloseImpact" role="status">Chargement des éléments concernés…</div>
         <div class="watch-close-fields">
           <label><span>Motif de la clôture <b>*</b></span><textarea id="closeWatchReason" rows="5" placeholder="Résumez le résultat du suivi et la raison de sa clôture…" required></textarea><small>Cette justification sera conservée dans la traçabilité du dossier.</small></label>
         </div>
@@ -345,7 +346,7 @@
 
       <footer>
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="closeWatchCaseDialog">Annuler</button>
-        <button class="btn btn-primary app-btn" type="submit"><i data-lucide="lock"></i>Confirmer la clôture</button>
+        <button class="btn btn-primary app-btn" id="confirmWatchClose" type="submit"><i data-lucide="lock"></i>Confirmer la clôture</button>
       </footer>
     </form>
   </dialog>

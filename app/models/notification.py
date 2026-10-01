@@ -24,6 +24,13 @@ class Notification(
         nullable=True,
     )
 
+    relance_veille_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("relances_veille.id"),
+        nullable=True,
+        index=True,
+    )
+
     destinataire_utilisateur_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("utilisateurs.id"),

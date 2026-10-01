@@ -185,6 +185,7 @@
 
   function renderOverview() {
     const missing = plan?.missing_codification_models || [];
+    const complements = plan?.complements_prevus || [];
     const blockers = (plan?.items || []).filter((item) => item.blocage);
     const readyMessage = plan?.ready
       ? "Le dossier a déjà subi la vérification, le contrôle FUCCS et la double validation. Il est prêt pour une intégration transactionnelle en un clic."
@@ -205,6 +206,7 @@
             ${infoCell("Fin", formatDate(integration.date_fin))}
           </div>
           ${integration.resume ? `<div class="integration-summary-note"><i data-lucide="message-square-text"></i><span>${escapeHtml(integration.resume)}</span></div>` : ""}
+          ${complements.length ? `<div class="integration-summary-note"><i data-lucide="list-checks"></i><span><strong>Compléments prévus sur les champs vides</strong><br>${complements.map(escapeHtml).join("<br>")}</span></div>` : ""}
         </article>
 
         <aside class="panel bnec-readiness-panel ${plan?.ready ? "ready" : "blocked"}">

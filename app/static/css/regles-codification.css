@@ -1400,7 +1400,8 @@
 .institutional-dialog{
   --inst-dialog-accent:#176b4d;
   --inst-dialog-accent-dark:#0b3f2d;
-  --inst-dialog-mark:"HQ";
+  --inst-dialog-mark:"";
+  --inst-dialog-logo:url("/static/logo.jpg");
   width:min(720px,calc(100vw - 26px))!important;
   max-width:720px;
   padding:0!important;
@@ -1448,7 +1449,7 @@
   place-items:center;
   border:1px solid rgba(255,255,255,.3);
   border-radius:17px;
-  background:rgba(255,255,255,.13);
+  background:#fff var(--inst-dialog-logo) center/contain no-repeat;
   color:#fff;
   font:800 11px/1 Manrope,sans-serif;
   letter-spacing:.05em;
@@ -1578,6 +1579,7 @@
 #fuccsRetireDialog{--inst-dialog-mark:"RET";--inst-dialog-accent:#765c27;--inst-dialog-accent-dark:#493715}
 #fuccsDeleteDialog{--inst-dialog-mark:"SUP";--inst-dialog-accent:#8c3f38;--inst-dialog-accent-dark:#54231f}
 #fuccsHistorical24Dialog{--inst-dialog-mark:"24"}
+#publishDialog,#ruleDialog,#modelDialog,#weightDialog,#fuccsGridDialog,#fuccsCloneDialog,#fuccsRubricDialog,#fuccsCriterionDialog,#fuccsRetireDialog,#fuccsDeleteDialog,#fuccsHistorical24Dialog{--inst-dialog-logo:none}
 .rule-entry-helper{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:12px;padding:14px 15px;border:1px solid #cce2d7;border-radius:15px;background:linear-gradient(135deg,#e9f6f0,#f8fcfa)}
 .rule-entry-helper>span{display:grid;width:40px;height:40px;place-items:center;border-radius:12px;background:#fff;color:#1f7555;box-shadow:0 5px 14px rgba(30,102,75,.08)}.rule-entry-helper>span svg{width:18px}
 .rule-entry-helper label{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:0}.rule-entry-helper strong{color:#28513f;font-size:10px}.rule-entry-helper small{color:#6d8077;font-size:8px;line-height:1.45}.rule-entry-helper select{margin-top:5px}

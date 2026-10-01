@@ -1,6 +1,6 @@
 // Recette isolée : API simulée, aucun courriel ni écriture en base.
 const assert = require('node:assert/strict');
-const { chromium } = require('playwright');
+const { chromium } = require('../../tmp/node_modules/playwright');
 
 const origin = process.env.HAUQE_TEST_ORIGIN || 'http://127.0.0.1:8001';
 
@@ -10,6 +10,7 @@ const origin = process.env.HAUQE_TEST_ORIGIN || 'http://127.0.0.1:8001';
   const errors = [];
   const requestedAlerts = [];
   let globalAllowed = false;
+  let notificationRead = false;
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => sessionStorage.setItem('hauqe-access-token', 'isolated-ui-test'));
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, route => route.abort());
@@ -25,7 +26,16 @@ const origin = process.env.HAUQE_TEST_ORIGIN || 'http://127.0.0.1:8001';
         niveau: 2, statut: 'NOUVELLE', date_detection: '2026-09-27',
         resource_label: 'Mission de collecte', resource_route: '#/collectes',
       }], total: 1, summary: { total: 1, active: 1, level_1: 0, level_2: 1, level_3: 0, level_4: 0, resolved: 0 } };
-    } else if (path === '/api/v1/notifications') body = { items: [], total: 0, unread_count: 0 };
+    } else if (path === '/api/v1/notifications') body = { items: [{
+      id: '33333333-3333-4333-8333-333333333333', alerte_id: '22222222-2222-4222-8222-222222222222',
+      objet: 'Échéance à traiter aujourd’hui : Laiterie du Plateau', contenu: 'Certification CERT-ISO22000-2026-001',
+      canal: 'IN_APP', statut: 'ENVOYEE', created_at: '2026-09-27T10:00:00Z',
+      date_lecture: notificationRead ? '2026-09-27T11:00:00Z' : null,
+    }], total: 1, unread_count: notificationRead ? 0 : 1 };
+    else if (path.endsWith('/read') && route.request().method() === 'POST') {
+      notificationRead = true;
+      body = { ok: true };
+    }
     else if (path.includes('/alert-filters')) body = { alert_types: ['MISSION_AFFECTEE'], alert_statuses: ['NOUVELLE'] };
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -36,6 +46,9 @@ const origin = process.env.HAUQE_TEST_ORIGIN || 'http://127.0.0.1:8001';
     assert.ok(requestedAlerts.includes('/api/v1/veille/workspace/alerts/mine'));
     await page.locator('[data-alert-tab="notifications"]').click();
     assert.equal(await page.locator('#notificationsTab').isVisible(), true, 'notifications au premier clic');
+    await page.locator('#notificationCenterList [data-read]').click();
+    await page.locator('#notificationCenterList [data-read]').waitFor({ state: 'detached' });
+    assert.equal(notificationRead, true, 'Marquer lue fonctionne au premier clic');
     await page.locator('[data-alert-tab="alerts"]').click();
     await page.locator('#alertsList [data-alert]').click();
     assert.equal(await page.locator('#alertDetailDialog').evaluate(dialog => dialog.open), true, 'alerte au premier clic');

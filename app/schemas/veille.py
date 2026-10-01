@@ -218,6 +218,14 @@ class WatchCaseCloseRequest(BaseModel):
     motif: str = Field(min_length=1, max_length=2000)
 
 
+class WatchCaseClosePreviewResponse(BaseModel):
+    relances_total: int
+    relances_en_attente: int
+    echeances_actives: int
+    alertes_actives: int
+    courriels_planifies: int
+
+
 class WatchCaseResponse(BaseModel):
     id: UUID
     certification_id: UUID

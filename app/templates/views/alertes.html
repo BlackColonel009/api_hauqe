@@ -206,6 +206,12 @@
       </button>
     </header>
 
+    <nav class="special-alert-create-steps" aria-label="Étapes de création de l’alerte">
+      <span data-special-alert-step="1" class="active" aria-current="step"><b>1</b> Source</span>
+      <span data-special-alert-step="2"><b>2</b> Criticité</span>
+      <span data-special-alert-step="3"><b>3</b> Contenu</span>
+    </nav>
+
     <div class="operational-dialog-body">
       <div class="operational-form-notice">
         <span><i data-lucide="scan-search"></i></span>
@@ -218,7 +224,7 @@
         </div>
       </div>
 
-      <section class="operational-form-section">
+      <section class="operational-form-section special-alert-step-panel" data-special-alert-panel="1">
         <div class="operational-section-heading">
           <span><i data-lucide="badge-check"></i></span>
           <div>
@@ -259,7 +265,7 @@
         </div>
       </section>
 
-      <section class="operational-form-section severity-section">
+      <section class="operational-form-section severity-section special-alert-step-panel" data-special-alert-panel="2" hidden>
         <div class="operational-section-heading">
           <span><i data-lucide="gauge"></i></span>
           <div>
@@ -291,7 +297,7 @@
         </div>
       </section>
 
-      <section class="operational-form-section">
+      <section class="operational-form-section special-alert-step-panel" data-special-alert-panel="3" hidden>
         <div class="operational-section-heading">
           <span><i data-lucide="message-square-warning"></i></span>
           <div>
@@ -354,9 +360,13 @@
           Annuler
         </button>
 
+        <button class="btn btn-outline-secondary app-btn" id="specialAlertPrevious" type="button" hidden>Précédent</button>
+        <button class="btn btn-primary app-btn" id="specialAlertNext" type="button">Continuer</button>
         <button
           class="btn btn-primary app-btn"
+          id="saveSpecialAlert"
           type="submit"
+          hidden
         >
           <i data-lucide="triangle-alert"></i>
           Créer l’alerte

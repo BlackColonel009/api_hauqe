@@ -44,6 +44,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import write_audit_event
@@ -81,6 +82,7 @@ from app.schemas.veille import (
     NotificationResponse,
     NotificationResultRequest,
     WatchCaseCloseRequest,
+    WatchCaseClosePreviewResponse,
     WatchCaseCreateRequest,
     WatchCaseListResponse,
     WatchCaseResponse,
@@ -92,6 +94,8 @@ from app.schemas.veille import (
     WatchReportValidateRequest,
 )
 from app.services.auth_service import AuthContext
+from app.services.workflow_communication_service import WorkflowCommunicationService
+from app.repositories.veille_repository import ACTIVE_ALERT_STATUSES, ACTIVE_DEADLINE_STATUSES
 
 
 RULE_CODE_EXPIRATION = "VEILLE_SEUILS_EXPIRATION"
@@ -2154,6 +2158,23 @@ class WatchService:
         )
         await WatchService.synchronize_watch_case_reminder(db, case=item)
 
+        context = await WatchRepository.certification_context(db, item.certification_id)
+        responsible = await WatchRepository.get_user(db, item.responsable_id)
+        responsible_name = (
+            " ".join(filter(None, (responsible.prenoms, responsible.nom)))
+            if responsible else "Agent de veille"
+        ) or "Agent de veille"
+        await WorkflowCommunicationService.emit(
+            db, event="WATCH_CASE_OPEN", resource_type="DOSSIER_VEILLE",
+            resource_id=item.id, title="Nouveau dossier de veille ouvert",
+            context=context + f"\nÉvénement suivi : {item.type_evenement}"
+            + f"\nResponsable : {responsible_name}",
+            action="Suivre ce dossier de veille selon votre rôle.", route="#/veille",
+            action_roles={"CELLULE_VEILLE"},
+            information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE"},
+            action_user_ids={item.responsable_id},
+        )
+
         await db.commit()
         await db.refresh(item)
         return await WatchService.watch_case_response(db, item)
@@ -2225,8 +2246,45 @@ class WatchService:
         if item.date_cloture is not None:
             return await WatchService.watch_case_response(db, item)
 
+        if not payload.motif.strip():
+            raise HTTPException(422, "Le motif de clôture est obligatoire.")
+
+        targets = await WatchService.close_watch_case_targets(db, case_id)
+        pending_email_ids = {mail.relance_veille_id for mail in targets["emails"]}
+        for followup in targets["followups"]:
+            if followup.statut != "EN_ATTENTE":
+                continue
+            followup.statut = (
+                "ANNULEE" if followup.id in pending_email_ids
+                or (followup.date_envoi and followup.date_envoi > date.today())
+                else "CLOTUREE_SANS_REPONSE"
+            )
+        for deadline in targets["deadlines"]:
+            deadline.statut = "ANNULEE"
+            deadline.motif_cloture = "Dossier de veille clôturé : " + payload.motif.strip()
+        for alert in targets["alerts"]:
+            alert.statut = "ANNULEE"
+            alert.date_resolution = date.today()
+        for mail in targets["emails"] + targets["alert_emails"]:
+            mail.statut = "ANNULEE"
+            mail.resultat = "Dossier de veille clôturé avant l'envoi."
+            mail.message_erreur = None
+
         item.date_cloture = date.today()
         item.statut = "CLOTURE"
+
+        context = await WatchRepository.certification_context(db, item.certification_id)
+        actor_name = " ".join(filter(None, (actor.user.prenoms, actor.user.nom))) or actor.user.email
+        await WorkflowCommunicationService.emit(
+            db, event="WATCH_CASE_CLOSE", resource_type="DOSSIER_VEILLE",
+            resource_id=item.id, title="Dossier de veille clôturé",
+            context=context + f"\nÉvénement suivi : {item.type_evenement}"
+            + f"\nClôturé par : {actor_name}\nMotif : {payload.motif.strip()}",
+            action="Consulter l'historique du dossier de veille.", route="#/veille",
+            action_roles={"CELLULE_VEILLE"},
+            information_roles={"POINT_FOCAL_BNEC", "ADMIN_HAUQE"},
+            action_user_ids={item.responsable_id},
+        )
 
         await write_audit_event(
             db,
@@ -2240,6 +2298,10 @@ class WatchService:
             valeurs_apres={
                 "date_cloture": item.date_cloture.isoformat(),
                 "statut": item.statut,
+                "relances_arretees": sum(row.statut in {"ANNULEE", "CLOTUREE_SANS_REPONSE"} for row in targets["followups"]),
+                "echeances_annulees": len(targets["deadlines"]),
+                "alertes_annulees": len(targets["alerts"]),
+                "courriels_annules": len(targets["emails"]) + len(targets["alert_emails"]),
             },
             contexte={"motif": payload.motif.strip()},
         )
@@ -2247,6 +2309,49 @@ class WatchService:
         await db.commit()
         await db.refresh(item)
         return await WatchService.watch_case_response(db, item)
+
+    @staticmethod
+    async def close_watch_case_targets(db: AsyncSession, case_id: UUID) -> dict:
+        followups = await WatchRepository.list_followups(db, case_id)
+        followup_ids = [row.id for row in followups]
+        deadline_filter = (Echeance.ressource_type == "DOSSIER_VEILLE") & (Echeance.ressource_id == case_id)
+        if followup_ids:
+            deadline_filter = deadline_filter | ((Echeance.ressource_type == "RELANCE_VEILLE") & Echeance.ressource_id.in_(followup_ids))
+        deadlines = list((await db.execute(select(Echeance).where(
+            deadline_filter, Echeance.statut.in_(ACTIVE_DEADLINE_STATUSES),
+        ))).scalars().all())
+        deadline_ids = [row.id for row in deadlines]
+        alert_filter = (Alerte.ressource_type == "DOSSIER_VEILLE") & (Alerte.ressource_id == case_id)
+        if deadline_ids:
+            alert_filter = alert_filter | Alerte.echeance_id.in_(deadline_ids)
+        alerts = list((await db.execute(select(Alerte).where(
+            alert_filter, Alerte.statut.in_(ACTIVE_ALERT_STATUSES),
+        ))).scalars().all())
+        alert_ids = [row.id for row in alerts]
+        emails = list((await db.execute(select(Notification).where(
+            Notification.relance_veille_id.in_(followup_ids),
+            Notification.canal == "EMAIL",
+            Notification.statut.in_(("PLANIFIEE", "EN_ATTENTE", "ECHEC")),
+        ))).scalars().all()) if followup_ids else []
+        alert_emails = list((await db.execute(select(Notification).where(
+            Notification.alerte_id.in_(alert_ids),
+            Notification.canal == "EMAIL",
+            Notification.statut.in_(("PLANIFIEE", "EN_ATTENTE", "ECHEC")),
+        ))).scalars().all()) if alert_ids else []
+        return {"followups": followups, "deadlines": deadlines, "alerts": alerts,
+                "emails": emails, "alert_emails": alert_emails}
+
+    @staticmethod
+    async def close_watch_case_preview(db: AsyncSession, case_id: UUID) -> WatchCaseClosePreviewResponse:
+        await WatchService.require_watch_case(db, case_id)
+        targets = await WatchService.close_watch_case_targets(db, case_id)
+        return WatchCaseClosePreviewResponse(
+            relances_total=len(targets["followups"]),
+            relances_en_attente=sum(row.statut == "EN_ATTENTE" for row in targets["followups"]),
+            echeances_actives=len(targets["deadlines"]),
+            alertes_actives=len(targets["alerts"]),
+            courriels_planifies=len(targets["emails"]) + len(targets["alert_emails"]),
+        )
 
     # ========================================================
     # RELANCES
@@ -2328,6 +2433,7 @@ class WatchService:
         channel = normalize_code(item.canal or "")
         if channel in {"EMAIL", "COURRIEL"}:
             db.add(Notification(
+                relance_veille_id=item.id,
                 destinataire_utilisateur_id=None,
                 adresse_externe=item.adresse_email,
                 canal="EMAIL",
@@ -2375,6 +2481,9 @@ class WatchService:
         actor: AuthContext,
         request: Request,
     ) -> FollowUpResponse:
+        case = await WatchService.require_watch_case(db, case_id)
+        if case.date_cloture is not None:
+            raise HTTPException(409, "Dossier de veille clôturé : relance non modifiable.")
         item = await WatchRepository.get_followup(
             db,
             case_id=case_id,
@@ -2424,6 +2533,9 @@ class WatchService:
         actor: AuthContext,
         request: Request,
     ) -> FollowUpResponse:
+        case = await WatchService.require_watch_case(db, case_id)
+        if case.date_cloture is not None:
+            raise HTTPException(409, "Dossier de veille clôturé : relance non modifiable.")
         item = await WatchRepository.get_followup(
             db,
             case_id=case_id,

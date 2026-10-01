@@ -115,6 +115,7 @@ class OrganismeResponse(BaseModel):
 
 class OrganismeRegistryItem(BaseModel):
     id: UUID
+    created_at: datetime
     identifiant_national: str | None = None
     nom_officiel: str | None = None
     sigle: str | None = None

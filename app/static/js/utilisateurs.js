@@ -630,6 +630,7 @@
   function openCreateDialog() {
     editingUser = null;
     createWizardStep = 1;
+    $("#userCopyFeedback").hidden = true;
 
     $("#userDialogTitle").textContent = "Nouvel utilisateur";
     $("#userDialogSubtitle").textContent =
@@ -794,37 +795,59 @@
     return lengthOk && varietyOk;
   }
 
-  async function copyText(value) {
-    const text = String(value || "").trim();
-    if (!text || text === "—") {
-      state("Aucune valeur à copier.", true);
+  async function copyText(value, button, source) {
+    const text = String(value ?? "");
+    const feedback = button?.closest("dialog")?.querySelector(
+      button.closest("#credentialDialog") ? "#credentialCopyFeedback" : "#userCopyFeedback"
+    );
+    const report = (message, error = false) => {
+      if (feedback) {
+        feedback.textContent = message;
+        feedback.hidden = false;
+        feedback.classList.toggle("error", error);
+      } else state(message, error);
+    };
+    if (!text.trim() || text.trim() === "—") {
+      report("Aucune valeur à copier.", true);
       return;
     }
 
-    try {
-      // API moderne : disponible seulement sur HTTPS ou localhost.
-      if (navigator.clipboard?.writeText && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
+    const selectVisibleValue = () => {
+      if (!source) return false;
+      if (source instanceof HTMLInputElement || source instanceof HTMLTextAreaElement) {
+        source.focus();
+        source.select();
       } else {
-        // Secours nécessaire sur un accès HTTP du réseau local et certains
-        // navigateurs d'entreprise : le clic reste une activation utilisateur.
-        const field = document.createElement("textarea");
-        field.value = text;
-        field.setAttribute("readonly", "");
-        field.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
-        document.body.appendChild(field);
-        field.select();
-        field.setSelectionRange(0, field.value.length);
-        const copied = document.execCommand("copy");
-        field.remove();
+        const range = document.createRange();
+        range.selectNodeContents(source);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      return true;
+    };
+
+    try {
+      let copied = false;
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        } catch {
+          // Certains navigateurs refusent l'API malgré un contexte sécurisé.
+        }
+      }
+      if (!copied) {
+        // La valeur visible reste sélectionnable dans le dialog même si
+        // l'API Clipboard n'est pas autorisée (HTTP ou navigateur restrictif).
+        if (!selectVisibleValue()) throw new Error("Valeur introuvable");
+        copied = document.execCommand("copy");
         if (!copied) throw new Error("Presse-papiers refusé");
       }
-      state("Valeur copiée dans le presse-papiers.");
+      report("Valeur copiée dans le presse-papiers.");
     } catch {
-      state(
-        "Copie impossible : sélectionnez la valeur manuellement.",
-        true
-      );
+      selectVisibleValue();
+      report("Copie automatique refusée : la valeur est sélectionnée, appuyez sur Ctrl+C.", true);
     }
   }
 
@@ -928,6 +951,7 @@ const roleErrors = [];
       $("#credentialUserName").textContent = displayName(created);
       $("#credentialEmail").textContent = created.email;
       $("#credentialPassword").textContent = password;
+      $("#credentialCopyFeedback").hidden = true;
       $("#credentialRoleSummary").textContent = assigned.length
         ? `${assigned.length} rôle(s) attribué(s) : ${assigned.join(", ")}`
         : "Aucun rôle attribué";
@@ -1107,9 +1131,6 @@ const roleErrors = [];
     }, true);
 
     $("#generateUserPassword").onclick = generatePassword;
-    $("#copyUserPassword").onclick = () =>
-      copyText($("#userInitialPassword").value);
-
     $("#userInitialPassword").oninput = validatePassword;
 
     $("#userSearch").oninput = (event) => {
@@ -1157,17 +1178,29 @@ const roleErrors = [];
       };
     });
 
-    $$("[data-copy-credential]").forEach((button) => {
-      button.onclick = () => {
-        const target = button.dataset.copyCredential;
-        copyText(
-          target === "email"
-            ? $("#credentialEmail").textContent
-            : $("#credentialPassword").textContent
-        );
-      };
-    });
   }
+
+  function handleCopyClick(event) {
+    const button = event.target instanceof Element
+      ? event.target.closest("#copyUserPassword, [data-copy-credential]")
+      : null;
+    if (!button) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const target = button.id === "copyUserPassword"
+      ? $("#userInitialPassword")
+      : button.dataset.copyCredential === "email"
+        ? $("#credentialEmail")
+        : $("#credentialPassword");
+    copyText(target?.value ?? target?.textContent, button, target);
+  }
+
+  // Les vues et modals réinjectés par le routeur gardent un seul écouteur.
+  if (window.HAUQE_USERS_COPY_HANDLER) {
+    document.removeEventListener("click", window.HAUQE_USERS_COPY_HANDLER, true);
+  }
+  window.HAUQE_USERS_COPY_HANDLER = handleCopyClick;
+  document.addEventListener("click", handleCopyClick, true);
 
   async function bootstrap() {
     try {

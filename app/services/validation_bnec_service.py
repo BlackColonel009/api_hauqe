@@ -78,6 +78,7 @@ from app.schemas.validation_bnec import (
 )
 from app.services.auth_service import AuthContext
 from app.services.codification_service import CodificationService
+from app.services.integration_enrichment_service import IntegrationEnrichmentService
 from app.services.veille_service import WatchService
 from app.services.workflow_communication_service import WorkflowCommunicationService
 
@@ -745,6 +746,7 @@ class ValidationBnecService:
         object_type: str,
         context: dict[str, str],
         excluded_codes: set[str] | None = None,
+        excluded_sequences: set[tuple[UUID, str, int]] | None = None,
     ):
         try:
             return await CodificationService.preview(
@@ -752,6 +754,7 @@ class ValidationBnecService:
                 object_type=object_type,
                 context=context,
                 excluded_codes=excluded_codes,
+                excluded_sequences=excluded_sequences,
             ), None
         except ValueError as exc:
             return None, str(exc)
@@ -1231,6 +1234,7 @@ class ValidationBnecService:
         *,
         entreprise,
         reserved_preview_codes: set[str],
+        reserved_preview_sequences: set[tuple[UUID, str, int]],
     ) -> IntegrationPlanItem:
         """Construit une carte métier depuis l'état actuel des référentiels.
 
@@ -1295,10 +1299,14 @@ class ValidationBnecService:
                         db, entreprise
                     ),
                     excluded_codes=reserved_preview_codes,
+                    excluded_sequences=reserved_preview_sequences,
                 )
                 if model:
                     code_propose = model.code
                     reserved_preview_codes.add(model.code)
+                    reserved_preview_sequences.add(
+                        (model.rule_id, model.scope_key, model.sequence)
+                    )
             elif element.statut != "INTEGRE":
                 code_propose = entreprise.identifiant_national
 
@@ -1483,11 +1491,15 @@ class ValidationBnecService:
                                 object_type="CERTIFICATION",
                                 context=context,
                                 excluded_codes=reserved_preview_codes,
+                                excluded_sequences=reserved_preview_sequences,
                             )
                         )
                         if model:
                             code_propose = model.code
                             reserved_preview_codes.add(model.code)
+                            reserved_preview_sequences.add(
+                                (model.rule_id, model.scope_key, model.sequence)
+                            )
 
         if codification_required and model is None:
             try:
@@ -1627,6 +1639,7 @@ class ValidationBnecService:
             db, elements
         )
         reserved_preview_codes: set[str] = set()
+        reserved_preview_sequences: set[tuple[UUID, str, int]] = set()
         items = []
         for element in elements:
             items.append(
@@ -1635,6 +1648,7 @@ class ValidationBnecService:
                     element,
                     entreprise=entreprise,
                     reserved_preview_codes=reserved_preview_codes,
+                    reserved_preview_sequences=reserved_preview_sequences,
                 )
             )
         blocked = sum(1 for item in items if item.statut == "BLOQUE")
@@ -1656,6 +1670,27 @@ class ValidationBnecService:
             (not item.codification_requise) or bool(item.codification_modele)
             for item in items
         )
+        complements_prevus: list[str] = []
+        if entreprise is not None and integration.statut != "INTEGREE":
+            complement_plan = await IntegrationEnrichmentService.plan_enterprise(
+                db, fiche=fiche, entreprise=entreprise
+            )
+            complements_prevus.extend(complement_plan.descriptions())
+            for declared in await ValidationBnecRepository.list_declared_certifications(
+                db, fiche.id
+            ):
+                if declared.organisme_id is None:
+                    continue
+                organisme = await ValidationBnecRepository.get_organism(
+                    db, declared.organisme_id
+                )
+                if organisme and IntegrationEnrichmentService.organism_name_complement(
+                    declared, organisme
+                ):
+                    complements_prevus.append(
+                        "Organisme certificateur : nom officiel complété depuis la certification déclarée"
+                    )
+            complements_prevus = list(dict.fromkeys(complements_prevus))
         return IntegrationPlanResponse(
             integration_id=integration.id,
             validation_id=validation.id,
@@ -1680,6 +1715,7 @@ class ValidationBnecService:
             blocked_count=blocked,
             codification_ready=codification_ready,
             missing_codification_models=missing,
+            complements_prevus=complements_prevus,
             items=items,
         )
 
@@ -1795,9 +1831,14 @@ class ValidationBnecService:
         element: ElementIntegration,
         fiche,
         entreprise,
+        actor: AuthContext,
     ) -> None:
         if entreprise is None:
             raise ValueError("Aucune entreprise n'est rattachée à la fiche.")
+        await IntegrationEnrichmentService.apply_enterprise(
+            db, fiche=fiche, entreprise=entreprise,
+            actor_id=actor.user.id, integration_id=element.integration_bnec_id,
+        )
         if ValidationBnecService._enterprise_needs_codification(entreprise):
             assignment = await CodificationService.reserve(
                 db,
@@ -1899,6 +1940,10 @@ class ValidationBnecService:
             raise ValueError(
                 "L'organisme déclaré doit être rapproché avant l'intégration."
             )
+        await IntegrationEnrichmentService.apply_organism_name(
+            db, source=source, organisme=organisme,
+            actor_id=actor.user.id, integration_id=element.integration_bnec_id,
+        )
         # Une fiche historique peut avoir été rapprochée par son libellé avant
         # l'ajout de la clé explicite. Persister ce rapprochement pour que les
         # prochaines validations et intégrations n'aient plus à le déduire.
@@ -2157,6 +2202,7 @@ class ValidationBnecService:
                 element=element,
                 fiche=fiche,
                 entreprise=entreprise,
+                actor=actor,
             )
         elif kind == "OFFRE":
             await ValidationBnecService._execute_offer(

@@ -1212,6 +1212,46 @@ class GovernanceService:
         }
 
     @staticmethod
+    async def list_report_configurations(db, *, actor):
+        return await GovernanceService.list_reports(
+            db, categorie="EXPORT_CONFIG", statut="CONFIGURATION",
+            demandeur_id=actor.user.id, limit=100, offset=0,
+        )
+
+    @staticmethod
+    async def save_report_configuration(db, *, payload, actor, request):
+        titles = {
+            "companies": "Situation des entreprises", "certs": "État des certifications",
+            "bodies": "Organismes certificateurs", "controls": "Bilan des contrôles FUCCS",
+            "quality": "Revues de qualité", "deadlines": "Suivi des échéances",
+            "alerts": "État des alertes", "audit": "Synthèse du journal d’audit",
+        }
+        code = f"EXPORT_CONFIG_{payload.model_id.upper()}"
+        saved = await GovernanceService.list_report_configurations(db, actor=actor)
+        item = next((row for row in saved["items"] if row.code_modele == code), None)
+        if item:
+            item = await GovernanceService.require_report(db, item.id)
+        else:
+            item = RapportGenere(code_modele=code, categorie="EXPORT_CONFIG",
+                                 demandeur_id=actor.user.id, statut="CONFIGURATION")
+            db.add(item)
+        item.nom_modele = titles[payload.model_id]
+        item.filtres = payload.filtres
+        item.sections = payload.sections
+        item.format = payload.format
+        item.date_demande = date.today()
+        item.resultat = "Configuration personnelle enregistrée."
+        await db.flush()
+        await write_audit_event(
+            db, action="REPORT_CONFIG_SAVE", categorie="REPORTING", resultat="SUCCES",
+            utilisateur_id=actor.user.id, ressource_type="rapport_genere", ressource_id=item.id,
+            adresse_ip=ip(request), valeurs_apres={"code_modele": code, "format": item.format},
+        )
+        await db.commit()
+        await db.refresh(item)
+        return GovernanceService.report_response(item)
+
+    @staticmethod
     async def create_report_request(db, *, payload, actor, request):
         if payload.periode_debut:
             start = parse_iso(payload.periode_debut, "periode_debut")

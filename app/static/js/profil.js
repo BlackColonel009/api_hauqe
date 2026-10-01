@@ -84,7 +84,7 @@
 
   function canManageSystemEmails() {
     return (profile?.roles || []).some((code) =>
-      ["ADMIN_HAUQE", "ADMIN_BNEC"].includes(String(code).toUpperCase())
+      ["ADMIN_HAUQE", "ADMIN_BNEC", "POINT_FOCAL_BNEC"].includes(String(code).toUpperCase())
     );
   }
 

@@ -233,6 +233,8 @@
 }
 .deadline-action-button{position:relative;z-index:1;cursor:pointer;pointer-events:auto}
 .deadline-action-button svg{pointer-events:none}
+.deadline-calendar-nav-button{position:relative;z-index:1;cursor:pointer;pointer-events:auto}
+.deadline-calendar-nav-button svg{pointer-events:none}
 .calendar-day-events [data-deadline-action-slot],.deadline-row-action-slot,.registry-action-slot,#upcomingList [data-deadline-action-slot]{display:block;min-width:0}
 .deadline-list-action-button{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:7px;background:transparent;color:#74817c}
 .deadline-list-action-button:hover{background:#f1f6f3;color:var(--green-700)}
@@ -940,6 +942,26 @@
   background:#14372f;
   box-shadow:0 1px 0 #315248;
 }
+
+/* Un seul défilement continu garantit l'accès aux champs au fort zoom. */
+.deadline-planner-dialog{max-height:calc(100dvh - 12px);overflow:hidden}
+.deadline-planner-dialog>form{max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain}
+.deadline-planner-dialog .operational-dialog-header,
+.deadline-planner-dialog .operational-dialog-footer,
+.deadline-planner-dialog .operational-dialog-body{flex:none}
+.deadline-planner-dialog .operational-dialog-body{min-height:0;overflow:visible}
+.deadline-planner-dialog .operational-form-section{max-height:none;overflow:visible}
+.deadline-step-panel[hidden],.deadline-planner-dialog .operational-footer-actions [hidden]{display:none!important}
+.deadline-create-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 20px;border-bottom:1px solid #e2eae6;background:#fff}
+.deadline-create-steps>span{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;color:#829088;font-size:10px;font-weight:800}
+.deadline-create-steps b{display:grid;place-items:center;flex:none;width:23px;height:23px;border:1px solid #dbe5e0;border-radius:50%;background:#f7faf8}
+.deadline-create-steps .active{color:#28795c}
+.deadline-create-steps .active b{border-color:#28795c;background:#28795c;color:#fff}
+.deadline-create-steps .complete b{border-color:#b9decf;background:#edf7f2;color:#28795c}
+[data-theme=dark] .deadline-create-steps{border-color:#315248;background:#14372f}
+[data-theme=dark] .deadline-create-steps>span{color:#b4c7bf}
+[data-theme=dark] .deadline-create-steps .active{color:#80d8ae}
+@media(max-width:520px){.deadline-create-steps{padding:9px 12px}.deadline-create-steps>span{font-size:8px}}
 
 .deadline-detail-dialog{--deadline-header-deep:#0b3d2d;--deadline-header-mid:#126548;--deadline-header-light:#218060;--deadline-header-accent:#f3d67b;width:min(790px,calc(100vw - 28px));max-width:790px;border:0;border-radius:26px;padding:0;background:transparent;box-shadow:0 38px 100px rgba(5,34,25,.34)}
 .deadline-detail-dialog::backdrop{background:rgba(7,31,24,.68);backdrop-filter:blur(7px)}

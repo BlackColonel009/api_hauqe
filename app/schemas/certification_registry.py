@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -20,6 +20,7 @@ class CertificationFiltersResponse(BaseModel):
 
 class CertificationRegistryItem(BaseModel):
     id: UUID
+    created_at: datetime
     identifiant_national: str
     numero_certificat: str | None = None
 

@@ -265,6 +265,9 @@
   background:#edf7f2;color:#28795c;
 }
 .notification-center-row>span svg{width:16px;height:16px}
+.notification-center-content{min-width:0;overflow-wrap:anywhere}
+.notification-center-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+.notification-center-actions>.btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;width:auto;max-width:100%;white-space:nowrap;flex:0 0 auto}
 
 /* Détail d’alerte — standard de fiche modale HAUQE */
 .alerts-layout-modal{display:block}.alerts-layout-modal .alerts-list-panel{width:100%}
@@ -345,7 +348,7 @@
   .alerts-page .alert-stats,.alerts-page .alert-toolbar{grid-template-columns:1fr}
   .alerts-page .alert-search{grid-column:auto}
   .notification-center-row{grid-template-columns:38px minmax(0,1fr)}
-  .notification-center-row>.btn{grid-column:2;justify-self:start}
+  .notification-center-actions{grid-column:2;justify-content:flex-start}
 }
 
 /* File réelle de traitement : 5 contenus, avec priorité au texte de l’alerte. */
@@ -1042,6 +1045,27 @@
   background:#14372f;
   box-shadow:0 1px 0 #315248;
 }
+
+/* Défilement du modal entier : les champs restent atteignables au zoom. */
+.special-alert-dialog{max-height:calc(100dvh - 12px);overflow:hidden}
+.special-alert-dialog>form{max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain}
+.special-alert-dialog .operational-dialog-header,
+.special-alert-dialog .operational-dialog-footer,
+.special-alert-dialog .operational-dialog-body{flex:none}
+.special-alert-dialog .operational-dialog-body{min-height:0;overflow:visible}
+.special-alert-dialog .operational-form-section{max-height:none;overflow:visible}
+.special-alert-create-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 20px;border-bottom:1px solid #e2eae6;background:#fff}
+.special-alert-create-steps>span{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;color:#829088;font-size:10px;font-weight:800}
+.special-alert-create-steps b{display:grid;place-items:center;flex:none;width:23px;height:23px;border:1px solid #dbe5e0;border-radius:50%;background:#f7faf8}
+.special-alert-create-steps .active{color:#9c472d}
+.special-alert-create-steps .active b{border-color:#c26735;background:#c26735;color:#fff}
+.special-alert-create-steps .complete b{border-color:#ecc2ac;background:#fff0e7;color:#9c472d}
+.special-alert-dialog .special-alert-step-panel[hidden],
+.special-alert-dialog .operational-footer-actions>[hidden]{display:none!important}
+[data-theme=dark] .special-alert-create-steps{border-color:#315248;background:#14372f}
+[data-theme=dark] .special-alert-create-steps>span{color:#b4c7bf}
+[data-theme=dark] .special-alert-create-steps .active{color:#ffc69e}
+@media(max-width:520px){.special-alert-create-steps{padding:9px 12px}.special-alert-create-steps>span{font-size:8px}}
 
 .severity-scale>span{
   display:grid;

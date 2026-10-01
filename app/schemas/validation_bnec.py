@@ -226,6 +226,7 @@ class IntegrationPlanResponse(BaseModel):
     blocked_count: int = 0
     codification_ready: bool = False
     missing_codification_models: list[str] = Field(default_factory=list)
+    complements_prevus: list[str] = Field(default_factory=list)
     items: list[IntegrationPlanItem] = Field(default_factory=list)
 
 

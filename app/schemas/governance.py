@@ -327,6 +327,21 @@ class ReportRequestCreate(BaseModel):
     periode_fin: str | None = Field(default=None, max_length=255)
 
 
+class BnecPeriodicReportRequest(BaseModel):
+    type: Literal["MENSUEL", "TRIMESTRIEL", "ANNUEL"]
+    year: int = Field(ge=2000, le=2100)
+    month: int | None = Field(default=None, ge=1, le=12)
+    quarter: int | None = Field(default=None, ge=1, le=4)
+    format: Literal["PDF", "XLSX", "CSV"]
+
+
+class ReportConfigurationSaveRequest(BaseModel):
+    model_id: Literal["companies", "certs", "bodies", "controls", "quality", "deadlines", "alerts", "audit"]
+    filtres: dict[str, Any] = Field(default_factory=dict)
+    sections: dict[str, Any] = Field(default_factory=dict)
+    format: Literal["PDF", "XLSX", "CSV"]
+
+
 class ReportStartRequest(BaseModel):
     commentaire: str | None = Field(default=None, max_length=2000)
 

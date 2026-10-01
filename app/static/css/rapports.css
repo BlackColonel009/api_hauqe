@@ -167,3 +167,41 @@
 .paper-empty{padding:40px 20px;color:#74857d;font-size:8px;text-align:center}
 .paper-confidentiality{margin:18px 0 0;padding-top:9px;border-top:2px solid #176b4d;color:#788a81;font-size:6.5px}
 @media(max-width:700px){.reports-page .paper-preview{width:calc(100% - 18px);padding:18px}.paper-report-meta{grid-template-columns:1fr}.paper-title-band{margin-top:16px}.paper-table-wrap table{min-width:460px}}
+
+.bnec-report-workspace{margin-bottom:18px;padding:20px 22px}
+.saved-report-configurations{margin-bottom:16px;padding:16px 20px}
+.saved-report-configurations[hidden]{display:none!important}
+.saved-report-configurations h2{margin:0;font-size:16px}
+.saved-report-configurations p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.saved-report-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:9px;margin-top:12px;font-size:12px}
+.saved-report-list button{display:flex;align-items:center;gap:8px;min-width:0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink);text-align:left}
+.saved-report-list button span{min-width:0;overflow-wrap:anywhere;flex:1}.saved-report-list button small{color:var(--green-700)}
+.report-legacy-note{margin:0 0 14px;padding:11px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--muted);font-size:12px}
+.reports-page .report-config>section[hidden]{display:none!important}
+.bnec-report-workspace [hidden]{display:none!important}
+.bnec-report-workspace>header h2{margin:3px 0 5px;font-size:19px}
+.bnec-report-workspace>header p:last-child{margin:0;color:var(--muted);font-size:12px}
+.bnec-report-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.bnec-report-types button{display:grid;grid-template-columns:24px 1fr;column-gap:9px;align-items:center;min-height:88px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff);color:var(--ink);text-align:left;cursor:pointer}
+.bnec-report-types button:hover,.bnec-report-types button:focus-visible{border-color:var(--green-600);box-shadow:0 0 0 3px var(--green-50)}
+.bnec-report-types button.active{border-color:var(--green-600);background:var(--green-50)}
+.bnec-report-types svg{grid-row:span 2;width:20px;height:20px;color:var(--green-700)}
+.bnec-report-types strong{font-size:13px}.bnec-report-types small{font-size:11px;color:var(--muted)}
+.bnec-report-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:18px}
+.bnec-report-controls>label{display:grid;gap:5px;min-width:145px;font-size:11px;color:var(--muted)}
+.bnec-report-controls :is(input,select){height:39px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:var(--ink)}
+.bnec-report-actions{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
+.bnec-report-actions button{min-height:39px}
+.bnec-report-actions button:disabled{opacity:.6;cursor:wait}
+.bnec-report-actions #bnecReportPreview[aria-busy="true"]{border-color:var(--green-600);background:var(--green-50)}
+.bnec-report-actions #bnecReportPreview[aria-busy="true"]::after{content:"Calcul…";margin-left:6px;color:var(--green-700);font-size:11px}
+.bnec-report-preview{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface,#fff)}
+.bnec-report-preview>strong{font-size:14px}.bnec-report-preview>p{margin:5px 0 12px;color:var(--muted);font-size:11px}
+.bnec-preview-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}
+.bnec-preview-rows>div{display:grid;align-content:start;gap:4px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11px;min-width:0}
+.bnec-preview-rows>div:first-child{grid-column:1/-1;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--green-50)}
+.bnec-preview-rows span{overflow-wrap:anywhere;font-weight:700}.bnec-preview-rows b{font-size:12px;font-weight:500;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.bnec-report-preview>small{display:block;margin-top:10px;color:var(--muted)}
+.reports-page .report-preview-overlay{overflow-y:auto;align-items:start;justify-items:center;padding:12px}
+.reports-page .report-preview-modal{width:min(720px,100%);max-height:calc(100dvh - 24px);margin:auto;overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:800px){.bnec-report-types,.bnec-preview-rows{grid-template-columns:1fr}.bnec-report-actions{width:100%;margin-left:0}.bnec-report-actions button{flex:1}}

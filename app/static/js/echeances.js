@@ -7,6 +7,7 @@
 
   let user = null;
   let options = null;
+  let deadlineStep = 1;
   let items = [];
   let allItems = [];
   let selected = null;
@@ -221,14 +222,15 @@
     });
   }
 
-  // Même patron que Gestion des campagnes : les contrôles statiques du
-  // calendrier sont recréés avec leur écouteur direct à chaque rendu. Cela
-  // élimine la « latence bouton » provoquée par des gestionnaires anciens.
+  // Même patron que Gestion des campagnes : un vrai bouton avec son écouteur
+  // direct est créé après l'insertion de la vue. Contrairement aux lignes de
+  // données, la barre de navigation reste en place entre deux rendus : ses
+  // boutons ne doivent pas être remplacés pendant un clic ou un chargement.
   function createCalendarNavigationButton({ id, label, iconName, className, disabled = false, handler }) {
     const button = document.createElement("button");
     button.id = id;
     button.type = "button";
-    button.className = className;
+    button.className = `${className} deadline-calendar-nav-button`;
     button.disabled = disabled;
     button.setAttribute("aria-label", label);
     button.setAttribute("title", label);
@@ -244,27 +246,33 @@
   }
 
   function hydrateCalendarNavigation() {
-    const replace = (slotId, config) => {
+    const ensure = (slotId, config) => {
       const slot = $(`#${slotId}`);
-      if (slot) slot.replaceChildren(createCalendarNavigationButton(config));
+      if (!slot) return;
+      let button = slot.querySelector(`#${config.id}`);
+      if (!button) {
+        button = createCalendarNavigationButton(config);
+        slot.replaceChildren(button);
+      }
+      button.disabled = Boolean(config.disabled);
     };
-    replace("prevMonthSlot", {
+    ensure("prevMonthSlot", {
       id: "prevMonth", label: "Période précédente", iconName: "chevron-left",
       className: "icon-button", handler: () => navigateMonth(-1),
     });
-    replace("todayButtonSlot", {
+    ensure("todayButtonSlot", {
       id: "todayButton", label: "Aujourd’hui", className: "btn btn-outline-secondary app-btn",
       handler: goToday,
     });
-    replace("nextMonthSlot", {
+    ensure("nextMonthSlot", {
       id: "nextMonth", label: "Période suivante", iconName: "chevron-right",
       className: "icon-button", handler: () => navigateMonth(1),
     });
-    replace("calendarZoomInSlot", {
+    ensure("calendarZoomInSlot", {
       id: "calendarZoomIn", label: "Zoomer dans la période", iconName: "zoom-in",
       className: "icon-button", disabled: calendarScale === "month", handler: zoomIn,
     });
-    replace("calendarZoomOutSlot", {
+    ensure("calendarZoomOutSlot", {
       id: "calendarZoomOut", label: "Dézoomer la période", iconName: "zoom-out",
       className: "icon-button", disabled: calendarScale === "decade", handler: zoomOut,
     });
@@ -745,6 +753,7 @@
         .forEach((id) => $(`#${id}`).value = "");
 
       $("#deadlineResponsible").value = "";
+      setDeadlineStep(1);
       $("#deadlineDialog").showModal();
       icons();
     } catch (error) {
@@ -754,6 +763,11 @@
 
   async function create(event) {
     event.preventDefault();
+
+    if (deadlineStep !== 3) {
+      nextDeadlineStep();
+      return;
+    }
 
     if (!$("#deadlineCertification").value) {
       state("Sélectionnez la certification concernée avant de planifier l’échéance.", true);
@@ -778,6 +792,32 @@
     } catch (error) {
       state(error?.message || "Création impossible.", true);
     }
+  }
+
+  function setDeadlineStep(step) {
+    deadlineStep = Math.max(1, Math.min(3, step));
+    $$("[data-deadline-panel]").forEach((panel) => {
+      panel.hidden = Number(panel.dataset.deadlinePanel) !== deadlineStep;
+    });
+    $$("[data-deadline-step]").forEach((indicator) => {
+      const number = Number(indicator.dataset.deadlineStep);
+      indicator.classList.toggle("active", number === deadlineStep);
+      indicator.classList.toggle("complete", number < deadlineStep);
+      indicator.setAttribute("aria-current", number === deadlineStep ? "step" : "false");
+    });
+    $("#deadlinePrevious").hidden = deadlineStep === 1;
+    $("#deadlineNext").hidden = deadlineStep === 3;
+    $("#saveDeadline").hidden = deadlineStep !== 3;
+    $("#deadlineDialog form").scrollTop = 0;
+    icons();
+  }
+
+  function nextDeadlineStep() {
+    const panel = $(`[data-deadline-panel="${deadlineStep}"]`);
+    const invalid = [...panel.querySelectorAll("[required]")]
+      .find((field) => !field.reportValidity());
+    if (invalid) return;
+    setDeadlineStep(deadlineStep + 1);
   }
 
   function showDetail() {
@@ -1006,6 +1046,8 @@
     $$("[data-close-deadline-dialog]").forEach((b) => {
       b.onclick = () => $("#deadlineDialog").close();
     });
+    $("#deadlineNext").onclick = nextDeadlineStep;
+    $("#deadlinePrevious").onclick = () => setDeadlineStep(deadlineStep - 1);
     $$("[data-close-deadline-action]").forEach((b) => {
       b.onclick = () => $("#deadlineActionDialog").close();
     });

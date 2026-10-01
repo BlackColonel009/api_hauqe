@@ -362,10 +362,12 @@
                   type="button"
                   id="copyUserPassword"
                   title="Copier"
+                  aria-label="Copier le mot de passe initial"
                 >
                   <i data-lucide="copy"></i>
                 </button>
               </div>
+              <small class="user-copy-feedback" id="userCopyFeedback" role="status" hidden></small>
             </label>
 
             <div class="password-guidance">
@@ -536,7 +538,7 @@
             <span>Courriel</span>
             <div>
               <code id="credentialEmail">—</code>
-              <button type="button" data-copy-credential="email">
+              <button type="button" data-copy-credential="email" aria-label="Copier le courriel">
                 <i data-lucide="copy"></i>
               </button>
             </div>
@@ -546,12 +548,13 @@
             <span>Mot de passe initial</span>
             <div>
               <code id="credentialPassword">—</code>
-              <button type="button" data-copy-credential="password">
+              <button type="button" data-copy-credential="password" aria-label="Copier le mot de passe initial">
                 <i data-lucide="copy"></i>
               </button>
             </div>
           </label>
         </div>
+        <p class="user-copy-feedback" id="credentialCopyFeedback" role="status" hidden></p>
 
         <div class="publication-warning">
           <i data-lucide="lock-keyhole"></i>

@@ -879,7 +879,7 @@ class WatchRepository:
         pending = await db.execute(
             select(func.count(RelanceVeille.id)).where(
                 RelanceVeille.dossier_veille_id == case_id,
-                RelanceVeille.date_reponse.is_(None),
+                RelanceVeille.statut == "EN_ATTENTE",
             )
         )
         return int(total.scalar_one()), int(pending.scalar_one())
@@ -1033,7 +1033,7 @@ class WatchRepository:
         )
         pending_followups = await db.execute(
             select(func.count(RelanceVeille.id)).where(
-                RelanceVeille.date_reponse.is_(None)
+                RelanceVeille.statut == "EN_ATTENTE"
             )
         )
         unread = await db.execute(

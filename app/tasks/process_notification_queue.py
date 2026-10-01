@@ -27,6 +27,7 @@ import logging
 import smtplib
 import sys
 from email.message import EmailMessage
+from pathlib import Path
 
 from app.audit.service import write_audit_event
 from app.config.logging import configure_logging
@@ -41,6 +42,8 @@ logger = logging.getLogger(__name__)
 configure_logging()
 
 MAIL_BRAND = "HAUQE — Haute Autorité de la Qualité et de l'Environnement"
+LOGO_PATH = Path(__file__).resolve().parents[1] / "static" / "logo.jpg"
+LOGO_CID = "hauqe-official-logo"
 
 SECURITY_SUBJECT_PREFIXES = (
     "Votre mot de passe HAUQE Certif",
@@ -155,7 +158,9 @@ def hauqe_plain_message(body: str) -> str:
     )
 
 
-def hauqe_html_message(body: str, *, application_url: str | None = None) -> str:
+def hauqe_html_message(
+    body: str, *, application_url: str | None = None, logo_cid: str | None = None,
+) -> str:
     """Habillage sobre et compatible pour les courriels émis par le worker."""
     html_body = (body or "").strip()
     application_cta = ""
@@ -174,12 +179,18 @@ def hauqe_html_message(body: str, *, application_url: str | None = None) -> str:
           </p>
         """
     safe_body = html.escape(html_body).replace("\n", "<br>")
+    logo_html = (
+        f'<img src="cid:{logo_cid}" alt="Logo officiel HAUQE" width="58" height="58" '
+        'style="display:block;width:58px;height:58px;object-fit:contain;border-radius:8px;background:#fff;">'
+        if logo_cid else ""
+    )
     return f"""\
 <!doctype html>
 <html lang="fr"><body style="margin:0;background:#f3f7f5;font-family:Arial,sans-serif;color:#163d32;">
   <div style="max-width:640px;margin:24px auto;background:#ffffff;border:1px solid #d7e6df;border-radius:14px;overflow:hidden;">
     <div style="padding:24px 28px;background:#087659;color:#ffffff;">
-      <div style="font-size:12px;font-weight:700;letter-spacing:1.1px;opacity:.85;">HAUQE · SNGSC</div>
+      {logo_html}
+      <div style="margin-top:10px;font-size:12px;font-weight:700;letter-spacing:1.1px;opacity:.85;">HAUQE · SNGSC</div>
       <div style="margin-top:7px;font-size:20px;font-weight:700;">Communication officielle</div>
       <div style="margin-top:4px;font-size:13px;opacity:.9;">Haute Autorité de la Qualité et de l'Environnement</div>
     </div>
@@ -218,10 +229,21 @@ def send_smtp(
     message["Subject"] = hauqe_subject(subject)
     message["X-HAUQE-Message"] = "SNGSC"
     message.set_content(hauqe_plain_message(body))
+    logo_bytes = LOGO_PATH.read_bytes() if LOGO_PATH.is_file() else None
+    if logo_bytes is None:
+        logger.warning("Logo HAUQE absent du déploiement : %s", LOGO_PATH)
     message.add_alternative(
-        hauqe_html_message(body, application_url=application_url),
+        hauqe_html_message(
+            body, application_url=application_url,
+            logo_cid=LOGO_CID if logo_bytes else None,
+        ),
         subtype="html",
     )
+    if logo_bytes:
+        message.get_payload()[-1].add_related(
+            logo_bytes, maintype="image", subtype="jpeg", cid=f"<{LOGO_CID}>",
+            disposition="inline", filename="logo-hauqe.jpg",
+        )
 
     with smtplib.SMTP(host, port, timeout=30) as smtp:
         if use_tls:
@@ -246,6 +268,22 @@ async def run(limit: int = 100) -> None:
 
         for item in rows:
             recipient = item.adresse_externe
+
+            if item.relance_veille_id:
+                from app.models.dossier_veille import DossierVeille
+                from app.models.relance_veille import RelanceVeille
+                from sqlalchemy import select
+
+                case_status = (await db.execute(
+                    select(DossierVeille.date_cloture)
+                    .join(RelanceVeille, RelanceVeille.dossier_veille_id == DossierVeille.id)
+                    .where(RelanceVeille.id == item.relance_veille_id)
+                )).scalar_one_or_none()
+                if case_status is not None:
+                    item.statut = "ANNULEE"
+                    item.resultat = "Dossier de veille clôturé avant l'envoi."
+                    await db.commit()
+                    continue
 
             if item.destinataire_utilisateur_id:
                 user = await WatchRepository.get_user(

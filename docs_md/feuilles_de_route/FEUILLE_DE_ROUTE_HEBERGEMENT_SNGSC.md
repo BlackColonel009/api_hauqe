@@ -6,8 +6,78 @@
 **Base PostgreSQL :** `hauqe_certif`  
 **Service applicatif prévu :** `sngsc.service`  
 **Port interne FastAPI :** `127.0.0.1:8014`  
-**Dernière mise à jour :** 28 septembre 2026
+**Dernière mise à jour :** 1er octobre 2026
 **Règle de validation :** une étape n’est marquée terminée qu’après contrôle réel sur le serveur.
+
+> **Classement SNCC — badge « En attente INFC » (01/10/2026) :** livrer
+> `scoring.css` et `index.html`, puis recharger complètement la page.
+> Vérifier qu'un certificat non éligible affiche le badge sans débordement,
+> y compris à fort zoom. CSS uniquement ; **base PostgreSQL modifiée : non ;
+> migration : aucune ; seed : aucun.**
+
+> **Mes notifications — actions lisibles (01/10/2026) :** livrer ensemble
+> `alertes.js`, `alertes.css`, `router.js`, `app-shell.js` et `index.html` ;
+> recharger complètement l'onglet après déploiement. Vérifier une notification
+> non lue avec les deux actions : les boutons restent dans la même zone,
+> lisibles au zoom, et « Marquer lue » répond au premier clic. **Base
+> PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+> **Administration — copie des identifiants (01/10/2026) :** livrer la vue
+> Utilisateurs, son script/style et les nouvelles versions de cache
+> `index.html` → `app-shell.js` → `router.js`. Après rechargement, tester
+> les boutons de copie du courriel et du mot de passe dans le modal de
+> confirmation, ainsi que celui du mot de passe dans l'assistant de création,
+> dès le premier clic, notamment sur accès HTTP local. Le script à vérifier
+> est `utilisateurs.js?v=20261001-2` ; forcer un rechargement complet après
+> le déploiement pour écarter l'ancien gestionnaire resté en mémoire dans
+> l'onglet. **Base PostgreSQL
+> modifiée : non ; migration : aucune ; seed : aucun.**
+
+> **Exports du catalogue — filtres et configurations (01/10/2026) :** déployer
+> ensemble l'API, `rapports.js`, la vue, le style et leurs versions de cache ;
+> redémarrer `sngsc` puis recharger l'interface. Tester sur un compte autorisé
+> un filtre période/zone/statut, un filtre référentiel des certifications,
+> comparer aperçu et CSV, enregistrer puis recharger une configuration. Les
+> réglages sont personnels et écrits dans les tables existantes
+> `rapports_generes` et journal d'audit. **Schéma PostgreSQL non modifié ;
+> migration Alembic : aucune ; seed : aucun.**
+
+> **Bilans BNEC mensuels, trimestriels et annuels (01/10/2026) :** livrer
+> ensemble le backend, les vues, les scripts et styles versionnés. Installer
+> la nouvelle dépendance ReportLab avec `pip install -r requirements.txt`,
+> puis redémarrer `sngsc` et recharger l'interface. Le processus applicatif
+> doit pouvoir écrire dans le répertoire privé `DOCUMENT_STORAGE_DIR`
+> (par défaut `uploads/private`) : les fichiers PDF/XLSX/CSV y sont conservés.
+> Inclure ce répertoire dans les sauvegardes avec PostgreSQL ; restaurer les
+> deux ensemble pour préserver les téléchargements de l'historique. Vérifier
+> un aperçu et la génération/téléchargement d'un bilan de chaque périodicité.
+> **Base PostgreSQL : schéma non modifié ; aucune migration Alembic ni seed.**
+> Lorsqu'un bilan est créé, le système insère des données dans les tables
+> existantes `documents`, `rapports_generes` et le journal d'audit.
+
+> **Aperçu des séquences de codification BNEC (29/09/2026) :** déployer le
+> backend corrigé et redémarrer `sngsc`. L'aperçu d'une intégration contenant
+> plusieurs certifications conserve désormais les numéros déjà proposés dans
+> le même modèle/périmètre ; la réservation transactionnelle reste inchangée.
+> **Base PostgreSQL modifiée : non par le déploiement ; migration : aucune ;
+> seed : aucun.** Les intégrations futures continuent bien sûr à enregistrer
+> leurs codes et traces métier normalement.
+
+> **Échéances — boutons de navigation du calendrier (29/09/2026) :** livrer
+> `echeances.js`, `echeances.css`, les versions du routeur et d'`index.html`,
+> puis redémarrer `sngsc` et forcer le rechargement du navigateur. Les trois
+> boutons restent désormais stables entre les rendus asynchrones. **Base
+> PostgreSQL modifiée : non ; migration : aucune ; seed : aucun.**
+
+> **Complément des anciennes collectes à l'intégration BNEC — 29/09/2026 :**
+> déployer le nouveau code, redémarrer `sngsc` et recharger l'interface. Le
+> plan montre les champs vides qui seront complétés depuis la fiche ;
+> l'exécution écrit uniquement ces données, avec audit et rollback commun à
+> l'intégration. Les dossiers déjà intégrés ne sont pas retraités.
+> **Base PostgreSQL modifiée : oui à l'usage (données métier et audit) ;
+> schéma modifié : non ; migration Alembic : aucune ; seed : aucun.** La tête
+> Alembic de la livraison précédente reste `j5f9b3d7e1a2`. Ne pas relancer
+> le script de reprise des offres pour ce seul changement.
 
 > **Déploiement groupé du 28 septembre 2026 :** suivre en priorité
 > [la procédure consolidée](DEPLOIEMENT_CONSOLIDE_2026-09-28.md) pour livrer
@@ -1821,3 +1891,41 @@ l'interface pour prendre les nouveaux fichiers JavaScript versionnés. Les
 preuves existantes deviennent visibles grâce à la vue liée ; aucun déplacement
 de fichier, script de rattrapage, migration Alembic ou seed n'est requis.
 **Base PostgreSQL modifiée : non.**
+### Déploiement de la clôture coordonnée de veille (01/10/2026)
+
+**Base PostgreSQL modifiée : oui.** Appliquer la migration Alembic
+`k6a0c4e8f2b3_watch_followup_notification_link.py` avant de redémarrer
+l'application et le worker SMTP. Elle ajoute la colonne nullable
+`notifications.relance_veille_id`, une clé étrangère et un index ; elle
+rapproche de façon conservatrice les anciens courriels de relance lorsque
+le lien est unique. Aucun seed. Aucun courriel ni document n'est supprimé.
+La migration a été appliquée et vérifiée sur la base locale le 01/10/2026 ;
+elle reste à appliquer séparément sur le serveur Linux.
+
+```bash
+cd /var/www/api_hauqe
+source .venv/bin/activate
+python -m alembic upgrade head
+python -m alembic current
+sudo systemctl restart sngsc
+```
+
+Le worker est intégré au lifespan FastAPI de `sngsc.service` dans la
+configuration documentée ; ne pas lancer de second processus SMTP en parallèle.
+Déployer backend, templates, JS et CSS ensemble,
+puis recharger le navigateur. Vérifier une ouverture, une clôture avec
+relance programmée, la déduplication des destinataires et le réglage de
+courriel par le point focal. Les anciens courriels sans rapprochement certain
+restent inchangés : les vérifier manuellement avant de clôturer un ancien
+dossier contenant une relance programmée.
+### Modals et logo HAUQE officiel (01/10/2026)
+
+Déployer impérativement le nouveau fichier `app/static/logo.jpg` avec les
+templates, feuilles CSS, scripts JS, le service de rapports BNEC et le worker
+SMTP. Redémarrer `sngsc.service` (le worker de fond est intégré), puis faire
+un rechargement complet du navigateur. Contrôler le logo dans la connexion,
+les PDF/Excel et un courriel HTML réel ; vérifier les modals Alertes et
+Échéances avec un zoom élevé et les trois étapes de planification.
+**Base PostgreSQL modifiée : non pour cette livraison ; migration : aucune ;
+seed : aucun.** La migration de veille `k6a0c4e8f2b3` mentionnée ci-dessus
+reste néanmoins requise sur le serveur si elle n'y a pas encore été appliquée.

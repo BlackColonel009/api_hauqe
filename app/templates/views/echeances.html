@@ -199,6 +199,12 @@
       </button>
     </header>
 
+    <nav class="deadline-create-steps" aria-label="Étapes de planification">
+      <span data-deadline-step="1"><b>1</b>Certification</span>
+      <span data-deadline-step="2"><b>2</b>Suivi</span>
+      <span data-deadline-step="3"><b>3</b>Contexte</span>
+    </nav>
+
     <div class="operational-dialog-body">
       <div class="operational-form-notice">
         <span><i data-lucide="shield-check"></i></span>
@@ -211,7 +217,7 @@
         </div>
       </div>
 
-      <section class="operational-form-section">
+      <section class="operational-form-section deadline-step-panel" data-deadline-panel="1">
         <div class="operational-section-heading">
           <span><i data-lucide="badge-check"></i></span>
           <div>
@@ -271,7 +277,7 @@
         </div>
       </section>
 
-      <section class="operational-form-section">
+      <section class="operational-form-section deadline-step-panel" data-deadline-panel="2" hidden>
         <div class="operational-section-heading">
           <span><i data-lucide="clock-3"></i></span>
           <div>
@@ -315,7 +321,7 @@
         </div>
       </section>
 
-      <section class="operational-form-section">
+      <section class="operational-form-section deadline-step-panel" data-deadline-panel="3" hidden>
         <div class="operational-section-heading">
           <span><i data-lucide="notebook-pen"></i></span>
           <div>
@@ -349,6 +355,7 @@
       </div>
 
       <div class="operational-footer-actions">
+        <button class="btn btn-outline-secondary app-btn" id="deadlinePrevious" type="button" hidden>Précédent</button>
         <button
           class="btn btn-outline-secondary app-btn"
           type="button"
@@ -357,10 +364,13 @@
           Annuler
         </button>
 
+        <button class="btn btn-primary app-btn" id="deadlineNext" type="button">Continuer</button>
+
         <button
           class="btn btn-primary app-btn"
           id="saveDeadline"
           type="submit"
+          hidden
         >
           <i data-lucide="calendar-check-2"></i>
           Planifier l’échéance

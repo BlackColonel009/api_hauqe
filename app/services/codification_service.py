@@ -160,6 +160,7 @@ class CodificationService:
         object_type: str,
         context: Mapping[str, Any],
         excluded_codes: set[str] | None = None,
+        excluded_sequences: set[tuple[UUID, str, int]] | None = None,
     ) -> CodificationAssignment:
         rule = await CodificationService.require_active_rule(db, object_type)
         spec = spec_from_parameters(rule.parametres or {})
@@ -171,11 +172,18 @@ class CodificationService:
         )
         sequence = current + 1
         excluded_codes = excluded_codes or set()
-        # L'aperçu n'est pas réservé : on évite les collisions déjà présentes
-        # ainsi que les codes déjà proposés dans le même plan d'intégration.
+        excluded_sequences = excluded_sequences or set()
+        # L'aperçu n'est pas réservé : on évite les collisions déjà présentes,
+        # les codes complets déjà proposés ET les séquences proposées pour le
+        # même modèle/périmètre dans ce plan (même si la norme rend les codes
+        # complets différents).
         for _ in range(10000):
             assignment = CodificationService._assignment(rule, context, sequence)
-            if assignment.code in excluded_codes:
+            if (
+                assignment.code in excluded_codes
+                or (assignment.rule_id, assignment.scope_key, assignment.sequence)
+                in excluded_sequences
+            ):
                 sequence += 1
                 continue
             exists = await ValidationBnecRepository.generated_code_exists(

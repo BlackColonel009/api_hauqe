@@ -206,8 +206,8 @@ class AccountService:
 
     @staticmethod
     def require_email_policy_admin(actor: AuthContext) -> None:
-        if not set(actor.roles).intersection({"ADMIN_HAUQE", "ADMIN_BNEC"}):
-            raise HTTPException(403, "Réglage réservé aux administrateurs.")
+        if not set(actor.roles).intersection({"ADMIN_HAUQE", "ADMIN_BNEC", "POINT_FOCAL_BNEC"}):
+            raise HTTPException(403, "Réglage réservé aux administrateurs et au point focal HAUQE.")
 
     @staticmethod
     async def admin_system_email_policies(

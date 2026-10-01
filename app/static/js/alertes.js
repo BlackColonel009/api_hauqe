@@ -10,6 +10,7 @@
   let selected = null;
   let options = null;
   let timer = null;
+  let specialAlertStep = 1;
   let alertScope = "mine";
   let routedAlertHandled = false;
 
@@ -417,7 +418,12 @@
     try {
       await ensureOptions();
 
-      $("#specialAlertCertification").innerHTML = options.certifications
+      if (!options.certifications?.length) {
+        state("Aucune certification disponible pour créer une alerte spéciale.", true);
+        return;
+      }
+
+      $("#specialAlertCertification").innerHTML = `<option value="">Sélectionner une certification…</option>` + options.certifications
         .map((x) => `<option value="${e(x.id)}">${e(x.label)}</option>`).join("");
 
       $("#specialAlertResponsible").innerHTML = `<option value="">Non affectée</option>`
@@ -430,6 +436,7 @@
       $("#specialAlertMessage").value = "";
       $("#specialAlertRule").value = "";
 
+      setSpecialAlertStep(1);
       $("#specialAlertDialog").showModal();
       icons();
     } catch (error) {
@@ -439,6 +446,11 @@
 
   async function createSpecial(event) {
     event.preventDefault();
+
+    if (specialAlertStep !== 3) {
+      nextSpecialAlertStep();
+      return;
+    }
 
     try {
       await api.apiPost("/api/v1/alertes", {
@@ -459,6 +471,32 @@
     } catch (error) {
       state(error?.message || "Création impossible.", true);
     }
+  }
+
+  function setSpecialAlertStep(step) {
+    specialAlertStep = Math.max(1, Math.min(3, step));
+    $$('[data-special-alert-panel]').forEach((panel) => {
+      panel.hidden = Number(panel.dataset.specialAlertPanel) !== specialAlertStep;
+    });
+    $$('[data-special-alert-step]').forEach((indicator) => {
+      const number = Number(indicator.dataset.specialAlertStep);
+      indicator.classList.toggle('active', number === specialAlertStep);
+      indicator.classList.toggle('complete', number < specialAlertStep);
+      indicator.setAttribute('aria-current', number === specialAlertStep ? 'step' : 'false');
+    });
+    $('#specialAlertPrevious').hidden = specialAlertStep === 1;
+    $('#specialAlertNext').hidden = specialAlertStep === 3;
+    $('#saveSpecialAlert').hidden = specialAlertStep !== 3;
+    $('#specialAlertDialog form').scrollTop = 0;
+    icons();
+  }
+
+  function nextSpecialAlertStep() {
+    const panel = $(`[data-special-alert-panel="${specialAlertStep}"]`);
+    const invalid = [...panel.querySelectorAll('[required]')]
+      .find((field) => !field.reportValidity());
+    if (invalid) return;
+    setSpecialAlertStep(specialAlertStep + 1);
   }
 
   function notificationTime(v) {
@@ -482,13 +520,15 @@
         ? items.map((item) => `
             <article class="notification-center-row ${item.date_lecture ? "" : "unread"}">
               <span><i data-lucide="${item.canal === "EMAIL" ? "mail" : "bell-ring"}"></i></span>
-              <div>
+              <div class="notification-center-content">
                 <strong>${e(item.objet || "Notification")}</strong>
                 <p>${e(item.contenu || "")}</p>
                 <small>${e(item.canal || "—")} · ${e(notificationTime(item.created_at))} · ${e(item.statut || "—")}</small>
               </div>
-              ${item.alerte_id ? `<a class="btn btn-outline-secondary app-btn" href="#/alertes?alerte=${e(item.alerte_id)}">Ouvrir l’alerte</a>` : ""}
-              ${!item.date_lecture ? `<button class="btn btn-outline-secondary app-btn" type="button" data-read="${e(item.id)}">Marquer lue</button>` : ""}
+              <div class="notification-center-actions">
+                ${item.alerte_id ? `<a class="btn btn-outline-secondary app-btn" href="#/alertes?alerte=${e(item.alerte_id)}">Ouvrir l’alerte</a>` : ""}
+                ${!item.date_lecture ? `<button class="btn btn-outline-secondary app-btn" type="button" data-read="${e(item.id)}">Marquer lue</button>` : ""}
+              </div>
             </article>
           `).join("")
         : `<div class="priority-empty">Aucune notification.</div>`;
@@ -569,6 +609,8 @@
     $("#resolveAlertForm").onsubmit = resolve;
     $("#notifyAlertForm").onsubmit = notify;
     $("#specialAlertForm").onsubmit = createSpecial;
+    $("#specialAlertNext").onclick = nextSpecialAlertStep;
+    $("#specialAlertPrevious").onclick = () => setSpecialAlertStep(specialAlertStep - 1);
 
     $("#alertNotificationChannel").onchange = recipientMode;
 

@@ -62,6 +62,7 @@
     if(cfg.period==="year")$("#advancedDashboardFilters").innerHTML=`<label>Année<input id="dashYear" type="number" min="2000" max="2100" value="${year}"></label>`;
     if(cfg.period==="dates")$("#advancedDashboardFilters").innerHTML=`<label>Du<input id="dashStart" type="date" value="${year}-01-01"></label><label>Au<input id="dashEnd" type="date" value="${now.toISOString().slice(0,10)}"></label>`;
     if(cfg.period==="public"){$("#advancedDashboardToolbar").hidden=true}
+    $("#openBnecReport").hidden=!["month","quarter","year"].includes(cfg.period);
   }
   function url(){
     const q=new URLSearchParams();
@@ -91,5 +92,12 @@
     $("#visualOneTitle").textContent="Certifications par trimestre";$("#advancedVisualOne").innerHTML=series(data.quarterly_certifications);$("#visualTwoTitle").textContent="INFC trimestriel";$("#advancedVisualTwo").innerHTML=series(data.quarterly_infc);$("#advancedDashboardAnalysis").innerHTML=details([["Qualité",data.quality],["Gouvernance",data.governance],["Continuité",data.continuity]]);
   }
   async function load(ev){try{const task=()=>api.apiGet(url(),key==="public"?{auth:false}:{});const data=window.HAUQE_ACTION_LOADER?await window.HAUQE_ACTION_LOADER.run(task,{button:ev?.currentTarget,title:cfg.title,message:"Consolidation des indicateurs",detail:"Les calculs institutionnels sont exécutés par le serveur."}):await task();render(data)}catch(err){state(err?.message||"Chargement impossible.",true);$("#advancedDashboardKpis").innerHTML="";$("#advancedVisualOne").innerHTML="";$("#advancedVisualTwo").innerHTML="";$("#advancedDashboardAnalysis").innerHTML=""}}
-  setup();$("#refreshAdvancedDashboard").onclick=load;await load();icons();
+  setup();$("#refreshAdvancedDashboard").onclick=load;
+  $("#openBnecReport").onclick=()=>{
+    const query=new URLSearchParams({type:{month:"MENSUEL",quarter:"TRIMESTRIEL",year:"ANNUEL"}[cfg.period],year:$("#dashYear").value});
+    if(cfg.period==="month")query.set("month",$("#dashMonth").value);
+    if(cfg.period==="quarter")query.set("quarter",$("#dashQuarter").value);
+    location.hash=`#/rapports?${query}`;
+  };
+  await load();icons();
 })();

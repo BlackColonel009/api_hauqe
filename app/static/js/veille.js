@@ -88,6 +88,15 @@
     }).format(d);
   }
 
+  function followupStatusLabel(value) {
+    return ({
+      EN_ATTENTE: "En attente",
+      REPONDU: "Réponse reçue",
+      ANNULEE: "Annulée avant envoi",
+      CLOTUREE_SANS_REPONSE: "Suivi clos sans réponse",
+    })[String(value || "").toUpperCase()] || value || "—";
+  }
+
   function renderDashboard(data) {
     const cards = [
       ["green","folder-open","Dossiers ouverts",data.open_watch_cases,"File de veille"],
@@ -200,11 +209,11 @@
                     <span><i data-lucide="${item.date_reponse ? "message-circle-reply" : "send"}"></i></span>
                     <div>
                       <strong>${e(item.objet || "Relance")}</strong>
-                      <small>${e(item.destinataire || "—")} · ${e(item.canal || "—")} · ${e(item.statut || "—")}</small>
+                      <small>${e(item.destinataire || "—")} · ${e(item.canal || "—")} · ${e(followupStatusLabel(item.statut))}</small>
                       ${item.reponse ? `<p><b>Réponse :</b> ${e(item.reponse)}</p>` : ""}
                     </div>
                     ${
-                      perm("VEILLE.RELANCER") && !item.date_reponse
+                      perm("VEILLE.RELANCER") && !item.date_reponse && String(selected.statut || "").toUpperCase() !== "CLOTURE"
                         ? `<button class="btn btn-outline-secondary app-btn" type="button" data-response="${e(item.id)}">Réponse</button>`
                         : ""
                     }
@@ -236,10 +245,30 @@
       icons();
     });
 
-    $("#closeWatchCase")?.addEventListener("click", () => {
+    $("#closeWatchCase")?.addEventListener("click", async () => {
       $("#closeWatchReason").value = "";
+      const impact = $("#watchCloseImpact");
+      impact.textContent = "Chargement des éléments concernés…";
+      $("#confirmWatchClose").disabled = true;
       $("#closeWatchCaseDialog").showModal();
       icons();
+      try {
+        const data = await api.apiGet(`/api/v1/veille/dossiers/${selected.id}/close-preview`);
+        impact.innerHTML = `
+          <strong>Conséquences de la clôture</strong>
+          <ul>
+            <li>${e(data.relances_total)} relance(s), dont ${e(data.relances_en_attente)} encore en attente</li>
+            <li>${e(data.echeances_actives)} échéance(s) propres à ce dossier</li>
+            <li>${e(data.alertes_actives)} alerte(s) active(s) liées</li>
+            <li>${e(data.courriels_planifies)} courriel(s) non encore envoyé(s) à annuler</li>
+          </ul>
+          <small>Les échéances des certificats et des autres dossiers restent inchangées. Les relances envoyées et leurs réponses restent consultables.</small>`;
+        $("#confirmWatchClose").disabled = false;
+      } catch (error) {
+        impact.textContent = error?.message || "Impossible de vérifier les éléments concernés.";
+        $("#closeWatchCaseDialog").close();
+        state(impact.textContent, true);
+      }
     });
 
     node.querySelectorAll("[data-response]").forEach((button) => {
@@ -259,7 +288,7 @@
         const item = followups.find((x) => String(x.id) === String(row.dataset.followupPreview));
         if (!item) return;
         $("#followupPreviewTitle").textContent = item.objet || "Relance";
-        $("#followupPreviewMeta").textContent = `${item.destinataire || "—"} · ${item.canal || "—"} · ${item.statut || "—"}`;
+        $("#followupPreviewMeta").textContent = `${item.destinataire || "—"} · ${item.canal || "—"} · ${followupStatusLabel(item.statut)}`;
         $("#followupPreviewMessage").textContent = item.contenu || "Aucun contenu enregistré.";
         $("#followupPreviewDialog").showModal();
         icons();
