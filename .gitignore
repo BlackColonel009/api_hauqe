@@ -57,3 +57,5 @@ uploads/private/*
 !uploads/private/.gitkeep
 app/uploads/avatars/*
 !app/uploads/avatars/.gitkeep
+Documents_importants/*
+!Documents_importants/.gitkeep
