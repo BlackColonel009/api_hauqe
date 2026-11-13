@@ -19,7 +19,7 @@ VerificationOpinion = Literal[
 
 class VerificationOpenRequest(BaseModel):
     priorite: str | None = Field(default=None, max_length=255)
-    niveau_risque: str | None = Field(default=None, max_length=255)
+    niveau_risque: Literal['R1', 'R2', 'R3', 'R4', 'R5'] | None = None
 
 class VerificationUpdateRequest(BaseModel):
     priorite: str | None = Field(default=None, max_length=255)

@@ -288,6 +288,18 @@
 
   function openExecuteDialog() {
     const coded = (plan?.items || []).filter((item) => item.code_propose || item.code_genere);
+    const underReserve = context?.validation_decision === "VALIDE_SOUS_RESERVE";
+    const reserveNotice = $("#integrationFinalReserve");
+    reserveNotice.hidden = !underReserve;
+    const reserveConfirmation = $("#integrationFinalReserveConfirm");
+    reserveConfirmation.checked = false;
+    reserveConfirmation.required = underReserve;
+    if (underReserve) {
+      $("#integrationFinalReserveReason").textContent = context.validation_reserves || "Cette validation N2 comporte une réserve. Consultez la décision avant de continuer.";
+      const route = `#/validations/${encodeURIComponent(context.fiche_id)}`;
+      $("#integrationFinalReserveLink").href = context.pending_correction_id
+        ? `${route}/corrections/${encodeURIComponent(context.pending_correction_id)}` : route;
+    }
     $("#integrationExecutionSummary").innerHTML = `
       <span>${icon("database-zap")}</span>
       <div><strong>${escapeHtml(plan.total)} ressource(s) à traiter</strong><small>${escapeHtml(coded.length)} code(s) institutionnel(s) affiché(s) · aucun conflit bloquant</small></div>`;
@@ -341,6 +353,8 @@
     const task = async () => {
       await apiPost(`/api/v1/integrations-bnec/${integrationId}/start`, {
         resume: $("#integrationExecuteSummary").value.trim() || null,
+        confirmer_reserve: context?.validation_decision === "VALIDE_SOUS_RESERVE"
+          && $("#integrationFinalReserveConfirm").checked,
       });
       closeDialog("integrationExecuteDialog");
       await reloadAll();
@@ -375,6 +389,7 @@
     document.querySelectorAll('[data-close-dialog="integrationExecuteDialog"]').forEach((button) => {
       button.addEventListener("click", () => closeDialog("integrationExecuteDialog"));
     });
+    $("#integrationFinalReserveLink").addEventListener("click", () => closeDialog("integrationExecuteDialog"));
   }
 
   async function boot() {

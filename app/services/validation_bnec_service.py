@@ -33,6 +33,11 @@ from app.services.legal_identifiers_policy_service import (
 from app.models.certification import Certification
 from app.models.certification_declaree import CertificationDeclaree
 from app.models.correction import Correction
+from app.models.alerte import Alerte
+from app.models.echeance import Echeance
+from app.models.fiche_collecte import FicheCollecte
+from app.models.notification import Notification
+from app.models.utilisateur import Utilisateur
 from app.models.document import Document
 from app.models.element_integration import ElementIntegration
 from app.models.evenement_certification import EvenementCertification
@@ -395,6 +400,28 @@ class ValidationBnecService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Une correction n'est permise que pour AJOURNE ou VALIDE_SOUS_RESERVE.",
             )
+        pending_correction = (await db.execute(
+            select(Correction.id).where(
+                Correction.validation_id == validation_id,
+                Correction.statut.in_(["DEMANDEE", "EN_COURS"]),
+                Correction.date_resoumission.is_(None),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if pending_correction:
+            raise HTTPException(409, "Une correction attend déjà une réponse pour cette validation.")
+        if payload.date_echeance < date.today():
+            raise HTTPException(422, "La date limite de réponse ne peut pas être passée.")
+        fiche = await db.get(FicheCollecte, validation.fiche_collecte_id)
+        if fiche is None:
+            raise HTTPException(404, "Fiche de collecte introuvable.")
+        validateur = await db.get(Utilisateur, validation.validateur_id)
+        validateur_nom = " ".join(
+            part for part in (validateur.prenoms, validateur.nom) if part
+        ).strip() if validateur else ""
+        validateur_nom = validateur_nom or (validateur.email if validateur else "Validateur HAUQE")
+        entreprise_nom, dossier_contexte = await WorkflowCommunicationService.fiche_context(
+            db, fiche.id
+        )
 
         item = Correction(
             validation_id=validation_id,
@@ -408,6 +435,42 @@ class ValidationBnecService:
         )
         db.add(item)
         await db.flush()
+        deadline = Echeance(
+            ressource_type="CORRECTION",
+            ressource_id=item.id,
+            type_echeance="REPONSE_CORRECTION_VALIDATION",
+            titre=f"Répondre à la correction — {entreprise_nom}"[:255],
+            description=(
+                f"Validateur : {validateur_nom}\nMotif : {item.motif}\n"
+                f"Instructions : {item.instructions}\n{dossier_contexte}"
+            ),
+            date_echeance=item.date_echeance,
+            responsable_id=fiche.collecte_par_id,
+            priorite="HAUTE",
+            rappels_email_actifs=True,
+            rappel_jours_avant=2,
+            escalade_administrateurs_jour_j=True,
+            statut="PLANIFIEE",
+        )
+        db.add(deadline)
+        await db.flush()
+        await WorkflowCommunicationService.emit(
+            db,
+            event="VALIDATION_CORRECTION_DEMANDEE",
+            resource_type="CORRECTION",
+            resource_id=item.id,
+            deadline_id=deadline.id,
+            title=f"Correction demandée — {entreprise_nom}",
+            context=(
+                f"{dossier_contexte}\nValidateur : {validateur_nom}\n"
+                f"Motif : {item.motif}\nInstructions : {item.instructions}\n"
+                f"Date limite de réponse : {item.date_echeance.strftime('%d/%m/%Y')}"
+            ),
+            action="Répondre à la correction et resoumettre le dossier.",
+            route=f"#/validations/{fiche.id}/corrections/{item.id}",
+            action_roles={"ADMIN_HAUQE", "POINT_FOCAL_BNEC"},
+            action_user_ids={fiche.collecte_par_id},
+        )
 
         await write_audit_event(
             db,
@@ -456,6 +519,9 @@ class ValidationBnecService:
             )
 
         changes = payload.model_dump(exclude_unset=True)
+        if "date_echeance" in changes:
+            if changes["date_echeance"] is None or changes["date_echeance"] < date.today():
+                raise HTTPException(422, "La date limite de réponse doit être présente ou future.")
         before = {
             "motif": item.motif,
             "instructions": item.instructions,
@@ -468,6 +534,19 @@ class ValidationBnecService:
             if isinstance(value, str):
                 value = clean_text(value)
             setattr(item, field, value)
+
+        deadline = (await db.execute(select(Echeance).where(
+            Echeance.ressource_type == "CORRECTION",
+            Echeance.ressource_id == item.id,
+            Echeance.type_echeance == "REPONSE_CORRECTION_VALIDATION",
+            Echeance.statut.in_(["PLANIFIEE", "EN_COURS"]),
+        ))).scalar_one_or_none()
+        if deadline:
+            deadline.date_echeance = item.date_echeance
+            deadline.description = (
+                f"Motif : {item.motif or 'Non renseigné'}\n"
+                f"Instructions : {item.instructions or 'Non renseignées'}"
+            )
 
         await write_audit_event(
             db,
@@ -512,10 +591,43 @@ class ValidationBnecService:
 
         if item.date_resoumission is not None:
             raise HTTPException(409, "Cette correction a déjà été resoumise.")
+        validation = await ValidationBnecService.get_validation(db, validation_id)
+        fiche = await db.get(FicheCollecte, validation.fiche_collecte_id)
+        is_supervisor = bool({"ADMIN_HAUQE", "POINT_FOCAL_BNEC"} & set(actor.roles))
+        if not fiche or (actor.user.id != fiche.collecte_par_id and not is_supervisor):
+            raise HTTPException(403, "Seul le collecteur concerné, le point focal ou l'administrateur HAUQE peut resoumettre cette correction.")
+
+        deadline = (await db.execute(
+            select(Echeance).where(
+                Echeance.ressource_type == "CORRECTION",
+                Echeance.ressource_id == item.id,
+                Echeance.type_echeance == "REPONSE_CORRECTION_VALIDATION",
+            ).with_for_update()
+        )).scalar_one_or_none()
 
         item.date_resoumission = payload.date_resoumission or date.today()
         item.reponse = payload.reponse.strip()
         item.statut = "RESOUMISE"
+        if deadline and deadline.statut not in {"TERMINEE", "ANNULEE"}:
+            deadline.statut = "TERMINEE"
+            deadline.motif_cloture = "Correction resoumise."
+            related_alerts = (await db.execute(
+                select(Alerte).where(Alerte.echeance_id == deadline.id)
+            )).scalars().all()
+            for alert in related_alerts:
+                if alert.statut in {"NOUVELLE", "AFFECTEE", "EN_COURS"}:
+                    alert.statut = "RESOLUE"
+                    alert.date_resolution = date.today()
+            alert_ids = [alert.id for alert in related_alerts]
+            if alert_ids:
+                queued = (await db.execute(select(Notification).where(
+                    Notification.alerte_id.in_(alert_ids),
+                    Notification.canal == "EMAIL",
+                    Notification.statut.in_(["EN_ATTENTE", "ECHEC"]),
+                ))).scalars().all()
+                for message in queued:
+                    message.statut = "ANNULEE"
+                    message.resultat = "Correction resoumise avant l'envoi."
 
         await write_audit_event(
             db,
@@ -529,6 +641,7 @@ class ValidationBnecService:
             valeurs_apres={
                 "date_resoumission": item.date_resoumission.isoformat(),
                 "statut": item.statut,
+                "echeance_terminee_id": str(deadline.id) if deadline else None,
             },
         )
 
@@ -1152,6 +1265,16 @@ class ValidationBnecService:
                     "autorise l'intégration."
                 ),
             )
+        if validation.decision == "VALIDE_SOUS_RESERVE" and not payload.confirmer_reserve:
+            raise HTTPException(409, "Confirmez explicitement la poursuite de l'intégration sous réserve.")
+        latest_n2 = await ValidationBnecRepository.latest_validation_for_level(
+            db, fiche_id=validation.fiche_collecte_id, level="NIVEAU_2"
+        )
+        latest_n1 = await ValidationBnecRepository.latest_validation_for_level(
+            db, fiche_id=validation.fiche_collecte_id, level="NIVEAU_1"
+        )
+        if not latest_n2 or latest_n2.id != validation.id or not latest_n1 or latest_n1.decision not in FAVORABLE:
+            raise HTTPException(409, "Une décision plus récente ou une revue N1 défavorable bloque cette intégration.")
         current = await ValidationBnecRepository.active_integration_for_validation(
             db, validation_id
         )
@@ -1187,6 +1310,7 @@ class ValidationBnecService:
                 "validation_id": str(validation_id),
                 "plan_automatique": True,
                 "codification_configurable": True,
+                "reserve_acceptee": validation.decision == "VALIDE_SOUS_RESERVE",
             },
         )
         await db.commit()
@@ -2310,6 +2434,14 @@ class ValidationBnecService:
             return await ValidationBnecService.integration_response(db, integration)
         if integration.statut == "INTEGRATION_EN_COURS":
             raise HTTPException(409, "Une exécution est déjà en cours.")
+        latest_n2 = await ValidationBnecRepository.latest_validation_for_level(
+            db, fiche_id=fiche.id, level="NIVEAU_2"
+        )
+        if (latest_n2 is None or latest_n2.id != validation.id
+                or validation.decision not in FAVORABLE or validation.statut != "TERMINE"):
+            raise HTTPException(409, "La dernière décision N2 doit être favorable avant l'intégration BNEC.")
+        if validation.decision == "VALIDE_SOUS_RESERVE" and not payload.confirmer_reserve:
+            raise HTTPException(409, "Confirmez explicitement la réserve dans le modal avant d'intégrer ce dossier.")
 
         elements = await ValidationBnecService._seed_integration_elements(
             db,
@@ -2460,6 +2592,7 @@ class ValidationBnecService:
                 "precontrole": "OK",
                 "postcontrole": "OK",
                 "elements": len(elements),
+                "reserve_confirmee": validation.decision == "VALIDE_SOUS_RESERVE" and payload.confirmer_reserve,
                 "rollback_complet_si_erreur": True,
                 "codes": [
                     {

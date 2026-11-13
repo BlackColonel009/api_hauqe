@@ -1,5 +1,6 @@
 (async function(){
 "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 const api=await import('/static/js/core/api.js');
 const ui=await import('/static/js/scoring-workspace.js');
 const $=s=>document.querySelector(s),PAGE=25;
@@ -72,5 +73,15 @@ async function filters(){try{const x=await api.apiGet('/api/v1/scoring/workspace
 function bind(){
 $('#snccSearch').oninput=e=>{clearTimeout(timer);timer=setTimeout(async()=>{f.search=e.target.value.trim();offset=0;await Promise.all([loadResults(),loadCerts()])},350)};$('#snccClass').onchange=async e=>{f.classe=e.target.value;offset=0;await loadResults()};$('#snccAdminStatus').onchange=async e=>{f.statut_administratif=e.target.value;offset=0;await loadResults()};$('#snccRisk').onchange=async e=>{f.niveau_risque=e.target.value;offset=0;await loadResults()};$('#snccReset').onclick=async()=>{Object.assign(f,{search:'',classe:'',statut_administratif:'',niveau_risque:''});offset=0;$('#snccSearch').value='';$('#snccClass').value='';$('#snccAdminStatus').value='';$('#snccRisk').value='';await Promise.all([loadResults(),loadCerts()])};$('#snccPrev').onclick=async()=>{offset=Math.max(0,offset-PAGE);await loadResults()};$('#snccNext').onclick=async()=>{offset+=PAGE;await loadResults()};$('#snccDialogClass').onchange=selectionHelp;$('#snccDialogAdmin').onchange=selectionHelp;$('#snccDialogRisk').onchange=selectionHelp;$('#snccForm').onsubmit=save;$('#snccCloseForm').onsubmit=close;document.querySelectorAll('[data-close-sncc-dialog]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.closeSnccDialog)?.close())}
 async function start(){bind();try{user=await api.apiGet('/api/v1/me');await filters();await Promise.all([loadResults(),loadCerts()])}catch(e){ui.showState('#snccApiState',e?.message||'Erreur de chargement.',{error:true})}ui.refreshIcons()}
-start();
+async function refreshSnccData({ shouldApply }) {
+  const p = new URLSearchParams({limit:'70'});
+  if (f.search) p.set('search', f.search);
+  const [results, certificates] = await Promise.all([
+    api.apiGet(`/api/v1/scoring/workspace/sncc-results?${qs()}`),
+    api.apiGet(`/api/v1/scoring/workspace/sncc-certifications?${p}`),
+  ]);
+  if (!shouldApply()) return false;
+  rows(latestOnly(results)); bindHistory(); certs(certificates);
+}
+start().then(() => registerDataRefresh?.(refreshSnccData));
 })();

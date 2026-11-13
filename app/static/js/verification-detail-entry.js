@@ -9,7 +9,7 @@
   "use strict";
 
   const source = document.createElement("script");
-  source.src = "/static/js/verification-detail.js?v=20260927-2";
+  source.src = "/static/js/verification-detail.js?v=20261004-13";
   source.dataset.pageScript = "true";
   source.onload = async () => {
     try {
@@ -17,6 +17,8 @@
       const user = await api.apiGet("/api/v1/me");
       const dossierId = location.hash.replace(/^#\//, "").split("/")[1];
       const dossier = await api.apiGet(`/api/v1/verifications/${dossierId}`);
+      const access = await api.apiGet(`/api/v1/verifications/${dossierId}/write-access`);
+      if (!access.modifiable) return;
       if (!dossier?.date_fin || !user?.permissions?.includes("VERIFICATION.CLOTURER")) return;
 
       const reveal = () => {
@@ -24,15 +26,7 @@
         if (reopen) reopen.hidden = false;
       };
 
-      // Le contrôleur historique redessine le bouton après chaque chargement.
-      // L'observateur remet donc l'état conforme à la permission de clôture.
-      const target = document.querySelector("#vdReopen");
-      if (target) {
-        new MutationObserver(reveal).observe(target, {
-          attributes: true,
-          attributeFilter: ["hidden"],
-        });
-      }
+      // Le contrôleur principal applique lui-même permissions et affectation.
       reveal();
     } catch {
       // Le contrôleur principal conserve ses propres messages d'erreur.

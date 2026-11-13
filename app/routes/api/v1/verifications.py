@@ -49,6 +49,12 @@ async def reopen_analysis(dossier_id:UUID,db=Depends(get_db),actor=Depends(requi
 async def verification_context(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.LIRE"))):
     return await VerificationService.workspace_item(db,dossier_id)
 
+
+@router.get('/{dossier_id}/write-access')
+async def dossier_write_access(dossier_id:UUID,db=Depends(get_db),actor=Depends(require_permission('VERIFICATION.LIRE'))):
+    from app.services.verification_service import verification_write_access
+    return await verification_write_access(db,dossier_id,actor)
+
 @router.patch("/{dossier_id}",response_model=VerificationDossierResponse)
 async def update_verification(dossier_id:UUID,payload:VerificationUpdateRequest,request:Request,
     db=Depends(get_db),actor=Depends(require_permission("VERIFICATION.VERIFIER"))):

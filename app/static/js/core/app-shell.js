@@ -4,8 +4,9 @@ import {
   getCurrentRoute,
   initRouter,
   refreshCurrentRoute,
-} from "./router.js?v=20261001-6";
+} from "./router.js?v=20261012-1";
 import { initSessionLock } from "./session-lock.js";
+import { showDraftReminder, clearDraftReminder } from "./draft-reminder.js?v=20261004-1";
 import {
   getCurrentProfile,
   logout,
@@ -164,15 +165,43 @@ const PAGE_REFRESH_DEFAULTS = Object.freeze({
   refreshOnReturn: true,
 });
 const PAGE_REFRESH_INTERVALS = new Set([15, 30, 60, 120, 300]);
-// Une navigation silencieuse remplace le DOM et les écouteurs de la page.
-// Elle est donc interdite sur les écrans opérationnels : listes, formulaires,
-// modals et icônes d'action restent stables jusqu'à une action explicite de
-// l'utilisateur. Le tableau de bord est le seul écran purement consultatif
-// autorisé à se recharger automatiquement.
-const PAGE_REFRESH_ALLOWED_ROUTES = new Set(["dashboard"]);
+// Le minuteur ne navigue jamais : il appelle uniquement les chargeurs de
+// données explicitement enregistrés par les écrans compatibles.
+const pageDataRefreshers = new Map();
+// Chaque écran fournit son chargeur de données, jamais son initialisation DOM.
+window.HAUQE_CAPTURE_DATA_REFRESH = () => {
+  const origin = { root: document.querySelector("#pageContent")?.firstElementChild, routeHash: location.hash };
+  return (refresh) => registerPageDataRefresh(refresh, origin);
+};
+window.HAUQE_REGISTER_DATA_REFRESH = (refresh) => registerPageDataRefresh(refresh);
+function registerPageDataRefresh(refresh, origin = {}) {
+  const root = origin.root || document.querySelector("#pageContent")?.firstElementChild;
+  const routeHash = origin.routeHash || location.hash;
+  if (!root?.isConnected || routeHash !== location.hash) return;
+  pageDataRefreshers.clear();
+  pageDataRefreshers.set(routeHash, { root, refresh });
+  const heading = root?.querySelector(".page-heading");
+  const existingStamp = root?.querySelector("#companiesSyncAt");
+  if (existingStamp) {
+    existingStamp.dataset.dataRefreshTime = "true";
+    existingStamp.classList?.add("page-data-sync-badge");
+    existingStamp.parentElement?.classList.add("page-data-sync");
+  }
+  if (heading && !heading.querySelector("[data-data-refresh-time]")) {
+    const line = document.createElement("div");
+    line.className = "page-data-sync";
+    const stamp = document.createElement("span");
+    stamp.dataset.dataRefreshTime = "true";
+    stamp.className = "page-data-sync-badge";
+    stamp.textContent = "Actualisé à —";
+    line.appendChild(stamp);
+    (heading.querySelector("div") || heading).appendChild(line);
+  }
+}
 let pageRefreshTimer = null;
 let pageRefreshRunning = false;
 let pageFormDirty = false;
+let pageInteractionUntil = 0;
 let pageRefreshPreferences = { ...PAGE_REFRESH_DEFAULTS };
 
 function normalizePageRefreshPreferences(value = {}) {
@@ -232,11 +261,19 @@ async function loadPageRefreshPreferences() {
 }
 
 function pageHasOpenDialog() {
-  return Boolean(document.querySelector(
-    "#pageContent dialog[open],"
+  const open = document.querySelector(
+    "dialog[open],"
     + "#pageContent .modal.show,"
-    + "#pageContent [aria-modal='true']:not([hidden])"
-  ));
+    + "#pageContent .dropdown-menu.show,"
+    + "#companyActionMenu"
+  );
+  if (open) return true;
+  // aria-modal décrit le rôle, pas l'ouverture. Le gestionnaire l'ajoute
+  // également aux <dialog> fermés : seule leur propriété open fait foi.
+  return [...document.querySelectorAll(
+    "[aria-modal='true']:not(dialog):not(.modal):not([hidden])"
+  )].some((modal) => modal.getClientRects().length > 0
+    && window.getComputedStyle(modal).visibility !== "hidden");
 }
 
 function pageHasActiveInput() {
@@ -255,10 +292,11 @@ function pageRefreshIsSafe() {
     && !document.hidden
     && !pageRefreshRunning
     && !pageFormDirty
+    && Date.now() >= pageInteractionUntil
     && !pageHasOpenDialog()
     && !pageHasActiveInput()
     && !document.body.classList.contains("hauqe-action-loading")
-    && PAGE_REFRESH_ALLOWED_ROUTES.has(getCurrentRoute())
+    && pageDataRefreshers.has(location.hash)
     && !["connexion", "mot-de-passe-oublie"].includes(getCurrentRoute())
   );
 }
@@ -273,9 +311,31 @@ async function refreshCollaborativePage({ force = false } = {}) {
   button?.setAttribute("aria-busy", "true");
 
   try {
-    await refreshCurrentRoute();
-    pageFormDirty = false;
+    if (force) {
+      await refreshCurrentRoute();
+      pageFormDirty = false;
+    } else {
+      const hash = location.hash;
+      const entry = pageDataRefreshers.get(hash);
+      if (!entry?.root?.isConnected) return false;
+      const shouldApply = () => location.hash === hash
+        && entry.root.isConnected && !document.hidden && !pageFormDirty
+        && Date.now() >= pageInteractionUntil
+        && !pageHasOpenDialog() && !pageHasActiveInput()
+        && !document.body.classList.contains("hauqe-action-loading");
+      const applied = await entry.refresh({ shouldApply });
+      if (applied !== false && shouldApply()) {
+        const stamp = entry.root.querySelector("[data-data-refresh-time]");
+        if (stamp) stamp.textContent = `Actualisé à ${new Intl.DateTimeFormat("fr-FR", {
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }).format(new Date())}`;
+        window.dispatchEvent(new CustomEvent("hauqe:dossier-parcours-changed"));
+      }
+    }
     return true;
+  } catch (error) {
+    console.warn("Actualisation des données reportée", error);
+    return false;
   } finally {
     pageRefreshRunning = false;
     const currentButton = document.querySelector("[data-global-page-refresh]");
@@ -337,16 +397,29 @@ function startPageRefreshRuntime() {
 
 document.addEventListener("input", (event) => {
   const form = event.target.closest?.("#pageContent form");
-  if (form && !event.target.matches("input[type='search']")) {
+  // Un brouillon dans un modal fermé reste intact : le polling ne touche
+  // jamais ses inputs. Un modal ouvert suspend déjà toute actualisation.
+  if (form && !form.closest("dialog,[aria-modal='true'],.modal")
+    && !event.target.matches("input[type='search']")) {
     pageFormDirty = true;
   }
 }, true);
 
+document.addEventListener("pointerdown", (event) => {
+  if (event.target.closest?.("#pageContent")) pageInteractionUntil = Date.now() + 800;
+}, true);
+
 document.addEventListener("change", (event) => {
-  if (event.target.closest?.("#pageContent form")) {
+  const form = event.target.closest?.("#pageContent form");
+  if (form && !form.closest("dialog,[aria-modal='true'],.modal")) {
     pageFormDirty = true;
   }
 }, true);
+
+window.addEventListener("hauqe:form-saved", (event) => {
+  // Les formulaires hors modal peuvent signaler leur sauvegarde complète.
+  if (event.detail?.form?.closest?.("#pageContent")) pageFormDirty = false;
+});
 
 window.addEventListener("hauqe:page-ready", () => {
   pageFormDirty = false;
@@ -364,8 +437,10 @@ window.addEventListener("hauqe:refresh-preferences-updated", (event) => {
 });
 window.addEventListener("hauqe:auth-state", (event) => {
   if (event.detail?.authenticated) {
+    showDraftReminder(apiGet);
     loadPageRefreshPreferences();
   } else {
+    clearDraftReminder();
     // Cette préférence est rattachée au compte. Elle ne doit pas devenir le
     // réglage apparent du prochain utilisateur de ce navigateur.
     try { sessionStorage.removeItem(PAGE_REFRESH_STORAGE_KEY); } catch {}
@@ -1396,6 +1471,7 @@ initSessionLock();
 hydrateAuthenticatedShell();
 
 if (hasAccessToken()) {
+  showDraftReminder(apiGet);
   startPresenceRuntime();
   startNotificationRuntime();
   startSidebarBadgeRuntime();

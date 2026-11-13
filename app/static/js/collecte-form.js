@@ -563,7 +563,7 @@
                     <div class="review-row">
                       <span>
                         ${escapeHtml(
-                          collector?.label || item.utilisateur_id
+                          item.utilisateur_nom || collector?.label || "Agent affecté — nom indisponible"
                         )}
                       </span>
                       <strong>
@@ -2864,9 +2864,23 @@ async function saveQuickOrganisme(event) {
   async function loadExisting() {
     if (!missionId) return;
 
+    if (editMode && ficheId) {
+      const actual = await apiGet(`/api/v1/missions/dossiers/${encodeURIComponent(ficheId)}/localisation`);
+      if (String(actual.mission_id) !== String(missionId)) {
+        missionId = actual.mission_id;
+        history.replaceState(null, '', `#/collectes/modifier/${encodeURIComponent(missionId)}/${encodeURIComponent(ficheId)}`);
+      }
+    }
     mission = await apiGet(
       `/api/v1/missions/${missionId}`
     );
+    if (String(mission.statut || '').toUpperCase() === 'ARCHIVEE') {
+      window.alert(hasPermission('COLLECTE.AFFECTER')
+        ? 'Veuillez désarchiver cette mission avant toute action.'
+        : 'Cette mission est archivée. Contactez le point focal pour la désarchiver.');
+      location.hash = '#/collectes';
+      throw new Error('Mission archivée : formulaire inaccessible.');
+    }
 
     campagneId = mission.campagne_id;
 

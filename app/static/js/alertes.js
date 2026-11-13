@@ -1,5 +1,6 @@
 (async function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const api = await import("/static/js/core/api.js");
   const $ = (s) => document.querySelector(s);
@@ -245,12 +246,13 @@
     icons();
   }
 
-  async function loadAlerts() {
+  async function loadAlerts({ shouldApply = () => true, background = false } = {}) {
     try {
       const endpoint = alertScope === "all" && perm("ALERTES.LIRE")
         ? "/api/v1/veille/workspace/alerts"
         : "/api/v1/veille/workspace/alerts/mine";
       const payload = await api.apiGet(`${endpoint}?${params()}`);
+      if (!shouldApply()) return;
       alerts = payload.items || [];
       renderKpis(payload.summary || {});
       if (!perm("ALERTES.LIRE")) {
@@ -260,7 +262,7 @@
         $("#alertStatus").value = filters.statut;
       }
 
-      if (selected && !alerts.some((x) => x.id === selected.id)) selected = null;
+      if (selected) selected = alerts.find((x) => x.id === selected.id) || null;
 
       renderList();
       renderDetail();
@@ -276,6 +278,8 @@
         }
       }
     } catch (error) {
+      if (background) throw error;
+      if (!shouldApply()) return;
       state(error?.message || "Chargement impossible.", true);
     }
   }
@@ -508,11 +512,12 @@
     }).format(d);
   }
 
-  async function loadNotifications() {
+  async function loadNotifications({ shouldApply = () => true, background = false } = {}) {
     const container = $("#notificationCenterList");
 
     try {
       const payload = await api.apiGet("/api/v1/notifications?limit=100&offset=0");
+      if (!shouldApply()) return;
       $("#notificationUnreadBadge").textContent = String(payload.unread_count || 0);
 
       const items = payload.items || [];
@@ -546,6 +551,7 @@
 
       icons();
     } catch (error) {
+      if (background) throw error;
       container.innerHTML = `<div class="priority-empty">${e(error?.message || "Notifications indisponibles.")}</div>`;
     }
   }
@@ -639,6 +645,8 @@
     bind();
     await loadFilters();
     await Promise.all([loadAlerts(), loadNotifications()]);
+    registerDataRefresh?.(({ shouldApply }) =>
+      Promise.all([loadAlerts({ shouldApply, background: true }), loadNotifications({ shouldApply, background: true })]));
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);
   }

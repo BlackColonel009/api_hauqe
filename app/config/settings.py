@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     app_name: str = "HAUQE Certif"
     environment: str = "development"
     debug: bool = True
+    background_services_enabled: bool = True
+    hauqe_smtp_enabled: bool = True
 
     database_url: str
 

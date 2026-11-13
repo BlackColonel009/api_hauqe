@@ -7,6 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alerte import Alerte
+from app.models.correction import Correction
 from app.models.affectation_mission import AffectationMission
 from app.models.notification import Notification
 from app.models.audit_certification import AuditCertification
@@ -14,6 +15,7 @@ from app.models.certification import Certification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
 from app.models.entreprise import Entreprise
+from app.models.fiche_collecte import FicheCollecte
 from app.models.norme import Norme
 from app.models.organisme import Organisme
 from app.models.rapport_veille import RapportVeille
@@ -96,6 +98,23 @@ class WatchWorkspaceRepository:
             return {"label": None, "subtitle": None, "route": None}
 
         code = resource_type.strip().upper()
+
+        if code == "CORRECTION":
+            row = (await db.execute(
+                select(Correction, Validation, Entreprise)
+                .join(Validation, Validation.id == Correction.validation_id)
+                .join(FicheCollecte, FicheCollecte.id == Validation.fiche_collecte_id)
+                .outerjoin(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+                .where(Correction.id == resource_id)
+            )).one_or_none()
+            if row:
+                correction, validation, entreprise = row
+                company = (entreprise.raison_sociale or entreprise.nom_commercial) if entreprise else None
+                return {
+                    "label": f"Correction — {company or 'Entreprise concernée'}",
+                    "subtitle": (correction.motif or "Correction demandée")[:180],
+                    "route": f"#/validations/{validation.fiche_collecte_id}/corrections/{correction.id}",
+                }
 
         # Les alertes de parcours ouvrent la rubrique métier concernée, sans
         # afficher un UUID comme libellé pour l'utilisateur.

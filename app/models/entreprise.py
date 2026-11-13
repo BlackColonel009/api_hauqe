@@ -5,17 +5,31 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Date, ForeignKey, Integer, Numeric, String, select, or_
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property, declared_attr
 
 from app.database.base import Base
 from app.models.common import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.contact_entreprise import ContactEntreprise
 
 
 class Entreprise(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "entreprises"
+
+    # Convention métier : le premier contact actif est le promoteur.
+    # Aucune déduction à partir du nom, aucun remplacement par un autre contact
+    # au seul motif que son genre est renseigné.
+    @declared_attr
+    def genre_promoteur(cls):
+        return column_property(
+            select(ContactEntreprise.genre)
+            .where(ContactEntreprise.entreprise_id == cls.id,
+                   or_(ContactEntreprise.statut == "ACTIF", ContactEntreprise.statut.is_(None)))
+            .order_by(ContactEntreprise.created_at.asc(), ContactEntreprise.id.asc())
+            .limit(1).correlate_except(ContactEntreprise).scalar_subquery()
+        )
 
     identifiant_national: Mapped[str] = mapped_column(
         String(255),

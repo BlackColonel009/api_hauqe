@@ -253,7 +253,8 @@ class CollecteWorkspaceRepository:
         mission_statut: str | None,
         fiche_statut: str | None,
     ):
-        filters = []
+        filters = [or_(Campagne.statut.is_(None),
+                       func.upper(Campagne.statut).in_(['ACTIVE', 'ACTIF']))]
 
         if campagne_id:
             filters.append(

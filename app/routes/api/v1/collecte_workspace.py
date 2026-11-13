@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.permissions.auth import require_permission
+from app.permissions.auth import require_permission, get_current_auth
+from sqlalchemy import select, func
+from app.models.fiche_collecte import FicheCollecte
+from app.models.mission_collecte import MissionCollecte
+from app.models.entreprise import Entreprise
 from app.schemas.collecte_workspace import (
     CollecteCodeProposalResponse,
     CollecteRegistryResponse,
@@ -25,6 +29,29 @@ router = APIRouter(
     prefix="/collectes",
     tags=["Collecte - Espace de travail"],
 )
+
+
+@router.get("/mes-brouillons")
+async def my_collection_drafts(
+    db: AsyncSession = Depends(get_db),
+    actor: AuthContext = Depends(get_current_auth),
+):
+    """Rappel personnel : jamais les brouillons des autres responsables."""
+    rows = (await db.execute(
+        select(FicheCollecte.id, FicheCollecte.mission_id,
+               MissionCollecte.code, Entreprise.raison_sociale)
+        .join(MissionCollecte, MissionCollecte.id == FicheCollecte.mission_id)
+        .outerjoin(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+        .where(FicheCollecte.responsable_id == actor.user.id,
+               func.upper(FicheCollecte.statut) == "BROUILLON")
+        .order_by(FicheCollecte.updated_at.desc(), FicheCollecte.id)
+    )).all()
+    return {"total": len(rows), "items": [
+        {"fiche_id": str(row.id), "mission_id": str(row.mission_id),
+         "mission": row.code or "Mission de collecte",
+         "entreprise": row.raison_sociale or "Entreprise à renseigner"}
+        for row in rows[:20]
+    ]}
 
 
 @router.get(

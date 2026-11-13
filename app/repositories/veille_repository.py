@@ -23,6 +23,7 @@ from app.models.affectation_verification import AffectationVerification
 from app.models.audit_certification import AuditCertification
 from app.models.certification import Certification
 from app.models.confirmation_externe import ConfirmationExterne
+from app.models.correction import Correction
 from app.models.dossier_verification import DossierVerification
 from app.models.dossier_veille import DossierVeille
 from app.models.echeance import Echeance
@@ -39,6 +40,7 @@ from app.models.renouvellement_certification import RenouvellementCertification
 from app.models.role import Role
 from app.models.utilisateur import Utilisateur
 from app.models.utilisateur_role import UtilisateurRole
+from app.models.validation import Validation
 
 
 ACTIVE_DEADLINE_STATUSES = {"PLANIFIEE", "EN_COURS"}
@@ -46,6 +48,16 @@ ACTIVE_ALERT_STATUSES = {"NOUVELLE", "AFFECTEE", "EN_COURS"}
 
 
 class WatchRepository:
+
+    @staticmethod
+    async def correction_validation_fiche_id(db: AsyncSession, correction_id: UUID | None) -> UUID | None:
+        if correction_id is None:
+            return None
+        return (await db.execute(
+            select(Validation.fiche_collecte_id)
+            .join(Correction, Correction.validation_id == Validation.id)
+            .where(Correction.id == correction_id)
+        )).scalar_one_or_none()
 
     # ========================================================
     # UTILISATEURS / RÈGLES
@@ -143,6 +155,24 @@ class WatchRepository:
                 RappelEcheance.destinataire_utilisateur_id == recipient_user_id,
                 RappelEcheance.type_rappel == reminder_type,
                 RappelEcheance.date_rappel == reminder_date,
+            ).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def milestone_reminder_already_recorded(
+        db: AsyncSession,
+        *,
+        deadline_id: UUID,
+        recipient_user_id: UUID,
+        reminder_type: str,
+    ) -> bool:
+        """Un jalon de certificat ne doit partir qu'une fois par cycle de date."""
+        result = await db.execute(
+            select(RappelEcheance.id).where(
+                RappelEcheance.echeance_id == deadline_id,
+                RappelEcheance.destinataire_utilisateur_id == recipient_user_id,
+                RappelEcheance.type_rappel == reminder_type,
             ).limit(1)
         )
         return result.scalar_one_or_none() is not None
@@ -297,6 +327,29 @@ class WatchRepository:
     ) -> dict[str, str]:
         """Repères métier lisibles ; aucun UUID ne doit quitter le système."""
         resource_type = (deadline.ressource_type or "").upper()
+        if resource_type == "CORRECTION":
+            row = (await db.execute(
+                select(Correction, Validation, Entreprise, Utilisateur)
+                .join(Validation, Validation.id == Correction.validation_id)
+                .join(FicheCollecte, FicheCollecte.id == Validation.fiche_collecte_id)
+                .outerjoin(Entreprise, Entreprise.id == FicheCollecte.entreprise_id)
+                .join(Utilisateur, Utilisateur.id == Validation.validateur_id)
+                .where(Correction.id == deadline.ressource_id)
+            )).one_or_none()
+            if row:
+                correction, validation, entreprise, validateur = row
+                company = (entreprise.raison_sociale or entreprise.nom_commercial) if entreprise else None
+                name = " ".join(p for p in (validateur.prenoms, validateur.nom) if p).strip() or validateur.email
+                return {
+                    "label": f"Correction — {company or 'Entreprise concernée'}",
+                    "details": "\n".join([
+                        f"Entreprise : {company or 'Entreprise concernée'}",
+                        f"Validateur : {name}",
+                        f"Motif : {correction.motif or 'Non renseigné'}",
+                        f"Instructions : {correction.instructions or 'Non renseignées'}",
+                        f"Niveau : {validation.niveau_validation or 'Validation'}",
+                    ]),
+                }
         certification_id = None
         if resource_type == "CERTIFICATION":
             certification_id = deadline.ressource_id
@@ -749,7 +802,49 @@ class WatchRepository:
     ) -> list[RenouvellementCertification]:
         result = await db.execute(
             select(RenouvellementCertification).where(
-                RenouvellementCertification.date_limite.is_not(None)
+                RenouvellementCertification.date_limite.is_not(None),
+                RenouvellementCertification.date_decision.is_(None),
+                RenouvellementCertification.decision.is_(None),
+                func.upper(func.coalesce(RenouvellementCertification.statut, "")).not_in(
+                    ["RENOUVELE", "REFUSE", "ANNULE", "TERMINE"]
+                ),
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def pending_renewals_for_certification(
+        db: AsyncSession, certification_id: UUID
+    ) -> list[RenouvellementCertification]:
+        result = await db.execute(
+            select(RenouvellementCertification).where(
+                RenouvellementCertification.certification_id == certification_id,
+                RenouvellementCertification.date_limite.is_not(None),
+                RenouvellementCertification.date_decision.is_(None),
+                RenouvellementCertification.decision.is_(None),
+                func.upper(func.coalesce(RenouvellementCertification.statut, "")).not_in(
+                    ["RENOUVELE", "REFUSE", "ANNULE", "TERMINE"]
+                ),
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def active_deadlines_for_decided_renewals(db: AsyncSession) -> list[Echeance]:
+        result = await db.execute(
+            select(Echeance)
+            .join(RenouvellementCertification,
+                  RenouvellementCertification.id == Echeance.ressource_id)
+            .where(
+                Echeance.ressource_type == "RENOUVELLEMENT_CERTIFICATION",
+                Echeance.statut.in_(list(ACTIVE_DEADLINE_STATUSES)),
+                or_(
+                    RenouvellementCertification.date_decision.is_not(None),
+                    RenouvellementCertification.decision.is_not(None),
+                    func.upper(func.coalesce(RenouvellementCertification.statut, "")).in_(
+                        ["RENOUVELE", "REFUSE", "ANNULE", "TERMINE"]
+                    ),
+                ),
             )
         )
         return list(result.scalars().all())

@@ -61,6 +61,12 @@
       </header>
       <div class="dialog-body" data-dialog-scroll>
         <div class="bnec-execution-summary" id="integrationExecutionSummary"></div>
+        <section class="integration-final-reserve" id="integrationFinalReserve" hidden>
+          <div class="integration-final-reserve-heading"><i data-lucide="shield-alert"></i><div><strong>Validation sous réserve</strong><small>Cette décision nécessite une confirmation explicite avant l’intégration définitive.</small></div></div>
+          <p id="integrationFinalReserveReason"></p>
+          <a id="integrationFinalReserveLink" class="btn btn-outline-secondary app-btn" href="#/validations">Voir la correction dans Validation</a>
+          <label class="integration-final-reserve-confirm"><input id="integrationFinalReserveConfirm" type="checkbox"><span>J’ai pris connaissance de la réserve et je confirme la poursuite de l’intégration.</span></label>
+        </section>
         <section class="integration-confirm-codes">
           <header>
             <span><i data-lucide="binary"></i></span>

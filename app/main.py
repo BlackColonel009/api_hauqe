@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config.logging import configure_logging
+from app.config.settings import settings
 from app.routes.api.v1.router import api_router
 from app.tasks.run_background_services import serve, stop
 
@@ -25,7 +26,7 @@ async def lifespan(_: FastAPI):
     worker = asyncio.create_task(
         serve(),
         name="hauqe-background-services",
-    )
+    ) if settings.background_services_enabled else None
     try:
         yield
     finally:

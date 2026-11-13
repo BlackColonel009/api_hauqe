@@ -99,7 +99,7 @@
   }
 
   function renderContactsEditor() {
-    return `<div class="entry-list company-structured-list" id="contactList">${state.contacts.map((item, index) => `<div class="repeat-entry structured-contact" data-contact-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Prénoms / Nom</label><input data-field="name" value="${escapeHtml([item.prenoms, item.nom].filter(Boolean).join(" "))}"></div><div class="form-field"><label>Fonction</label><input data-field="fonction" value="${escapeHtml(item.fonction || "")}"></div><div class="form-field"><label>Téléphone</label><input data-field="telephone" type="tel" value="${escapeHtml(item.telephone || "")}"></div><div class="form-field"><label>Email</label><input data-field="email" type="email" value="${escapeHtml(item.email || "")}"></div><label class="structured-check"><input data-field="contact_principal" type="checkbox" ${item.contact_principal ? "checked" : ""}>Contact principal</label><span data-remove-contact-slot="${index}"></span></div>`).join("")}</div><span id="addContactSlot"></span>`;
+    return `<div class="entry-list company-structured-list" id="contactList">${state.contacts.map((item, index) => `<div class="repeat-entry structured-contact" data-contact-index="${index}"><input type="hidden" data-field="id" value="${escapeHtml(item.id || "")}"><div class="form-field"><label>Prénoms / Nom</label><input data-field="name" value="${escapeHtml([item.prenoms, item.nom].filter(Boolean).join(" "))}"></div><div class="form-field"><label>${index === 0 ? "Genre du promoteur" : "Genre"}</label><select data-field="genre"><option value="">Non renseigné</option>${[["FEMME","Femme"],["HOMME","Homme"],["AUTRE","Autre"]].map(([value,label]) => `<option value="${value}" ${item.genre === value ? "selected" : ""}>${label}</option>`).join("")}</select></div><div class="form-field"><label>Fonction</label><input data-field="fonction" value="${escapeHtml(item.fonction || "")}"></div><div class="form-field"><label>Téléphone</label><input data-field="telephone" type="tel" value="${escapeHtml(item.telephone || "")}"></div><div class="form-field"><label>Email</label><input data-field="email" type="email" value="${escapeHtml(item.email || "")}"></div><label class="structured-check"><input data-field="contact_principal" type="checkbox" ${item.contact_principal ? "checked" : ""}>Contact principal</label><span data-remove-contact-slot="${index}"></span></div>`).join("")}</div><span id="addContactSlot"></span>`;
   }
 
   function renderSitesEditor() {
@@ -129,7 +129,7 @@
     1: () => `<article class="panel form-card">${head("Identification de l’entreprise", "L’identifiant national est la référence principale de l’entreprise dans la BNEC.")}<div class="form-grid">${nationalIdentifierField()}${field("raison_sociale", "Raison sociale", { required: true })}${field("nom_commercial", "Nom commercial")}${companySelect("forme_juridique", "Forme juridique", ["SARL", "SA", "Entreprise individuelle", "Coopérative", "Association", "Autre"].map((x) => ({ value: x, label: x })))}${legalIdentifiersFields()}${field("date_creation", "Date de création", { type: "date" })}${field("nationalite", "Nationalité")}${field("capital_social", "Capital social", { type: "number", min: 0 })}${field("effectif", "Effectif", { type: "number", min: 0 })}</div><div class="duplicate-result" id="duplicateResult" hidden></div></article>`,
     2: () => `<article class="panel form-card">${head("Localisation et siège", "Sélectionnez la zone administrative la plus précise disponible.")}<div class="form-grid">${companySelect("zone_siege_id", "Zone administrative du siège", zoneOptions(), { required: true, help: "Région, préfecture, commune ou localité selon le référentiel disponible." })}${field("adresse_siege", "Adresse / localité", { required: true })}${field("site_web", "Site web", { type: "url" })}</div><div class="subresource-head"><div><h3>Sites de l’entreprise</h3><p>Les sites sont enregistrés dans le sous-module Sites entreprise.</p></div></div>${renderSitesEditor()}</article>`,
     3: () => `<article class="panel form-card">${head("Activités, produits et marchés", "L’activité principale alimente les filtres du registre. Les produits/services sont conservés comme offres structurées.")}<div class="form-grid">${companySelect("activite_principale", "Activité principale", sectorOptions(), { required: true })}<div class="form-field full"><label>Secteurs secondaires</label><input name="secteurs_secondaires_text" value="${escapeHtml((state.company.secteurs_secondaires || []).join(", "))}" placeholder="Séparer par des virgules"><small class="field-help">Liste optionnelle.</small></div></div><div class="subresource-head"><div><h3>Produits et services</h3><p>Marchés et destinations sont stockés de manière structurée.</p></div></div>${renderOffersEditor()}</article>`,
-    4: () => `<article class="panel form-card">${head("Contacts et coordonnées", "RM-13 : au moins un téléphone ou un courriel est obligatoire pour l’entreprise.")}<div class="form-grid">${field("telephone_principal", "Téléphone principal", { type: "tel" })}${field("email_principal", "Email principal", { type: "email" })}</div><div class="subresource-head"><div><h3>Contacts rattachés</h3><p>Le premier contact peut être marqué principal.</p></div></div>${renderContactsEditor()}</article>`,
+    4: () => `<article class="panel form-card">${head("Contacts et coordonnées", "RM-13 : au moins un téléphone ou un courriel est obligatoire pour l’entreprise.")}<div class="form-grid">${field("telephone_principal", "Téléphone principal", { type: "tel" })}${field("email_principal", "Email principal", { type: "email" })}</div><div class="subresource-head"><div><h3>Contacts rattachés</h3><p>Le premier contact actif enregistré est utilisé comme promoteur dans les rapports. Renseignez son genre si cette information est disponible.</p></div></div>${renderContactsEditor()}</article>`,
     5: () => `<article class="panel form-card">${head("Vérification avant enregistrement", "Le serveur reste souverain sur les contrôles d’unicité, les permissions et les règles métier.")}<div class="review-layout">${reviewSection("Identification", [["Identifiant national", state.company.identifiant_national], ["Raison sociale", state.company.raison_sociale], ...(state.showLegalIdentifiers ? [["RCCM", state.company.rccm], ["NIF", state.company.nif], ["IFU", state.company.ifu], ["Autre identifiant juridique", state.company.autre_identifiant_juridique]] : [])])}${reviewSection("Localisation / activité", [["Zone", (state.filters.zones || []).find((z) => String(z.id) === String(state.company.zone_siege_id))?.nom], ["Adresse", state.company.adresse_siege], ["Activité", state.company.activite_principale], ["Effectif", state.company.effectif]])}${reviewSection("Coordonnées", [["Téléphone", state.company.telephone_principal], ["Email", state.company.email_principal], ["Contacts", String(state.contacts.length)], ["Sites", String(state.sites.length)]])}${reviewSection("Offres", [["Produits / services", String(state.offers.length)], ["Secteurs secondaires", (state.company.secteurs_secondaires || []).join(", ")]])}<div class="review-warning">${icon("info")}L’enregistrement d’une entreprise ne valide pas automatiquement ses certifications. Les certifications sont gérées dans leur module officiel.</div></div></article>`,
   };
 
@@ -160,6 +160,7 @@
         ...current,
         ...name,
         fonction: clean(row.querySelector('[data-field="fonction"]')?.value),
+        genre: clean(row.querySelector('[data-field="genre"]')?.value),
         telephone: clean(row.querySelector('[data-field="telephone"]')?.value),
         email: clean(row.querySelector('[data-field="email"]')?.value),
         type_contact: current.type_contact || "ENTREPRISE",
@@ -200,7 +201,10 @@
     button.setAttribute("data-no-action-loader", "true");
     button.setAttribute("aria-label", title || label);
     if (title) button.title = title;
-    button.innerHTML = `${icon(iconName)}${label ? `<span>${escapeHtml(label)}</span>` : ""}`;
+    const stableIcon = iconName === "trash-2"
+      ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>'
+      : icon(iconName);
+    button.innerHTML = `${stableIcon}${label ? `<span>${escapeHtml(label)}</span>` : ""}`;
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -315,6 +319,7 @@
 
   function bindStep() {
     bindStructured();
+    document.querySelectorAll('#suggestCompanyId, #checkDuplicate').forEach(recreateActionButton);
     $("#suggestCompanyId")?.addEventListener("click", async () => {
       try {
         const result = await apiGet("/api/v1/identifiants-hauqe/proposer?type=ENTREPRISE");
@@ -334,7 +339,8 @@
   }
 
   function renderStep() {
-    captureCompanyFields();
+    // Les actions capturent avant de modifier l'état. Relire ici l'ancien DOM
+    // après splice réintroduirait la ligne retirée et écraserait les suivantes.
     $("#formStepContent").innerHTML = views[state.step]();
     $("#formProgress").textContent = `Étape ${state.step} sur 5`;
     $("#previousStep").hidden = state.step === 1;
@@ -403,6 +409,7 @@
   function contactPayload(item) {
     return {
       nom: clean(item.nom), prenoms: clean(item.prenoms), fonction: clean(item.fonction),
+      genre: clean(item.genre),
       telephone: clean(item.telephone), email: clean(item.email),
       type_contact: clean(item.type_contact) || "ENTREPRISE",
       contact_principal: Boolean(item.contact_principal),
@@ -506,7 +513,19 @@
     }
   }
 
+  function recreateActionButton(original) {
+    const button = document.createElement('button');
+    for (const attribute of original.attributes) button.setAttribute(attribute.name, attribute.value);
+    button.type = 'button';
+    button.setAttribute('data-no-action-loader', 'true');
+    button.innerHTML = original.innerHTML;
+    original.replaceWith(button);
+  }
+
   function bindStatic() {
+    // Comme les actions des campagnes : un bouton natif neuf, puis son
+    // écouteur direct ; pas de chargeur automatique sur les actions locales.
+    document.querySelectorAll('#companyStepper button, #nextStep, #previousStep, #submitCompany').forEach(recreateActionButton);
     $("#nextStep").addEventListener("click", () => {
       captureCompanyFields();
       if (!validCurrentStep()) return;
@@ -581,7 +600,9 @@
           || company.ifu
           || company.autre_identifiant_juridique
         );
-        state.contacts = (contacts || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
+        state.contacts = (contacts || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF")
+          .sort((a,b) => String(a.created_at || "").localeCompare(String(b.created_at || ""))
+            || String(a.id || "").localeCompare(String(b.id || "")));
         state.sites = (sites || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         state.offers = (offers || []).filter((item) => String(item.statut || "ACTIF").toUpperCase() !== "INACTIF");
         $("#companyFormTitle").textContent = `Modifier ${company.raison_sociale || company.identifiant_national}`;

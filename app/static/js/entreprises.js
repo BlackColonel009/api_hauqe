@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
 
@@ -804,6 +805,8 @@
     button = null,
     forceLoader = false,
     silentLoader = false,
+    background = false,
+    shouldApply = () => true,
     message = "Chargement du registre",
   } = {}) {
     const requestId = ++state.requestId;
@@ -811,7 +814,7 @@
     const task = async () => {
       const payload = await apiGet(`/api/v1/entreprises/registry?${queryString()}`);
 
-      if (requestId !== state.requestId) return;
+      if (requestId !== state.requestId || !shouldApply()) return;
 
       state.total = Number(payload.total || 0);
       state.items = Array.isArray(payload.items) ? payload.items : [];
@@ -821,7 +824,7 @@
       renderRows();
       renderPagination();
 
-      $("#companiesSyncAt").innerHTML = `<i data-lucide="refresh-cw"></i>Actualisé à ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
+      $("#companiesSyncAt").innerHTML = `<i data-lucide="refresh-cw"></i>Actualisé à ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`;
       refreshIcons();
     };
 
@@ -838,6 +841,8 @@
         await task();
       }
     } catch (error) {
+      if (background) throw error;
+      if (!shouldApply()) return;
       if (ApiError && error instanceof ApiError && error.status === 403) {
         showApiState({
           title: "Accès au registre refusé",
@@ -1092,7 +1097,10 @@
   restoreCompanyViewPreference();
   hydrateCompanyViewButtons();
 
-  bootstrap().catch((error) => {
+  bootstrap().then(() => {
+    registerDataRefresh?.(({ shouldApply }) =>
+      loadRegistry({ silentLoader: true, background: true, shouldApply }));
+  }).catch((error) => {
     console.error("Entreprises bootstrap :", error);
     showApiState({
       title: "Initialisation impossible",

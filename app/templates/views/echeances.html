@@ -514,19 +514,25 @@
             <div><strong>Cellule de veille</strong><small>Actions et relances programmées</small></div>
             <b data-source-count="veille">0</b>
           </a>
+          <a class="deadline-map-node node-validations transactional" href="#/validations" data-map-group="validations">
+            <span><i data-lucide="shield-check"></i></span>
+            <div><strong>Validations</strong><small>Corrections à resoumettre avant la date limite</small></div>
+            <b data-source-count="validations">0</b>
+          </a>
           <button class="deadline-map-node node-manual manual" id="mapPlanDeadline" type="button" data-map-group="manual">
             <span><i data-lucide="calendar-plus-2"></i></span>
             <div><strong>Planification directe</strong><small>Création contrôlée par un agent</small></div>
             <b data-source-count="manual">0</b>
           </button>
 
-          <svg class="deadline-map-lines" viewBox="0 0 1000 590" preserveAspectRatio="none" aria-hidden="true">
-            <path class="automatic" d="M500 295 C390 295 340 108 235 108"/>
-            <path class="transactional" d="M500 295 C610 295 660 108 765 108"/>
-            <path class="automatic" d="M500 295 C360 295 325 295 190 295"/>
-            <path class="transactional" d="M500 295 C640 295 675 295 810 295"/>
-            <path class="automatic" d="M500 295 C390 295 340 482 235 482"/>
-            <path class="manual" d="M500 295 C610 295 660 482 765 482"/>
+          <svg class="deadline-map-lines" viewBox="0 0 1000 720" preserveAspectRatio="none" aria-hidden="true">
+            <path class="automatic" d="M500 360 C390 360 340 75 235 75"/>
+            <path class="transactional" d="M500 360 C610 360 660 75 765 75"/>
+            <path class="automatic" d="M500 360 C360 360 325 250 190 250"/>
+            <path class="transactional" d="M500 360 C640 360 675 250 810 250"/>
+            <path class="automatic" d="M500 360 C390 360 340 472 235 472"/>
+            <path class="transactional" d="M500 360 C610 360 660 472 765 472"/>
+            <path class="manual" d="M500 360 C500 480 500 560 500 645"/>
           </svg>
         </div>
 

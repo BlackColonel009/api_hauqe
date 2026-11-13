@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, or_
 from app.audit.service import write_audit_event
 from app.models.affectation_verification import AffectationVerification
 from app.models.anomalie_verification import AnomalieVerification
@@ -19,6 +20,26 @@ from app.services.workflow_communication_service import WorkflowCommunicationSer
 
 def ip(request): return request.client.host if request.client else None
 def txt(v): return (v.strip() or None) if isinstance(v, str) else v
+
+
+async def verification_write_access(db, dossier_id, actor, *, lock=False):
+    query=select(DossierVerification.id).where(DossierVerification.id==dossier_id)
+    if lock: query=query.with_for_update()
+    if (await db.execute(query)).scalar_one_or_none() is None:
+        raise HTTPException(404, 'Dossier de vérification introuvable.')
+    assigned=(await db.execute(select(AffectationVerification.verificateur_id).where(
+        AffectationVerification.dossier_verification_id==dossier_id,
+        or_(AffectationVerification.statut.is_(None),
+            func.upper(AffectationVerification.statut).in_(['ACTIF','ACTIVE']))))).scalars().all()
+    manager=bool(set(getattr(actor,'roles',[])).intersection({'ADMIN_HAUQE','POINT_FOCAL_BNEC'}))
+    return {'modifiable': manager or not assigned or actor.user.id in assigned,
+            'affectation_exclusive': bool(assigned)}
+
+
+async def ensure_verification_write(db, dossier_id, actor):
+    access=await verification_write_access(db,dossier_id,actor,lock=True)
+    if not access['modifiable']:
+        raise HTTPException(403, 'Ce dossier est affecté à un autre vérificateur. Consultation uniquement ; contactez le point focal pour modifier l’affectation.')
 
 def assignment_response(x):
     return VerificationAssignmentResponse(
@@ -302,6 +323,7 @@ class VerificationService:
 
     @staticmethod
     async def update(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x = await VerificationService.get(db,dossier_id)
         if x.date_fin: raise HTTPException(409,"Dossier clôturé : réouverture requise.")
         before={"priorite":x.priorite,"niveau_risque":x.niveau_risque,"synthese":x.synthese}
@@ -315,6 +337,7 @@ class VerificationService:
 
     @staticmethod
     async def close(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x = await VerificationService.get(db,dossier_id)
         if x.date_fin: raise HTTPException(409,"Dossier déjà clôturé.")
         points,_,pending,_ = await VerificationRepository.counts(db,dossier_id)
@@ -350,6 +373,7 @@ class VerificationService:
 
     @staticmethod
     async def reopen(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         # Le verrou empêche deux réouvertures simultanées d'outrepasser la
         # décision affichée dans le modal.
         x = await VerificationRepository.get_dossier_for_update(db, dossier_id)
@@ -400,6 +424,7 @@ class VerificationService:
 
     @staticmethod
     async def assign(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         dossier=await VerificationService.get(db,dossier_id)
         if dossier.date_fin: raise HTTPException(409,"Dossier clôturé.")
         user=await VerificationRepository.get_user(db,payload.verificateur_id)
@@ -425,6 +450,7 @@ class VerificationService:
 
     @staticmethod
     async def update_assignment(db, *, dossier_id, assignment_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_assignment(db,dossier_id=dossier_id,assignment_id=assignment_id)
         if x is None: raise HTTPException(404,"Affectation introuvable.")
         changes=payload.model_dump(exclude_unset=True)
@@ -449,6 +475,7 @@ class VerificationService:
 
     @staticmethod
     async def save_point(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         d=await VerificationService.get(db,dossier_id)
         if d.date_fin: raise HTTPException(409,"Dossier clôturé.")
         code=(payload.code or "").strip().upper()
@@ -476,6 +503,7 @@ class VerificationService:
 
     @staticmethod
     async def update_point(db, *, dossier_id, point_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         d=await VerificationService.get(db,dossier_id)
         if d.date_fin: raise HTTPException(409,"Dossier clôturé.")
         x=await VerificationRepository.get_point(db,dossier_id=dossier_id,point_id=point_id)
@@ -497,6 +525,7 @@ class VerificationService:
 
     @staticmethod
     async def create_anomaly(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         d=await VerificationService.get(db,dossier_id)
         if d.date_fin: raise HTTPException(409,"Dossier clôturé.")
         if payload.point_verification_id and not await VerificationRepository.get_point(
@@ -513,6 +542,7 @@ class VerificationService:
 
     @staticmethod
     async def update_anomaly(db, *, dossier_id, anomaly_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_anomaly(db,dossier_id=dossier_id,anomaly_id=anomaly_id)
         if x is None: raise HTTPException(404,"Anomalie introuvable.")
         for k,v in payload.model_dump(exclude_unset=True).items(): setattr(x,k,txt(v))
@@ -523,6 +553,7 @@ class VerificationService:
 
     @staticmethod
     async def resolve_anomaly(db, *, dossier_id, anomaly_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_anomaly(db,dossier_id=dossier_id,anomaly_id=anomaly_id)
         if x is None: raise HTTPException(404,"Anomalie introuvable.")
         resolution=payload.resolution.strip()
@@ -540,6 +571,7 @@ class VerificationService:
 
     @staticmethod
     async def escalate_anomaly(db, *, dossier_id, anomaly_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_anomaly(db,dossier_id=dossier_id,anomaly_id=anomaly_id)
         if x is None: raise HTTPException(404,"Anomalie introuvable.")
         x.escalade=True
@@ -556,6 +588,7 @@ class VerificationService:
 
     @staticmethod
     async def create_confirmation(db, *, dossier_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         d=await VerificationService.get(db,dossier_id)
         if d.date_fin: raise HTTPException(409,"Dossier clôturé.")
         if payload.organisme_id and not await VerificationRepository.get_organisme(db,payload.organisme_id):
@@ -649,6 +682,7 @@ class VerificationService:
 
     @staticmethod
     async def update_confirmation(db, *, dossier_id, confirmation_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_confirmation(db,dossier_id=dossier_id,confirmation_id=confirmation_id)
         if x is None: raise HTTPException(404,"Confirmation externe introuvable.")
         changes=payload.model_dump(exclude_unset=True)
@@ -664,6 +698,7 @@ class VerificationService:
 
     @staticmethod
     async def record_confirmation_response(db, *, dossier_id, confirmation_id, payload, actor, request):
+        await ensure_verification_write(db, dossier_id, actor)
         x=await VerificationRepository.get_confirmation(db,dossier_id=dossier_id,confirmation_id=confirmation_id)
         if x is None: raise HTTPException(404,"Confirmation externe introuvable.")
         if payload.document_id and not await VerificationRepository.get_active_document(db,payload.document_id):

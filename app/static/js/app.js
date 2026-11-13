@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
 
@@ -356,6 +357,7 @@
         });
 
         card.addEventListener("keydown", (event) => {
+          if (event.target.closest(".metric-info")) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             open();
@@ -365,8 +367,15 @@
 
     container
       .querySelectorAll("[data-metric-definition]")
-      .forEach((button) => {
-        button.addEventListener("pointerup", (event) => {
+      .forEach((original) => {
+        const button = document.createElement("button");
+        for (const attribute of original.attributes) button.setAttribute(attribute.name, attribute.value);
+        button.type = "button";
+        button.setAttribute("data-no-action-loader", "true");
+        button.setAttribute("aria-expanded", "false");
+        button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg>';
+        original.replaceWith(button);
+        button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
 
@@ -385,12 +394,6 @@
 
           box.hidden = !box.hidden;
           button.setAttribute("aria-expanded", String(!box.hidden));
-        });
-        button.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-          }
         });
       });
 
@@ -1083,6 +1086,8 @@
     button = null,
     message = "Chargement du tableau de bord",
     initial = false,
+    silent = false,
+    shouldApply = () => true,
   } = {}) {
     const currentRequest = ++requestSequence;
     const actionLoader = loader();
@@ -1092,7 +1097,7 @@
         `${API.operational}?${queryString()}`
       );
 
-      if (currentRequest !== requestSequence) {
+      if (currentRequest !== requestSequence || !shouldApply()) {
         return;
       }
 
@@ -1101,7 +1106,7 @@
     };
 
     try {
-      if (actionLoader) {
+      if (actionLoader && !silent) {
         await actionLoader.run(task, {
           button,
           title: initial
@@ -1116,6 +1121,7 @@
         await task();
       }
     } catch (error) {
+      if (silent) throw error;
       if (
         ApiError
         && error instanceof ApiError
@@ -1643,5 +1649,8 @@
     }
   }
 
-  bootstrap();
+  bootstrap().then(() => {
+    registerDataRefresh?.(({ shouldApply }) =>
+      loadOperationalDashboard({ silent: true, shouldApply }));
+  });
 })();

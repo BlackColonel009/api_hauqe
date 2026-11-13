@@ -82,6 +82,7 @@ def build_response(
         entreprise_id=contact.entreprise_id,
 
         nom=contact.nom,
+        genre=contact.genre,
         prenoms=contact.prenoms,
         fonction=contact.fonction,
 
@@ -209,6 +210,7 @@ class ContactEntrepriseService:
             )
 
         contact = ContactEntreprise(
+            genre=payload.genre,
             entreprise_id=entreprise_id,
 
             nom=clean_text(payload.nom),
@@ -263,6 +265,7 @@ class ContactEntrepriseService:
                     contact.email,
                 "telephone":
                     contact.telephone,
+                "genre": contact.genre,
                 "contact_principal":
                     contact.contact_principal,
                 "statut":
@@ -330,6 +333,7 @@ class ContactEntrepriseService:
             "telephone": contact.telephone,
             "email": contact.email,
             "type_contact": contact.type_contact,
+            "genre": contact.genre,
             "contact_principal":
                 contact.contact_principal,
         }
@@ -381,6 +385,7 @@ class ContactEntrepriseService:
                 "email": contact.email,
                 "type_contact":
                     contact.type_contact,
+                "genre": contact.genre,
                 "contact_principal":
                     contact.contact_principal,
             },

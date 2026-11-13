@@ -1,0 +1,54 @@
+/* Réutilisation du thème Échéances ; le corps garde son scroll au zoom. */
+.themed-business-dialog { max-height: calc(100dvh - 24px); }
+#collectionTransferDialog .themed-business-body{display:flex;flex-direction:column}
+#collectionTransferDialog .themed-business-body>section{flex-shrink:0}
+#collectionTransferDialog [data-transfer-error]{color:#b4433e;overflow-wrap:anywhere}
+#collectionTransferDialog .operational-dialog-footer{display:flex;flex-wrap:wrap;gap:10px}
+.themed-business-dialog > form { max-height: calc(100dvh - 24px); min-height: 0; }
+.themed-business-dialog .themed-business-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.themed-business-dialog .operational-dialog-header,
+.themed-business-dialog .operational-dialog-footer { flex: 0 0 auto; }
+.themed-business-dialog .themed-business-body { display: grid; gap: 16px; }
+.themed-business-dialog .operational-field { display: grid; gap: 7px; min-width: 0; }
+.themed-business-dialog .operational-field > span { color: #657b70; font-size: 9px; font-weight: 750; }
+.themed-business-dialog .operational-field input,
+.themed-business-dialog .operational-field textarea {
+  box-sizing: border-box;
+  width: 100%; min-width: 0;
+  border: 1px solid #d7e2dd; border-radius: 13px;
+  padding: 12px 13px; background: #fff; color: #2e4439;
+  font: 600 10px "DM Sans", sans-serif;
+}
+.themed-business-dialog .operational-field input { min-height: 47px; }
+.themed-business-dialog .operational-field textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
+.themed-business-dialog .operational-field :is(input,textarea):focus {
+  outline: none; border-color: #287e5f; box-shadow: 0 0 0 3px rgba(40,126,95,.13);
+}
+.themed-business-dialog .switch-line { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #dfe8e4; border-radius: 13px; background: #f3faf6; }
+.themed-business-dialog .switch-line input { flex: 0 0 auto; width: 16px !important; height: 16px; min-height: 0 !important; accent-color: #287e5f; }
+.themed-business-dialog .switch-line span { color: #2e4439; font-size: 10px; line-height: 1.5; }
+[data-theme="dark"] .themed-business-dialog .operational-field :is(input,textarea) { background: #14372f; color: #edf7f3; border-color: #315248; box-shadow: none; color-scheme: dark; }
+[data-theme="dark"] .themed-business-dialog .operational-field > span { color: #b4c7bf; }
+[data-theme="dark"] .themed-business-dialog .switch-line { background: #14372f; border-color: #315248; }
+[data-theme="dark"] .themed-business-dialog .switch-line span { color: #edf7f3; }
+[data-theme="dark"] .themed-business-dialog .operational-field :is(input,textarea):focus { border-color: #68ba93; box-shadow: 0 0 0 3px rgba(104,186,147,.15); }
+.reports-page #reportAddress {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+}
+[data-theme="dark"] .reports-page #reportAddress {
+  border-color: #31564c;
+  background: #102d27;
+  color: #edf7f3;
+}
+@media (max-height: 450px) {
+  .themed-business-dialog > form { overflow-y: auto; }
+  .themed-business-dialog .themed-business-body { flex: 0 0 auto; overflow: visible; }
+}

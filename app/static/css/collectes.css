@@ -618,3 +618,57 @@ html[data-theme="dark"] .collecte-collection-list,body.dark-theme .collecte-coll
 
 /* Accès direct à une collecte : action nette et stable dans la mission. */
 .collecte-fiche-open{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:0 11px;border:1px solid #73b892;border-radius:9px;background:linear-gradient(135deg,#1f7956,#2e966b);box-shadow:0 3px 8px rgba(30,111,77,.16);color:#fff;font-size:.76rem;font-weight:800;cursor:pointer;pointer-events:auto;position:relative;z-index:2;white-space:nowrap;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}.collecte-fiche-open:hover{background:linear-gradient(135deg,#196846,#247f59);box-shadow:0 6px 14px rgba(30,111,77,.23);transform:translateY(-1px)}.collecte-fiche-open:focus-visible{outline:3px solid rgba(44,139,99,.28);outline-offset:2px}.collecte-fiche-open:active{transform:translateY(0);box-shadow:0 2px 5px rgba(30,111,77,.18)}.collecte-fiche-open svg{width:15px;height:15px;pointer-events:none}
+/* Résumé du registre : compteurs de page distincts de la pagination. */
+.collectes-list-head .collecte-register-summary{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-width:0;flex:1}
+.collecte-register-caption{color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.collecte-register-counts{display:flex;flex-wrap:wrap;gap:8px}
+.collecte-count-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #d4e6dc;border-radius:10px;background:#f1f8f4;color:#34624a;font-size:10px}
+.collecte-count-chip b{font-size:14px;color:#16734f;line-height:1.2}
+.collectes-list-head .collecte-register-range{display:inline-flex;margin:0;padding:6px 10px;border-radius:8px;background:#f4f6f5;color:#718078;font-size:9px;white-space:normal}
+.collectes-list-head{flex-wrap:wrap;gap:12px}
+[data-theme=dark] .collecte-count-chip{background:#183d30;border-color:#315746;color:#c4dfd1}
+[data-theme=dark] .collecte-count-chip b{color:#85d6aa}
+[data-theme=dark] .collectes-list-head .collecte-register-range{background:#19352d;color:#b4c7be}
+@media(max-width:640px){.collectes-list-head .collecte-register-summary{flex-basis:100%;gap:8px}.collecte-register-caption{flex-basis:100%}.collectes-list-head #collecteSort{max-width:100%}}
+/* Vues du registre, sans double jeu de boutons ou d'identifiants. */
+.collecte-view-switch{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:10px;background:#f6faf8}
+.collecte-view-button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:7px;padding:7px 10px;background:transparent;color:var(--muted);font-size:10px;cursor:pointer}
+.collecte-view-button[aria-pressed=true]{background:#16734f;color:#fff}
+.collecte-view-button svg{width:15px;height:15px;pointer-events:none}
+.collecte-campaign-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px;align-items:start}
+.collecte-campaign-card{min-width:0;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+.collecte-campaign-card .collecte-campaign-summary{display:flex;flex-wrap:wrap;gap:10px;padding:16px}
+.collecte-campaign-card .collecte-campaign-summary>div{min-width:0;flex:1 1 180px;overflow-wrap:anywhere}
+.collecte-campaign-card .collecte-campaign-missions-detail{overflow-x:auto;max-width:100%;padding:8px}
+#collecteListView[hidden],#collecteGridView[hidden],.collecte-campaign-card>section[hidden]{display:none!important}
+[data-theme=dark] .collecte-campaign-card{background:#14372f;border-color:#315248}
+[data-theme=dark] .collecte-view-switch{background:#173b30;border-color:#315248}
+@media(max-width:1000px){.collecte-campaign-grid{grid-template-columns:1fr}}
+
+/* Respiration intérieure du registre en liste et cartes, y compris au zoom. */
+.collecte-register-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+.collecte-register-controls .collecte-view-switch{flex-shrink:0}
+.collecte-register-controls #collecteSort{width:auto;min-width:0;max-width:180px;margin:0}
+@media(max-width:640px){.collecte-register-controls{width:100%;gap:7px}.collecte-register-controls #collecteSort{flex:1}.collecte-register-controls .collecte-view-button{padding:7px 8px}}
+.collectes-panel>.collectes-list-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;gap:14px;margin:0;box-sizing:border-box}
+.collectes-panel .collecte-register-controls{margin:8px 0 0;padding:0;align-self:center}
+.collectes-panel .collecte-register-summary{margin:0;padding:0}
+.collectes-panel .collecte-register-controls .collecte-view-switch{margin:0}
+.collectes-panel>.companies-footer{padding:16px 20px;gap:12px;flex-wrap:wrap}
+.collectes-panel #collecteListView{padding:0 16px 12px}
+.collectes-panel .collecte-campaign-grid{padding:18px 20px;gap:18px}
+.collectes-panel .collecte-campaign-summary{padding:18px;gap:12px}
+.collectes-panel .collecte-campaign-card .collecte-campaign-summary{padding:18px 20px;gap:12px}
+.collectes-panel .collecte-campaign-card .collecte-campaign-missions-detail{padding:14px 16px 18px}
+.collectes-panel .collecte-campaign-missions-detail{padding:14px 16px}
+.collectes-panel .collecte-missions-table{margin-bottom:0}
+.collectes-panel .collecte-missions-table th,.collectes-panel .collecte-missions-table td{padding:12px 14px}
+.collectes-panel .collecte-collection-list{padding:10px}
+.collectes-panel .collecte-empty{padding:24px 20px}
+@media(max-width:640px){
+  .collectes-panel>.collectes-list-head,.collectes-panel>.companies-footer{padding:14px}
+  .collectes-panel #collecteListView{padding:0 10px 10px}
+  .collectes-panel .collecte-campaign-grid{padding:14px;gap:14px}
+  .collectes-panel .collecte-campaign-card .collecte-campaign-summary{padding:16px}
+  .collectes-panel .collecte-campaign-card .collecte-campaign-missions-detail{padding:12px}
+}

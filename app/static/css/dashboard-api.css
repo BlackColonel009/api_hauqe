@@ -147,7 +147,13 @@
 
 .metric-card .metric-info svg{
   width:15px;
+  height:15px;
+  pointer-events:none;
 }
+.dashboard-page .metric-copy{min-width:0;padding-right:30px}
+.dashboard-page .metric-card::after{pointer-events:none}
+.dashboard-page .metric-info{padding:0;cursor:pointer}
+.dashboard-page .metric-info:focus-visible{outline:2px solid var(--green-700);outline-offset:3px}
 
 .metric-card .metric-value b.neutral{
   color:#52635c;

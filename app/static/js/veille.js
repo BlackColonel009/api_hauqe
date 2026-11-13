@@ -1,5 +1,6 @@
 (async function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const api = await import("/static/js/core/api.js");
   const $ = (s) => document.querySelector(s);
@@ -160,7 +161,7 @@
     icons();
   }
 
-  async function renderDetail() {
+  async function renderDetail({ shouldApply = () => true } = {}) {
     const node = $("#watchCaseDetail");
 
     if (!selected) {
@@ -172,6 +173,8 @@
     try {
       followups = await api.apiGet(`/api/v1/veille/dossiers/${selected.id}/relances`);
     } catch {}
+
+    if (!shouldApply()) return false;
 
     node.innerHTML = `
       <header>
@@ -461,11 +464,12 @@
     }
   }
 
-  async function loadReports() {
+  async function loadReports({ shouldApply = () => true, background = false } = {}) {
     const node = $("#watchReportList");
 
     try {
       const payload = await api.apiGet("/api/v1/veille/workspace/reports?limit=100&offset=0");
+      if (!shouldApply()) return false;
       const rows = payload.items || [];
 
       node.innerHTML = rows.length
@@ -501,6 +505,7 @@
 
       icons();
     } catch (error) {
+      if (background) throw error;
       node.innerHTML = `<div class="priority-empty">${e(error?.message || "Rapports indisponibles.")}</div>`;
     }
   }
@@ -615,6 +620,19 @@
       loadCases(),
       loadReports(),
     ]);
+    registerDataRefresh?.(async ({ shouldApply }) => {
+      const [dashboard, registry] = await Promise.all([
+        api.apiGet("/api/v1/veille/dashboard"),
+        api.apiGet(`/api/v1/veille/workspace/cases?${params()}`),
+      ]);
+      if (!shouldApply()) return false;
+      cases = registry.items || [];
+      if (selected) selected = cases.find((item) => item.id === selected.id) || null;
+      renderDashboard(dashboard);
+      renderCases();
+      await renderDetail({ shouldApply });
+      await loadReports({ shouldApply, background: true });
+    });
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);
   }

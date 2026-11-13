@@ -1,0 +1,5 @@
+.collection-draft-reminder{position:fixed;right:18px;bottom:18px;z-index:110;display:flex;gap:12px;width:min(420px,calc(100vw - 36px));max-height:50dvh;overflow:auto;box-sizing:border-box;padding:18px;border:1px solid #c7ddcf;border-radius:16px;background:#f3faf6;color:#214b37;box-shadow:0 12px 36px #10251c30;font-size:12px}
+.collection-draft-reminder p{margin:8px 0}.collection-draft-reminder>div{min-width:0;flex:1}.draft-links{display:grid;gap:8px}.draft-links a{color:inherit;overflow-wrap:anywhere;text-decoration:underline}.collection-draft-reminder>button{align-self:flex-start;border:0;background:transparent;color:inherit;font-size:24px;cursor:pointer;flex-shrink:0}.draft-bell{font-size:26px;transform-origin:50% 10%;animation:draft-ring .8s ease-in-out 5}
+@keyframes draft-ring{0%,100%{transform:rotate(0)}25%{transform:rotate(18deg)}75%{transform:rotate(-18deg)}}
+[data-theme=dark] .collection-draft-reminder{background:#14372f;color:#edf7f3;border-color:#315248}
+@media(prefers-reduced-motion:reduce){.draft-bell{animation:none}}

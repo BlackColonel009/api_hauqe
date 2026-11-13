@@ -20,7 +20,7 @@
       }
       await window.HAUQEAutomaticScoringReady;
       if (!window.HAUQEAutomaticScoring?.run) throw new Error("Moteur de calcul indisponible.");
-      await load("/static/js/scoring.js?v=20260925-2");
+      await load("/static/js/scoring.js?v=20261003-3");
     } catch (error) {
       const state = document.querySelector("#scoringApiState");
       if (state) {

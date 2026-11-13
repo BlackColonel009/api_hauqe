@@ -47,6 +47,10 @@
     const heading=qs(".validations-page .page-heading");if(heading&&!qs("#validatedWorkflow"))heading.insertAdjacentHTML("afterend",`<section class="rule-workflow" id="validatedWorkflow">${["Collecte","Vérification","Contrôle","Validation","Intégration","Classification/INFC","SNCC","Veille"].map((x,i)=>`<span class="${i===3?"active":""}"><b>${i+1}</b>${x}</span>`).join("<i></i>")}</section>`);
   }
   function enhance(){
+    // Ne pas observer nos propres écritures : createIcons et innerHTML
+    // déclenchaient une nouvelle passe toutes les 20 ms.
+    observer.disconnect();
+    try {
     const route=location.hash.replace(/^#\/?/,"").split("/")[0];
     if(route==="entreprises")enhanceEnterprise();
     if(route==="certifications")enhanceCertification();
@@ -54,7 +58,8 @@
     if(route==="utilisateurs")enhanceUsers();
     if(route==="scoring")enhanceScoring();
     if(route==="validations")enhanceValidation();
-    if(window.lucide)window.lucide.createIcons({attrs:{"stroke-width":1.8}});
+    if(window.lucide && qs('#pageContent i[data-lucide]'))window.lucide.createIcons({attrs:{"stroke-width":1.8}});
+    } finally { start(); }
   }
   window.addEventListener("hauqe:page-ready",enhance);
   const observer=new MutationObserver(()=>{clearTimeout(window.__hauqeRmTimer);window.__hauqeRmTimer=setTimeout(enhance,20)});

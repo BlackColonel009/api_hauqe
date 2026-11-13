@@ -19,6 +19,8 @@ class IntegrationWorkspaceItem(BaseModel):
     administrator_name: str | None = None
     validation_id: UUID
     validation_decision: str | None = None
+    validation_reserves: str | None = None
+    pending_correction_id: UUID | None = None
     validation_date: date | None = None
     validator_id: UUID | None = None
     validator_name: str | None = None
@@ -61,6 +63,9 @@ class IntegrationWorkspaceRegistryResponse(BaseModel):
 class IntegrationQueueWorkspaceItem(BaseModel):
     validation_id: UUID
     validation_decision: str
+    validation_reserves: str | None = None
+    validation_justification: str | None = None
+    pending_correction_id: UUID | None = None
     validation_date: date | None = None
     validator_name: str | None = None
     fiche_id: UUID

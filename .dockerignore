@@ -1,0 +1,15 @@
+# Whitelist: do not send secrets, dumps or uploaded files to the build context.
+**
+!Dockerfile
+!requirements.txt
+!alembic.ini
+!alembic/
+!alembic/**
+!app/
+!app/**
+!deploy/
+!deploy/pgdg.sources
+app/uploads/**
+**/__pycache__/**
+**/*.pyc
+**/.env*

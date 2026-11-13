@@ -1,0 +1,65 @@
+# Always pass: --env-file .env.compose.linux -f compose.linux.yaml
+# Isolated Linux deployment. No automatic migrations, worker or SMTP activation.
+name: ${COMPOSE_PROJECT_NAME:-sngsc-hauqe-linux}
+x-app: &app
+  image: ${SNGSC_IMAGE:-sngsc-hauqe:linux}
+  build:
+    context: .
+    args:
+      POSTGRES_MAJOR: "16"
+  env_file: .env.app.linux
+  environment:
+    ENVIRONMENT: production
+    DEBUG: "false"
+    BACKGROUND_SERVICES_ENABLED: "false"
+    HAUQE_SMTP_ENABLED: ${HAUQE_ENABLE_SMTP:-false}
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  volumes:
+    - uploads:/srv/sngsc/uploads
+    - avatars:/srv/sngsc/app/uploads/avatars
+    - logs:/srv/sngsc/logs
+    - backups:/srv/sngsc/backups
+  depends_on:
+    db:
+      condition: service_healthy
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: hauqe_certif
+      POSTGRES_PASSWORD: ${HAUQE_DB_ADMIN_PASSWORD:?Set database admin password}
+      HAUQE_DB_APP_PASSWORD: ${HAUQE_DB_APP_PASSWORD:?Set application database password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-hauqe.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d hauqe_certif']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    # No published database port: existing Contabo PostgreSQL is unaffected.
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:${SNGSC_HTTP_PORT:-8002}:8000"
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/", timeout=5)']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+  worker:
+    <<: *app
+    profiles: [operations]
+    command: [python, -m, app.tasks.run_background_services]
+volumes:
+  pgdata:
+  uploads:
+  avatars:
+  logs:
+  backups:

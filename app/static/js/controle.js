@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
   const PAGE_SIZE = 25;
@@ -756,5 +757,16 @@
     refreshIcons();
   }
 
-  bootstrap();
+  async function refreshControlData({ shouldApply }) {
+    const params = new URLSearchParams({ limit: "20", offset: "0" });
+    if (filters.search) params.set("search", filters.search);
+    const [registry, eligible] = await Promise.all([
+      apiGet(`/api/v1/fuccs/workspace/registry?${queryString()}`),
+      apiGet(`/api/v1/fuccs/workspace/eligible-verifications?${params}`),
+    ]);
+    if (!shouldApply()) return false;
+    renderRows(registry);
+    renderEligible(eligible);
+  }
+  bootstrap().then(() => registerDataRefresh?.(refreshControlData));
 })();

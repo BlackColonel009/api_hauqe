@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
   const PAGE_SIZE = 25;
@@ -11,6 +12,8 @@
   let offset = 0;
   let total = 0;
   let timer = null;
+  let registryView = 'list';
+  let lastRegistryPayload = null;
   const expandedCampaigns = new Set();
 
   const filters = {
@@ -402,7 +405,15 @@
             label: "Nouvelle collecte",
             iconName: "file-plus-2",
             className: "collecte-mission-open",
-            handler: () => { location.hash = `#/collectes/nouveau/${mission.mission_id}`; },
+            handler: () => {
+              if (String(mission.mission_status || '').toUpperCase() === 'ARCHIVEE') {
+                window.alert(canManageMission()
+                  ? 'Veuillez désarchiver cette mission avant toute action.'
+                  : 'Cette mission est archivée. Contactez le point focal pour la désarchiver.');
+                return;
+              }
+              location.hash = `#/collectes/nouveau/${mission.mission_id}`;
+            },
           }));
         }
         mission.collections.filter((item) => item.fiche_id).forEach((item) => {
@@ -422,6 +433,11 @@
   }
 
   function renderRows(payload) {
+    lastRegistryPayload = payload;
+    const grid = $("#collecteGridView");
+    grid.replaceChildren();
+    grid.hidden = registryView !== 'grid';
+    $("#collecteListView").hidden = registryView !== 'list';
     total = Number(payload?.total || 0);
     const items = Array.isArray(payload?.items)
       ? payload.items
@@ -432,15 +448,15 @@
     const campaignGroups = groupByCampaign(items);
     const missionCount = campaignGroups.reduce((count, group) => count + group.missions.length, 0);
     const collectionCount = items.filter((item) => item.fiche_id).length;
-    $("#collecteCount").textContent = campaignGroups.length
-      ? `${campaignGroups.length} campagne${campaignGroups.length > 1 ? "s" : ""} · ${missionCount} mission${missionCount > 1 ? "s" : ""} · ${collectionCount} collecte${collectionCount > 1 ? "s" : ""}`
-      : "Aucune campagne";
+    $("#collecteCount").innerHTML = [
+      [campaignGroups.length, 'campagne'], [missionCount, 'mission'], [collectionCount, 'collecte'],
+    ].map(([count,label]) => `<span class="collecte-count-chip"><b>${count}</b><span>${label}${count > 1 ? 's' : ''}</span></span>`).join('');
 
     const start = total ? offset + 1 : 0;
     const end = Math.min(offset + items.length, total);
 
     $("#collecteRange").textContent = total
-      ? `${start}–${end} sur ${total}`
+      ? `Lignes ${start} à ${end} sur ${total}`
       : "Aucune mission";
 
     $("#collectePagination").textContent = total
@@ -491,6 +507,22 @@
       </tr>
     `).join("");
 
+    if (registryView === 'grid') {
+      // Même contenu et mêmes emplacements d'actions ; un seul DOM actif.
+      for (const row of [...tbody.querySelectorAll(':scope > .collecte-campaign-row')]) {
+        const detailRow = row.nextElementSibling;
+        const card = document.createElement('article');
+        card.className = 'collecte-campaign-card';
+        card.append(...row.firstElementChild.children);
+        const detail = document.createElement('section');
+        detail.dataset.collecteCampaignDetail = detailRow.dataset.collecteCampaignDetail;
+        detail.hidden = true;
+        detail.append(...detailRow.firstElementChild.children);
+        card.append(detail);
+        grid.append(card);
+      }
+      tbody.replaceChildren();
+    }
     hydrateCampaignTreeButtons(campaignGroups);
 
     refreshIcons();
@@ -733,6 +765,8 @@
   async function loadRegistry({
     button = null,
     message = "Chargement des missions",
+    silent = false,
+    shouldApply = () => true,
   } = {}) {
     hideState();
 
@@ -741,11 +775,12 @@
         `/api/v1/collectes/registry?${queryString()}`
       );
 
+      if (!shouldApply()) return;
       renderRows(payload);
     };
 
     try {
-      if (window.HAUQE_ACTION_LOADER) {
+      if (window.HAUQE_ACTION_LOADER && !silent) {
         await window.HAUQE_ACTION_LOADER.run(task, {
           button,
           title: "Campagnes & collecte",
@@ -757,6 +792,8 @@
         await task();
       }
     } catch (error) {
+      if (silent) throw error;
+      if (!shouldApply()) return;
       showState(
         error?.message || "Erreur de chargement.",
         { error: true }
@@ -765,6 +802,15 @@
   }
 
   function bind() {
+    const switcher = $("#collecteViewSwitch");
+    for (const [mode,label,iconName] of [['list','Liste','list'],['grid','Grille','layout-grid']]) {
+      const button=createCollecteActionButton({label,iconName,className:'collecte-view-button',handler:()=>{
+        registryView=mode;
+        for(const control of switcher.querySelectorAll('button'))control.setAttribute('aria-pressed',String(control.dataset.view===mode));
+        if(lastRegistryPayload)renderRows(lastRegistryPayload);
+      }});
+      button.dataset.view=mode;button.setAttribute('aria-pressed',String(mode===registryView));switcher.append(button);
+    }
     $("#collecteSearch").addEventListener("input", (event) => {
       clearTimeout(timer);
 
@@ -885,5 +931,6 @@
     refreshIcons();
   }
 
-  bootstrap();
+  bootstrap().then(() => registerDataRefresh?.(
+    ({ shouldApply }) => loadRegistry({ silent: true, shouldApply })));
 })();

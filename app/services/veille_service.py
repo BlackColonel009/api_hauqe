@@ -94,7 +94,7 @@ from app.schemas.veille import (
     WatchReportValidateRequest,
 )
 from app.services.auth_service import AuthContext
-from app.services.workflow_communication_service import WorkflowCommunicationService
+from app.services.workflow_communication_service import WorkflowCommunicationService, application_link
 from app.repositories.veille_repository import ACTIVE_ALERT_STATUSES, ACTIVE_DEADLINE_STATUSES
 
 
@@ -708,6 +708,9 @@ class WatchService:
 
         if item.statut in {"TERMINEE", "ANNULEE"}:
             return await WatchService.deadline_response(db, item)
+
+        if (item.ressource_type or "").upper() == "CORRECTION":
+            raise HTTPException(409, "Cette échéance est clôturée automatiquement lors de la resoumission de la correction.")
 
         item.statut = target_status
         item.motif_cloture = payload.motif.strip()
@@ -1442,14 +1445,14 @@ class WatchService:
                 f"{RULE_CODE_EXPIRATION}:EXPIRATION_CERTIFICATION:"
             ),
         )
+        thresholds = await WatchService.certification_expiration_thresholds_for(
+            db, certification
+        )
         threshold = WatchService.due_threshold(
-            await WatchService.certification_expiration_thresholds_for(
-                db,
-                certification,
-            ),
+            thresholds,
             (certification.date_expiration - date.today()).days,
         )
-        return bool(
+        alert_created = bool(
             threshold
             and await WatchService.ensure_threshold_alert(
                 db,
@@ -1457,6 +1460,34 @@ class WatchService:
                 threshold=threshold,
             )
         )
+        opening_days = max((int(row["days"]) for row in thresholds), default=0)
+        for renewal in await WatchRepository.pending_renewals_for_certification(
+            db, certification.id
+        ):
+            if (renewal.justification or "").startswith(
+                "Cycle de renouvellement généré automatiquement"
+            ):
+                renewal.date_ouverture = renewal.date_limite - timedelta(days=opening_days)
+            renewal_deadline, _ = await WatchService.ensure_generated_deadline(
+                db,
+                resource_type="RENOUVELLEMENT_CERTIFICATION",
+                resource_id=renewal.id,
+                deadline_type="RENOUVELLEMENT_CERTIFICATION",
+                title=f"Renouvellement certification {label}",
+                due_date=renewal.date_limite,
+            )
+            await WatchRepository.cancel_active_expiration_alerts_for_deadline(
+                db, deadline_id=renewal_deadline.id,
+                rule_prefix=f"{RULE_CODE_EXPIRATION}:RENOUVELLEMENT_CERTIFICATION:",
+            )
+            renewal_threshold = WatchService.due_threshold(
+                thresholds, (renewal.date_limite - date.today()).days
+            )
+            if renewal_threshold:
+                await WatchService.ensure_threshold_alert(
+                    db, deadline=renewal_deadline, threshold=renewal_threshold
+                )
+        return alert_created
 
     @staticmethod
     def _anniversary(value: date, years: int) -> date:
@@ -1543,9 +1574,13 @@ class WatchService:
             due_date=expiration,
         )
         if renewal is None:
+            opening_days = max(
+                (int(threshold["days"]) for threshold in certification_thresholds),
+                default=0,
+            )
             renewal = RenouvellementCertification(
                 certification_id=certification.id,
-                date_ouverture=expiration - timedelta(days=180),
+                date_ouverture=expiration - timedelta(days=opening_days),
                 date_limite=expiration,
                 justification=(
                     "Cycle de renouvellement généré automatiquement lors de "
@@ -1562,7 +1597,7 @@ class WatchService:
             deadline_type="RENOUVELLEMENT_CERTIFICATION",
             title=f"Renouvellement certification {label}",
             due_date=expiration,
-            alert_thresholds=thresholds,
+            alert_thresholds=certification_thresholds,
         )
 
         situation = (declared_situation or "PRESENTE").strip().upper()
@@ -1659,17 +1694,20 @@ class WatchService:
         if existing:
             return existing
 
-        is_due = days_remaining == 0
+        is_due = days_remaining <= 0
         item = Alerte(
             echeance_id=deadline.id,
             type_alerte="ECHEANCE",
             niveau=4 if is_due else 3,
             titre=(
-                f"Échéance aujourd’hui — {deadline.titre}"
+                f"Correction en retard — {deadline.titre}" if days_remaining < 0
+                else f"Échéance aujourd’hui — {deadline.titre}"
                 if is_due else f"Rappel d’échéance — {deadline.titre}"
             ),
             message=(
-                f"L’échéance « {deadline.titre} » est prévue aujourd’hui."
+                f"La réponse à « {deadline.titre} » est en retard."
+                if days_remaining < 0
+                else f"L’échéance « {deadline.titre} » est prévue aujourd’hui."
                 if is_due
                 else (
                     f"L’échéance « {deadline.titre} » est prévue dans "
@@ -1697,6 +1735,8 @@ class WatchService:
         reminder_type: str,
         days_remaining: int,
         alert: Alerte,
+        milestone_days: int | None = None,
+        certification_id: UUID | None = None,
     ) -> bool:
         if await WatchRepository.reminder_already_recorded(
             db,
@@ -1712,7 +1752,40 @@ class WatchService:
         label = context["label"]
         details = context["details"]
         greeting = f"Bonjour {recipient.prenoms or recipient.nom or ''},".rstrip()
-        if days_remaining == 0:
+        if milestone_days is not None:
+            renewal_deadline = (deadline.ressource_type or "").upper() == "RENOUVELLEMENT_CERTIFICATION"
+            if days_remaining < 0:
+                subject = (f"Renouvellement en retard : {label}" if renewal_deadline
+                           else f"Certificat expiré — renouvellement à traiter : {label}")
+                lead = (f"La date limite de renouvellement était le {due_label}." if renewal_deadline
+                        else f"Le certificat est expiré depuis le {due_label}.")
+            elif days_remaining == 0:
+                subject = (f"Renouvellement attendu aujourd'hui : {label}" if renewal_deadline
+                           else f"Expiration aujourd'hui — renouvellement : {label}")
+                lead = (f"La date limite de renouvellement est aujourd'hui ({due_label})." if renewal_deadline
+                        else f"Le certificat arrive à expiration aujourd'hui ({due_label}).")
+            else:
+                subject = f"Renouvellement à préparer (J-{milestone_days}) — {label}"
+                lead = (
+                    f"Le jalon J-{milestone_days} est atteint : "
+                    f"{'la date limite de renouvellement est' if renewal_deadline else 'le certificat expire'} "
+                    f"le {due_label} (dans {days_remaining} jour(s))."
+                )
+            body = (
+                f"{greeting}\n\n{lead}\n\n{details}\n\n"
+                "Merci d'examiner le renouvellement et les justificatifs dans le SNGSC."
+            )
+            link = application_link(f"#/certifications/{certification_id}") if certification_id else None
+            if link:
+                body += f"\n\nOuvrir la certification : {link}"
+        elif days_remaining < 0:
+            subject = f"Correction en retard — {label}"
+            body = (
+                f"{greeting}\n\nLa correction concernant {label} devait être "
+                f"resoumise le {due_label}.\n\n{details}\n\n"
+                "Merci de répondre à la correction dans le SNGSC."
+            )
+        elif days_remaining == 0:
             subject = f"Échéance à traiter aujourd’hui : {label}"
             body = (
                 f"{greeting}\n\n"
@@ -1728,6 +1801,14 @@ class WatchService:
                 f"dans {days_remaining} jour(s).\n\n{details}\n\n"
                 "Merci d’anticiper son traitement."
             )
+        if (deadline.ressource_type or "").upper() == "CORRECTION":
+            resource = await WatchRepository.correction_validation_fiche_id(db, deadline.ressource_id)
+            if resource:
+                link = application_link(
+                    f"#/validations/{resource}/corrections/{deadline.ressource_id}"
+                )
+                if link:
+                    body += f"\n\nRépondre et resoumettre : {link}"
 
         in_app = Notification(
             alerte_id=alert.id,
@@ -1779,13 +1860,18 @@ class WatchService:
         queued = 0
         today = date.today()
         deadlines = await WatchRepository.active_deadlines_for_reminders(
-            db, until=today + timedelta(days=365)
+            db, until=today + timedelta(days=3650)
         )
 
         for deadline in deadlines:
             days_remaining = (deadline.date_echeance - today).days
-            if days_remaining < 0:
-                continue
+            is_correction = (deadline.ressource_type or "").upper() == "CORRECTION"
+            is_certification_cycle = (
+                (deadline.ressource_type or "").upper()
+                in {"CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"}
+                and (deadline.type_echeance or "").upper()
+                in {"EXPIRATION_CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"}
+            )
 
             # Compatibilité des échéances antérieures à la politique de
             # rappel : NULL signifie « règle HAUQE par défaut », jamais
@@ -1798,6 +1884,112 @@ class WatchService:
                 deadline.rappel_jours_avant
                 if deadline.rappel_jours_avant is not None else 2
             )
+
+            if is_correction:
+                if not reminders_enabled or days_remaining > reminder_days:
+                    continue
+                recipients = await WorkflowCommunicationService.recipients_for_roles(
+                    db, {"ADMIN_HAUQE", "POINT_FOCAL_BNEC"}
+                )
+                if deadline.responsable_id:
+                    collector = await WatchRepository.get_user(db, deadline.responsable_id)
+                    if collector and (collector.statut or "").upper() == "ACTIF":
+                        recipients[collector.id] = collector
+                if not recipients:
+                    continue
+                excluded_admin_ids = set(await WatchRepository.deadline_reminder_admin_exclusions(db, deadline.id))
+                admin_ids = set((await WorkflowCommunicationService.recipients_for_roles(db, {"ADMIN_HAUQE"})).keys())
+                alert = await WatchService._ensure_deadline_reminder_alert(
+                    db, deadline=deadline, reminder_type="CORRECTION", days_remaining=days_remaining
+                )
+                for recipient in recipients.values():
+                    if recipient.id in excluded_admin_ids and recipient.id in admin_ids and recipient.id != deadline.responsable_id:
+                        continue
+                    queued += int(await WatchService._queue_deadline_reminder(
+                        db, deadline=deadline, recipient=recipient,
+                        reminder_type="CORRECTION", days_remaining=days_remaining, alert=alert,
+                    ))
+                continue
+
+            if is_certification_cycle:
+                certification = None
+                if (deadline.ressource_type or "").upper() == "CERTIFICATION":
+                    certification = await db.get(Certification, deadline.ressource_id)
+                else:
+                    renewal = await db.get(RenouvellementCertification, deadline.ressource_id)
+                    if renewal is None or renewal.date_decision or renewal.decision or (
+                        renewal.statut or "").upper() in {"RENOUVELE", "REFUSE", "ANNULE", "TERMINE"}:
+                        continue
+                    certification = await db.get(Certification, renewal.certification_id)
+                    # Le même jour d'expiration possède aussi une échéance
+                    # CERTIFICATION : un seul courriel par certificat/jalon.
+                    if certification and deadline.date_echeance == certification.date_expiration:
+                        expiration_deadline = await WatchRepository.find_active_deadline_for_resource(
+                            db,
+                            ressource_type="CERTIFICATION",
+                            ressource_id=certification.id,
+                            type_echeance="EXPIRATION_CERTIFICATION",
+                        )
+                        if (expiration_deadline
+                                and expiration_deadline.date_echeance == deadline.date_echeance
+                                and expiration_deadline.rappels_email_actifs is not False):
+                            continue
+                if not reminders_enabled or certification is None:
+                    continue
+                threshold = WatchService.due_threshold(
+                    await WatchService.certification_expiration_thresholds_for(db, certification),
+                    days_remaining,
+                )
+                if threshold is None:
+                    continue
+                reminder_type = (
+                    f"CERT_RENEWAL_{int(threshold['days'])}_{deadline.date_echeance:%Y%m%d}"
+                )
+                recipients = await WorkflowCommunicationService.recipients_for_roles(
+                    db, {"CELLULE_VEILLE", "ADMIN_HAUQE", "POINT_FOCAL_BNEC"}
+                )
+                if deadline.responsable_id:
+                    responsible = await WatchRepository.get_user(db, deadline.responsable_id)
+                    if responsible and (responsible.statut or "").upper() == "ACTIF":
+                        recipients[responsible.id] = responsible
+                if not recipients:
+                    continue
+                await WatchService.ensure_threshold_alert(
+                    db, deadline=deadline, threshold=threshold
+                )
+                rule_code = (
+                    f"{RULE_CODE_EXPIRATION}:{deadline.type_echeance}:{threshold['code']}"
+                )
+                alert = await WatchRepository.find_active_alert_for_rule(
+                    db, deadline_id=deadline.id, rule_code=rule_code
+                )
+                if alert is None:
+                    continue
+                excluded_admin_ids = set(
+                    await WatchRepository.deadline_reminder_admin_exclusions(db, deadline.id)
+                )
+                admin_ids = set((await WorkflowCommunicationService.recipients_for_roles(
+                    db, {"ADMIN_HAUQE"}
+                )).keys())
+                for recipient in recipients.values():
+                    if (recipient.id in admin_ids and recipient.id in excluded_admin_ids
+                            and recipient.id != deadline.responsable_id):
+                        continue
+                    if await WatchRepository.milestone_reminder_already_recorded(
+                        db, deadline_id=deadline.id,
+                        recipient_user_id=recipient.id, reminder_type=reminder_type,
+                    ):
+                        continue
+                    queued += int(await WatchService._queue_deadline_reminder(
+                        db, deadline=deadline, recipient=recipient,
+                        reminder_type=reminder_type, days_remaining=days_remaining,
+                        alert=alert, milestone_days=int(threshold["days"]),
+                        certification_id=certification.id,
+                    ))
+                continue
+
+            if days_remaining < 0:
+                continue
 
             if (
                 reminders_enabled
@@ -1859,6 +2051,33 @@ class WatchService:
         return queued
 
     @staticmethod
+    async def close_decided_renewal_deadlines(db: AsyncSession) -> int:
+        """Répare les anciens suivis recréés après une décision de renouvellement."""
+        deadlines = await WatchRepository.active_deadlines_for_decided_renewals(db)
+        for deadline in deadlines:
+            deadline.statut = "TERMINEE"
+            deadline.motif_cloture = "Renouvellement déjà décidé ; suivi automatique arrêté."
+            alerts = (await db.execute(
+                select(Alerte).where(Alerte.echeance_id == deadline.id)
+            )).scalars().all()
+            for alert in alerts:
+                if alert.statut in ACTIVE_ALERT_STATUSES:
+                    alert.statut = "RESOLUE"
+                    alert.date_resolution = date.today()
+            if alerts:
+                queued = (await db.execute(
+                    select(Notification).where(
+                        Notification.alerte_id.in_([alert.id for alert in alerts]),
+                        Notification.canal == "EMAIL",
+                        Notification.statut.in_(["EN_ATTENTE", "ECHEC"]),
+                    )
+                )).scalars().all()
+                for notification in queued:
+                    notification.statut = "ANNULEE"
+                    notification.resultat = "Renouvellement déjà décidé ; rappel annulé."
+        return len(deadlines)
+
+    @staticmethod
     async def run_daily_scan(
         db: AsyncSession,
         *,
@@ -1866,6 +2085,7 @@ class WatchService:
         request: Request | None,
     ) -> DailyScanResponse:
         thresholds = await WatchService.get_thresholds(db)
+        await WatchService.close_decided_renewal_deadlines(db)
 
         created_deadlines = 0
         created_alerts = 0
@@ -1905,6 +2125,12 @@ class WatchService:
             )
 
         for renewal in renewals:
+            renewal_certification = await db.get(Certification, renewal.certification_id)
+            renewal_thresholds = (
+                await WatchService.certification_expiration_thresholds_for(
+                    db, renewal_certification
+                ) if renewal_certification else thresholds
+            )
             sources.append(
                 (
                     "RENOUVELLEMENT_CERTIFICATION",
@@ -1912,7 +2138,7 @@ class WatchService:
                     "RENOUVELLEMENT_CERTIFICATION",
                     "Renouvellement de certification",
                 renewal.date_limite,
-                thresholds,
+                renewal_thresholds,
                 )
             )
 

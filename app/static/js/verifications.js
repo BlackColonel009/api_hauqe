@@ -1,4 +1,5 @@
 (function(){"use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 const $=s=>document.querySelector(s),P=25;let apiGet,apiPost,me=null,offset=0,total=0,timer=null;const f={search:"",statut:"",avis:"",priorite:"",verificateur_id:"",sort:"opened"};
 const esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 const icons=()=>window.lucide?.createIcons({attrs:{"stroke-width":1.8}});const can=p=>me?.permissions?.includes(p);const fd=v=>{if(!v)return"—";const d=new Date(`${v}T00:00:00`);return isNaN(d)?v:new Intl.DateTimeFormat("fr-FR",{day:"2-digit",month:"short",year:"numeric"}).format(d)};const fdt=v=>{if(!v)return"—";const d=new Date(v);return isNaN(d)?v:new Intl.DateTimeFormat("fr-FR",{dateStyle:"medium",timeStyle:"short"}).format(d)};
@@ -10,6 +11,18 @@ function eligible(p){const a=p.items||[],n=$("#eligibleVerificationFiches");n.in
 function qs(){const p=new URLSearchParams();Object.entries(f).forEach(([k,v])=>v&&p.set(k,v));p.set("limit",P);p.set("offset",offset);return p}
 async function loadFilters(){const p=await apiGet("/api/v1/verifications/filters");fill($("#verificationStatus"),"Tous les statuts",p.statuses);fill($("#verificationOpinion"),"Tous les avis",p.opinions);fill($("#verificationPriority"),"Toutes les priorités",p.priorities);fill($("#verificationVerifier"),"Tous les vérificateurs",p.verifiers,x=>({value:x.id,label:x.label}))}
 async function load(){hide();try{rows(await apiGet(`/api/v1/verifications/registry?${qs()}`))}catch(e){state(e.message||"Erreur de chargement",true)}}async function loadEligible(){try{const p=new URLSearchParams({limit:"20",offset:"0"});f.search&&p.set("search",f.search);eligible(await apiGet(`/api/v1/verifications/eligible-fiches?${p}`))}catch(e){$("#eligibleVerificationFiches").innerHTML=`<div class="priority-empty">${esc(e.message||"Erreur")}</div>`}}
-async function openFiche(e,id){const priority=prompt("Priorité initiale (facultatif) :","");if(priority===null)return;const risk=prompt("Niveau de risque initial (facultatif) :","");if(risk===null)return;try{const x=await apiPost(`/api/v1/verifications/from-fiche/${id}`,{priorite:priority.trim()||null,niveau_risque:risk.trim()||null});location.hash=`#/verifications/${x.id}`}catch(err){state(err.message||"Ouverture impossible",true)}}
+let openingFiche=false;
+async function openFiche(e,id){if(openingFiche)return;openingFiche=true;try{const {chooseVerificationOpening}=await import('/static/js/core/verification-opening.js?v=20261004-12');const selection=await chooseVerificationOpening({ficheId:id,apiGet});if(!selection)return;const x=await apiPost(`/api/v1/verifications/from-fiche/${id}`,selection);location.hash=`#/verifications/${x.id}`}catch(err){state(err.message||"Ouverture impossible",true)}finally{openingFiche=false}}
 function bind(){let pairs=[["#verificationStatus","statut"],["#verificationOpinion","avis"],["#verificationPriority","priorite"],["#verificationVerifier","verificateur_id"],["#verificationSort","sort"]];pairs.forEach(([s,k])=>$(s).onchange=async e=>{f[k]=e.target.value;offset=0;await load()});$("#verificationSearch").oninput=e=>{clearTimeout(timer);timer=setTimeout(async()=>{f.search=e.target.value.trim();offset=0;await Promise.all([load(),loadEligible()])},350)};$("#resetVerifications").onclick=async()=>{Object.assign(f,{search:"",statut:"",avis:"",priorite:"",verificateur_id:"",sort:"opened"});offset=0;["#verificationSearch","#verificationStatus","#verificationOpinion","#verificationPriority","#verificationVerifier"].forEach(s=>$(s).value="");$("#verificationSort").value="opened";await Promise.all([load(),loadEligible()])};$("#verificationPrev").onclick=async()=>{offset=Math.max(0,offset-P);await load()};$("#verificationNext").onclick=async()=>{offset+=P;await load()}}
-(async()=>{const api=await import("/static/js/core/api.js");apiGet=api.apiGet;apiPost=api.apiPost;bind();try{me=await apiGet("/api/v1/me");await Promise.all([loadFilters(),load(),loadEligible()])}catch(e){state(e.message||"Erreur",true)}icons()})();})();
+async function refreshVerificationData({ shouldApply }) {
+  const p = new URLSearchParams({limit:"20",offset:"0"});
+  if (f.search) p.set("search", f.search);
+  const [registry, pending] = await Promise.all([
+    apiGet(`/api/v1/verifications/registry?${qs()}`),
+    apiGet(`/api/v1/verifications/eligible-fiches?${p}`),
+  ]);
+  if (!shouldApply()) return;
+  rows(registry);
+  eligible(pending);
+}
+(async()=>{const api=await import("/static/js/core/api.js");apiGet=api.apiGet;apiPost=api.apiPost;bind();try{me=await apiGet("/api/v1/me");await Promise.all([loadFilters(),load(),loadEligible()]);registerDataRefresh?.(refreshVerificationData)}catch(e){state(e.message||"Erreur",true)}icons()})();})();

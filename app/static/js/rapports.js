@@ -3,6 +3,10 @@
   const api = await import("/static/js/core/api.js");
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function normalizeAddress(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr").replace(/\s+/g, " ").trim();
+  }
   const frDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : String(value || "—");
   const icons = () => window.lucide?.createIcons({ attrs: { "stroke-width": 1.8 } });
   const reports = [
@@ -73,6 +77,7 @@
   function displayKey(key) { return key.replace(/^\p{L}/u, (c) => c.toUpperCase()); }
   function periodDates() {
     const now = new Date(), mode = $("#reportPeriod").value;
+    if (mode === "all") return { start: null, end: null };
     const end = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     if (mode === "month") return { start: `${end.slice(0, 8)}01`, end };
     if (mode === "quarter") return { start: `${now.getFullYear()}-${String(Math.floor(now.getMonth() / 3) * 3 + 1).padStart(2, "0")}-01`, end };
@@ -88,23 +93,38 @@
       region: $("#reportRegion").disabled ? null : $("#reportRegion").value || null,
       status: $("#reportStatus").disabled ? null : $("#reportStatus").value || null,
       standard: $("#reportStandard").disabled ? null : $("#reportStandard").value || null,
+      genre: $("#reportGenre").disabled ? null : $("#reportGenre").value || null,
+      adresse: $("#reportAddress").disabled ? null : $("#reportAddress").value.trim() || null,
     };
+  }
+  function exportPeriodLabel(start, end) {
+    return !start && !end ? "Toutes les périodes" : `Du ${frDate(start)} au ${frDate(end)}`;
   }
   function filterExportRows(rows, report, filters) {
     const meta = exportMeta[report.id];
     return rows.filter((row) => {
       const day = String(row[meta.date] || "").slice(0, 10);
-      if (!day || day < filters.start || day > filters.end) return false;
+      if ((filters.start || filters.end) && (!day || (filters.start && day < filters.start) || (filters.end && day > filters.end))) return false;
       if (filters.region && String(row[meta.region] || "") !== filters.region) return false;
       if (filters.status && String(row[meta.status] || "") !== filters.status) return false;
       if (filters.standard && String(row[meta.standard] || "") !== filters.standard) return false;
+      if (filters.genre && (row.genre_promoteur || "NON_RENSEIGNE") !== filters.genre) return false;
+      if (filters.adresse && !normalizeAddress(row.adresse_entreprise || row.adresse_siege).includes(normalizeAddress(filters.adresse))) return false;
       return true;
     });
   }
   async function loadFilteredExport() {
     if (!selectedSections().size) throw new Error("Sélectionnez au moins une rubrique de contenu.");
     const report = selected, filters = selectedExportFilters();
-    const rows = await loadAllRows(report.url);
+    let rows = await loadAllRows(report.url);
+    if (report.id === "certs" && (filters.genre || filters.adresse)) {
+      const companies = await loadAllRows("/api/v1/entreprises");
+      const byId = new Map(companies.map((company) => [String(company.id), company]));
+      rows = rows.map((row) => ({ ...row,
+        genre_promoteur: byId.get(String(row.entreprise_id))?.genre_promoteur || null,
+        adresse_entreprise: byId.get(String(row.entreprise_id))?.adresse_siege || null,
+      }));
+    }
     return { rows: filterExportRows(rows, report, filters), filters };
   }
   function renderCategories() {
@@ -124,7 +144,7 @@
     const saved = savedConfigurations.get(selected.id);
     const sections = saved?.sections?.selected || Object.keys(sectionTitles);
     $("#reportOptions").innerHTML = Object.entries(sectionTitles).map(([key, title]) => `<label class="report-option"><input type="checkbox" data-section="${key}" ${sections.includes(key) ? "checked" : ""}>${title}</label>`).join("");
-    $("#reportPeriod").value = saved?.filtres?.period_mode || "month";
+    $("#reportPeriod").value = saved?.filtres?.period_mode || "all";
     $("#reportStart").value = saved?.filtres?.start || "";
     $("#reportEnd").value = saved?.filtres?.end || "";
     $("#customDates").hidden = $("#reportPeriod").value !== "custom";
@@ -148,9 +168,22 @@
     setSelectOptions("#reportRegion", [], "Sans objet pour ce rapport", null);
     setSelectOptions("#reportStatus", [], "Chargement des statuts…", null);
     setSelectOptions("#reportStandard", [], "Sans objet pour ce rapport", null);
+    const companyScope = ["companies", "certs"].includes(report.id);
+    $("#reportGenre").disabled = !companyScope;
+    $("#reportAddress").disabled = !companyScope;
+    $("#reportGenre").value = companyScope ? saved?.filtres?.genre || "" : "";
+    $("#reportAddress").value = companyScope ? saved?.filtres?.adresse || "" : "";
+    $("#reportAddressOptions").replaceChildren();
     try {
       const rows = await loadAllRows(report.url);
       if (loadId !== filterLoadId || selected.id !== report.id) return;
+      if (companyScope) {
+        const companies = report.id === "companies" ? rows : await loadAllRows("/api/v1/entreprises");
+        if (loadId !== filterLoadId || selected.id !== report.id) return;
+        const addresses = [...new Set(companies.map((row) => row.adresse_siege?.trim()).filter(Boolean))]
+          .sort((a,b) => a.localeCompare(b,"fr"));
+        $("#reportAddressOptions").innerHTML = addresses.map((address) => `<option value="${esc(address)}"></option>`).join("");
+      }
       const statuses = [...new Set(rows.map((row) => row[meta.status]).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b, "fr"));
       setSelectOptions("#reportStatus", statuses.map((value) => [value, value.replaceAll("_", " ")]), "Tous les statuts", saved?.filtres?.status);
       if (report.id === "companies") {
@@ -233,7 +266,7 @@
     const { start, end } = selectedExportFilters();
     const meta = [
       [institution], [selected.title],
-      [`Période filtrée : du ${frDate(start)} au ${frDate(end)} (${exportMeta[selected.id].dateLabel})`],
+      [`Période filtrée : ${exportPeriodLabel(start, end)} (${exportMeta[selected.id].dateLabel})`],
       [`Généré le ${new Date().toLocaleString("fr-FR")}`],
       [`Demandé par : ${[me?.prenoms, me?.nom].filter(Boolean).join(" ") || me?.email || "Agent HAUQE"}`],
       [`Nombre d’enregistrements : ${rows.length}`], [],
@@ -274,7 +307,7 @@
     </style></head><body>
       <div class="institution"><img src="${logo}" alt="Logo HAUQE" style="width:58px;height:58px;object-fit:contain;margin-right:10px"><div><div class="brand">HAUQE</div><div class="definition">Haute Autorité de la Qualité et de l’Environnement</div></div></div>
       <div class="title"><h1>${esc(selected.title)}</h1><p>Rapport institutionnel · ${esc(selected.category)}</p></div>
-      <div class="meta"><strong>Période filtrée :</strong> du ${esc(frDate(start))} au ${esc(frDate(end))} (${esc(exportMeta[selected.id].dateLabel)})<br><strong>Généré le :</strong> ${esc(new Date().toLocaleString("fr-FR"))}<br><strong>Demandé par :</strong> ${esc(agent)}<br><strong>Nombre d’enregistrements :</strong> ${rows.length}</div>
+      <div class="meta"><strong>Période filtrée :</strong> ${esc(exportPeriodLabel(start, end))} (${esc(exportMeta[selected.id].dateLabel)})<br><strong>Généré le :</strong> ${esc(new Date().toLocaleString("fr-FR"))}<br><strong>Demandé par :</strong> ${esc(agent)}<br><strong>Nombre d’enregistrements :</strong> ${rows.length}</div>
       <table><thead><tr>${headers.map((h) => `<th>${esc(displayKey(h))}</th>`).join("")}</tr></thead><tbody>${flat.length ? flat.map((x) => `<tr>${headers.map((h) => `<td>${esc(x[h] ?? "")}</td>`).join("")}</tr>`).join("") : emptyRow}</tbody></table>
       <div class="footer">HAUQE Certif · Système national de gestion des certifications</div>
     </body></html>`;
@@ -327,7 +360,7 @@
         "1 1 1 rg", text("HAUQE", 95, 568, 22), text("Haute Autorite de la Qualite et de l'Environnement", 95, 548, 9),
         "0.075 0.302 0.220 rg", text(selected.title, 32, 500, 18),
         "0.35 0.44 0.40 rg", text(`Rapport institutionnel | ${selected.category}`, 32, 483, 9),
-        text(`Du ${frDate(start)} au ${frDate(end)} | Genere le ${new Date().toLocaleString("fr-FR")} | ${rows.length} enregistrement(s)`, 32, 465, 8),
+        text(`${exportPeriodLabel(start, end)} | Genere le ${new Date().toLocaleString("fr-FR")} | ${rows.length} enregistrement(s)`, 32, 465, 8),
       ];
       let y = 432;
       commands.push("0.090 0.420 0.302 rg", `${margin} ${y} ${tableWidth} ${rowHeight} re f`);
@@ -467,18 +500,52 @@
     const agent = [me?.prenoms, me?.nom].filter(Boolean).join(" ") || me?.email || "Agent HAUQE";
     $("#previewTitle").textContent = selected.title; $("#paperTitle").textContent = selected.title;
     const { start, end } = selectedExportFilters();
-    $("#paperPeriod").textContent = `${selected.category} · Du ${frDate(start)} au ${frDate(end)} · Source HAUQE Certif`;
+    $("#paperPeriod").textContent = `${selected.category} · ${exportPeriodLabel(start, end)} · Source HAUQE Certif`;
     $("#paperReportMeta").innerHTML = `<span><small>Généré le</small><strong>${esc(new Date().toLocaleString("fr-FR"))}</strong></span><span><small>Demandé par</small><strong>${esc(agent)}</strong></span><span><small>Enregistrements</small><strong>${currentRows.length}</strong></span>`;
     $("#paperTable").innerHTML = headers.length
       ? `<table><thead><tr>${headers.map((h) => `<th>${esc(displayKey(h))}</th>`).join("")}</tr></thead><tbody>${previewRows.map((row) => `<tr>${headers.map((h) => `<td>${esc(row[h] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>${currentRows.length > 6 ? `<p class="paper-table-note">Aperçu limité à 6 lignes sur ${currentRows.length}. Le document généré contiendra toutes les données.</p>` : ""}`
       : `<div class="paper-empty">Aucune donnée disponible pour les critères sélectionnés.</div>`;
     $("#reportPreview").hidden = false; icons();
+    mountPreviewCloseButton();
   }
   $("#reportSearch").oninput = renderList; $("#historySearch").oninput = renderHistory;
+  function bindPreviewAction(selector, action) {
+    const original = $(selector);
+    const button = document.createElement("button");
+    for (const attribute of original.attributes) button.setAttribute(attribute.name, attribute.value);
+    button.type = "button";
+    button.setAttribute("data-no-action-loader", "true");
+    button.innerHTML = original.innerHTML;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      action();
+    });
+    original.replaceWith(button);
+  }
+  function closeReportPreview() { $("#reportPreview").hidden = true; }
+  function mountPreviewCloseButton() {
+    const button = document.createElement("button");
+    button.id = "closePreview";
+    button.type = "button";
+    button.className = "report-preview-close";
+    button.setAttribute("aria-label", "Fermer l’aperçu");
+    button.setAttribute("data-no-action-loader", "true");
+    // SVG définitif : aucun remplacement de l'icône pendant le clic.
+    button.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeReportPreview();
+    });
+    $("#closePreviewSlot").replaceChildren(button);
+  }
   $("#reportPeriod").onchange = (e) => $("#customDates").hidden = e.target.value !== "custom";
   document.querySelectorAll('[name="reportFormat"]').forEach((r) => r.onchange = () => document.querySelectorAll(".format-options>label").forEach((l) => l.classList.toggle("selected", l.contains(r) && r.checked)));
-  $("#generateReport").onclick = generate; $("#generateFromPreview").onclick = async () => { $("#reportPreview").hidden = true; await generate(); };
-  $("#previewReport").onclick = preview; $("#closePreview").onclick = $("#closePreviewFooter").onclick = () => $("#reportPreview").hidden = true;
+  bindPreviewAction("#generateReport", generate);
+  bindPreviewAction("#generateFromPreview", async () => { closeReportPreview(); await generate(); });
+  bindPreviewAction("#previewReport", preview);
+  bindPreviewAction("#closePreviewFooter", closeReportPreview);
   $("#saveReportConfig").onclick = saveReportConfiguration;
   $("#savedReports").onclick = () => {
     const panel = $("#savedReportConfigurations");

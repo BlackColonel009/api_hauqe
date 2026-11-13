@@ -187,6 +187,7 @@ def build_response(
         site_web=entreprise.site_web,
 
         adresse_siege=entreprise.adresse_siege,
+        genre_promoteur=getattr(entreprise, "genre_promoteur", None),
         zone_siege_id=entreprise.zone_siege_id,
 
         activite_principale=(

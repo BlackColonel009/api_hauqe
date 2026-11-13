@@ -248,6 +248,7 @@ class EntrepriseArchiveRequest(BaseModel):
 # ============================================================
 
 class EntrepriseResponse(BaseModel):
+    genre_promoteur: str | None = None
     """
     Vue publique actuelle d'une entreprise.
 

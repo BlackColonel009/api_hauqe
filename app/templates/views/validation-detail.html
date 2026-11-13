@@ -208,7 +208,7 @@
           <div class="validation-action-section-title"><i data-lucide="list-checks"></i><div><strong>Informations à renseigner</strong><small>Les champs marqués * sont obligatoires.</small></div></div>
           <label for="correctionReason"><span>Motif <b>*</b></span><textarea id="correctionReason" rows="3" required placeholder="Ex. : justificatif manquant ou information incohérente"></textarea><small>Expliquez pourquoi une reprise est nécessaire.</small></label>
           <label for="correctionInstructions"><span>Instructions <b>*</b></span><textarea id="correctionInstructions" rows="4" required placeholder="Indiquez précisément les corrections et pièces attendues"></textarea><small>Le destinataire doit savoir quoi corriger.</small></label>
-          <label for="correctionDueDate"><span>Date d’échéance <em>facultative</em></span><input id="correctionDueDate" type="date"><small>Laissez vide si aucune date n’est imposée.</small></label>
+          <label for="correctionDueDate"><span>Date limite de réponse <b>*</b></span><input id="correctionDueDate" type="date" required><small>Cette date crée une échéance et ses rappels jusqu’à la resoumission.</small></label>
           <p class="validation-action-error" id="correctionFormError" role="alert" hidden></p>
         </section>
       </div>
@@ -234,14 +234,16 @@
   </dialog>
 
   <dialog
-    class="hauqe-dialog"
+    class="hauqe-dialog validation-resubmit-dialog"
     id="resubmitCorrectionDialog"
   >
     <form method="dialog" id="resubmitCorrectionForm">
-      <header>
-        <div>
-          <p class="eyebrow">Resoumission</p>
-          <h2>Répondre à la correction</h2>
+      <header class="validation-action-header">
+        <span class="validation-action-icon"><i data-lucide="send"></i></span>
+        <div class="validation-action-title">
+          <p class="eyebrow">Correction de validation</p>
+          <h2>Répondre et resoumettre</h2>
+          <small>Décrivez les corrections apportées pour permettre un nouvel examen du dossier.</small>
         </div>
 
         <button
@@ -254,16 +256,17 @@
         </button>
       </header>
 
-      <div class="dialog-body">
-        <label>
-          <span>Réponse <b>*</b></span>
-          <textarea id="resubmitResponse" rows="5" required></textarea>
-        </label>
-
-        <label>
-          <span>Date de resoumission</span>
-          <input id="resubmitDate" type="date">
-        </label>
+      <div class="dialog-body validation-action-body" data-dialog-scroll>
+        <section class="validation-action-context" aria-label="Dossier concerné">
+          <i data-lucide="folder-check"></i>
+          <div><strong id="resubmitDossierName">Dossier de validation</strong><small id="resubmitCorrectionContext">Correction demandée pour ce dossier.</small></div>
+        </section>
+        <section class="validation-action-fields" aria-label="Informations à renseigner">
+          <div class="validation-action-section-title"><i data-lucide="list-checks"></i><div><strong>Réponse à renseigner</strong><small>Le champ marqué * est obligatoire.</small></div></div>
+          <label for="resubmitResponse"><span>Corrections effectuées <b>*</b></span><textarea id="resubmitResponse" rows="5" required placeholder="Décrivez les modifications réalisées et les pièces ajoutées."></textarea><small>Cette réponse sera conservée dans l’historique de validation.</small></label>
+          <label for="resubmitDate"><span>Date de resoumission</span><input id="resubmitDate" type="date"><small>Si elle est laissée vide, la date du jour sera utilisée.</small></label>
+          <p class="validation-action-error" id="resubmitFormError" role="alert" hidden></p>
+        </section>
       </div>
 
       <footer>

@@ -209,6 +209,8 @@ def send_smtp(
     body: str,
     application_url: str | None = None,
 ) -> str:
+    if not settings.hauqe_smtp_enabled:
+        raise RuntimeError("Transport SMTP désactivé par configuration.")
     host = settings.hauqe_smtp_host
     sender = settings.hauqe_smtp_from
 
@@ -256,6 +258,9 @@ def send_smtp(
 
 
 async def run(limit: int = 100) -> None:
+    if not settings.hauqe_smtp_enabled:
+        logger.info("SMTP désactivé par configuration. La file EMAIL reste intacte.")
+        return
     if not settings.hauqe_smtp_host or not settings.hauqe_smtp_from:
         logger.warning("SMTP non configuré. La file EMAIL reste intacte.")
         return
@@ -268,6 +273,31 @@ async def run(limit: int = 100) -> None:
 
         for item in rows:
             recipient = item.adresse_externe
+
+            if item.alerte_id:
+                from sqlalchemy import select
+                from app.models.alerte import Alerte
+                from app.models.echeance import Echeance
+
+                deadline_state = (await db.execute(
+                    select(Echeance.statut, Echeance.ressource_type, Alerte.statut.label("alerte_statut"))
+                    .join(Alerte, Alerte.echeance_id == Echeance.id)
+                    .where(
+                        Alerte.id == item.alerte_id,
+                        Echeance.ressource_type.in_([
+                            "CORRECTION", "CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"
+                        ]),
+                    )
+                )).one_or_none()
+                if deadline_state and (
+                    deadline_state.statut in {"TERMINEE", "ANNULEE"}
+                    or (deadline_state.ressource_type in {"CERTIFICATION", "RENOUVELLEMENT_CERTIFICATION"}
+                        and deadline_state.alerte_statut in {"ANNULEE", "RESOLUE"})
+                ):
+                    item.statut = "ANNULEE"
+                    item.resultat = "Échéance clôturée avant l'envoi ; courriel non envoyé."
+                    await db.commit()
+                    continue
 
             if item.relance_veille_id:
                 from app.models.dossier_veille import DossierVeille

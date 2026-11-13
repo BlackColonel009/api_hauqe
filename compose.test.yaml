@@ -1,0 +1,32 @@
+# Windows learning setup: reuses the restored test database, never the local DB.
+name: sngsc-learning
+services:
+  web:
+    build: .
+    image: sngsc-hauqe:test
+    env_file: .env.docker.test
+    environment:
+      BACKGROUND_SERVICES_ENABLED: "false"
+      HAUQE_SMTP_ENABLED: "false"
+      HAUQE_SMTP_HOST: ""
+      HAUQE_SMTP_FROM: ""
+      HAUQE_SMTP_USER: ""
+      HAUQE_SMTP_PASSWORD: ""
+    ports:
+      - "127.0.0.1:8001:8000"
+    networks:
+      - test-db
+    volumes:
+      - test_uploads:/srv/sngsc/uploads
+      - test_avatars:/srv/sngsc/app/uploads/avatars
+      - test_logs:/srv/sngsc/logs
+      - test_backups:/srv/sngsc/backups
+networks:
+  test-db:
+    external: true
+    name: hauqe-test-network
+volumes:
+  test_uploads:
+  test_avatars:
+  test_logs:
+  test_backups:

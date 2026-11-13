@@ -120,6 +120,7 @@ class WorkflowCommunicationService:
         action_roles: set[str] | None = None,
         information_roles: set[str] | None = None,
         action_user_ids: set[UUID] | None = None,
+        deadline_id: UUID | None = None,
     ) -> int:
         """Une alerte par transition ; un couple IN_APP/EMAIL par destinataire actif."""
         actionable = await WorkflowCommunicationService.recipients_for_roles(db, action_roles or set())
@@ -142,6 +143,7 @@ class WorkflowCommunicationService:
             )
         )).scalar_one()
         alert = Alerte(
+            echeance_id=deadline_id,
             type_alerte=event,
             niveau=2,
             titre=title[:255],

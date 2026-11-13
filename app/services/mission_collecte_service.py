@@ -24,6 +24,7 @@ from app.audit.service import write_audit_event
 from app.models.affectation_mission import AffectationMission
 from app.models.fiche_collecte import FicheCollecte
 from app.models.mission_collecte import MissionCollecte
+from app.models.utilisateur import Utilisateur
 from app.repositories.mission_collecte_repository import (
     MissionCollecteRepository,
 )
@@ -274,6 +275,8 @@ class MissionCollecteService:
             )
 
         moving_campaign = item.campagne_id != campagne_id
+        if (payload.statut or '').upper() == 'ARCHIVEE':
+            raise HTTPException(400, 'Utilisez l’action Archiver la mission vide pour contrôler les collectes liées.')
         if moving_campaign:
             current_fiche = (await db.execute(
                 select(FicheCollecte)
@@ -388,7 +391,15 @@ class MissionCollecteService:
             db,
             mission_id,
         )
-        return [build_assignment(x) for x in items]
+        user_ids = {item.utilisateur_id for item in items}
+        users = (await db.execute(select(Utilisateur).where(
+            Utilisateur.id.in_(user_ids)
+        ))).scalars().all() if user_ids else []
+        names = {user.id: " ".join(filter(None, [user.prenoms, user.nom])).strip()
+                 or "Agent affecté" for user in users}
+        return [build_assignment(item).model_copy(update={
+            "utilisateur_nom": names.get(item.utilisateur_id, "Agent affecté")
+        }) for item in items]
 
     @staticmethod
     async def assign(

@@ -102,6 +102,7 @@ class AffectationMissionResponse(BaseModel):
     id: UUID
     mission_id: UUID
     utilisateur_id: UUID
+    utilisateur_nom: str | None = None
     role_mission: str | None = None
     date_debut: date | None = None
     date_fin: date | None = None

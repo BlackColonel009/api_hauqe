@@ -1,5 +1,6 @@
 (async function(){
 "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 const api=await import('/static/js/core/api.js');
 const ui=await import('/static/js/scoring-workspace.js?v=20260921-6');
 const $=s=>document.querySelector(s),PAGE=25;
@@ -25,5 +26,19 @@ async function validate(ev){ev.preventDefault();if(!selectedResult)return;$('#in
 function bind(){
 $('#infcSearch').oninput=e=>{clearTimeout(timer);timer=setTimeout(async()=>{f.search=e.target.value.trim();offset=0;await Promise.all([loadResults(),loadCerts()])},350)};$('#infcStatus').onchange=async e=>{f.statut=e.target.value;offset=0;await loadResults()};$('#infcReset').onclick=async()=>{f.search='';f.statut='';offset=0;$('#infcSearch').value='';$('#infcStatus').value='';await Promise.all([loadResults(),loadCerts()])};$('#infcPrev').onclick=async()=>{offset=Math.max(0,offset-PAGE);await loadResults()};$('#infcNext').onclick=async()=>{offset+=PAGE;await loadResults()};$('#infcPreviewButton').onclick=preview;$('#infcForm').onsubmit=calculate;$('#infcValidateForm').onsubmit=validate;document.querySelectorAll('[data-close-score-dialog]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.closeScoreDialog)?.close())}
 async function start(){bind();try{user=await api.apiGet('/api/v1/me');bundle=await ui.loadActiveModel(api.apiGet,'INFC');ui.renderModelBanner($('#infcModelBanner'),bundle,'INFC');ui.renderInfcMethodGuide($('#infcMethodGuide'),bundle);try{const ft=await api.apiGet('/api/v1/scoring/workspace/infc-filters');fill($('#infcStatus'),'Tous les statuts',ft.statuses)}catch{fill($('#infcStatus'),'Tous les statuts',[])}await Promise.all([loadResults(),loadCerts()])}catch(e){ui.showState('#infcApiState',e?.message||'Erreur de chargement.',{error:true})}ui.refreshIcons()}
-start();
+async function refreshInfcData({ shouldApply }) {
+  const p = new URLSearchParams({limit:'70'});
+  if (f.search) p.set('search', f.search);
+  const [results, certificates, model] = await Promise.all([
+    api.apiGet(`/api/v1/scoring/workspace/infc-results?${qs()}`),
+    api.apiGet(`/api/v1/scoring/workspace/infc-certifications?${p}`),
+    ui.loadActiveModel(api.apiGet, 'INFC'),
+  ]);
+  if (!shouldApply()) return false;
+  bundle = model;
+  ui.renderModelBanner($('#infcModelBanner'), bundle, 'INFC');
+  ui.renderInfcMethodGuide($('#infcMethodGuide'), bundle);
+  rows(latestOnly(results)); bindHistory(); certs(certificates);
+}
+start().then(() => registerDataRefresh?.(refreshInfcData));
 })();

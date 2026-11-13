@@ -19,6 +19,19 @@ def make_actor(*permissions: str):
     )
 
 
+def make_db(mission_id, statut='EN_COURS'):
+    return SimpleNamespace(execute=AsyncMock(return_value=SimpleNamespace(
+        scalar_one_or_none=lambda: SimpleNamespace(id=mission_id, statut=statut))))
+
+
+@pytest.mark.asyncio
+async def test_archived_mission_blocks_even_manager():
+    with pytest.raises(HTTPException) as error:
+        await FicheCollecteService.ensure_actor_can_write_mission(
+            make_db(uuid4(), 'ARCHIVEE'), mission_id=uuid4(), actor=make_actor('COLLECTE.AFFECTER'))
+    assert error.value.status_code == 409
+
+
 @pytest.mark.asyncio
 async def test_unassigned_collector_cannot_write_a_mission(monkeypatch):
     actor = make_actor("COLLECTE.CREER")
@@ -36,7 +49,7 @@ async def test_unassigned_collector_cannot_write_a_mission(monkeypatch):
 
     with pytest.raises(HTTPException) as exc:
         await FicheCollecteService.ensure_actor_can_write_mission(
-            AsyncMock(),
+            make_db(mission_id),
             mission_id=mission_id,
             actor=actor,
         )
@@ -63,7 +76,7 @@ async def test_assigned_collector_can_write_a_mission(monkeypatch):
     )
 
     await FicheCollecteService.ensure_actor_can_write_mission(
-        AsyncMock(),
+        make_db(mission_id),
         mission_id=mission_id,
         actor=actor,
     )
@@ -88,7 +101,7 @@ async def test_collecte_manager_can_write_without_assignment(monkeypatch):
     )
 
     await FicheCollecteService.ensure_actor_can_write_mission(
-        AsyncMock(),
+        make_db(mission_id),
         mission_id=mission_id,
         actor=actor,
     )

@@ -351,20 +351,20 @@
     </form>
   </dialog>
 
-  <dialog class="hauqe-dialog" id="watchReportDialog">
+  <dialog class="hauqe-dialog operational-form-dialog themed-business-dialog" id="watchReportDialog">
     <form method="dialog" id="watchReportForm">
-      <header>
-        <div><p class="eyebrow">Rapport de veille</p><h2>Générer les indicateurs</h2></div>
-        <button class="dialog-close" type="button" data-close-watch-dialog="watchReportDialog"><i data-lucide="x"></i></button>
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="file-chart-column"></i></span><div><p class="eyebrow">Rapport de veille</p><h2>Générer les indicateurs</h2><small>Choisissez le type de rapport et la période à analyser.</small></div></div>
+        <button class="dialog-close operational-dialog-close" aria-label="Fermer" type="button" data-close-watch-dialog="watchReportDialog"><i data-lucide="x"></i></button>
       </header>
 
-      <div class="dialog-body">
-        <label><span>Type de rapport <b>*</b></span><input id="watchReportType" maxlength="255" required></label>
-        <label><span>Début <b>*</b></span><input id="watchReportStart" type="date" required></label>
-        <label><span>Fin <b>*</b></span><input id="watchReportEnd" type="date" required></label>
+      <div class="dialog-body operational-dialog-body themed-business-body">
+        <label class="operational-field"><span>Type de rapport <b>*</b></span><input id="watchReportType" maxlength="255" placeholder="Ex. : bilan mensuel de veille" required></label>
+        <label class="operational-field"><span>Début <b>*</b></span><input id="watchReportStart" type="date" required></label>
+        <label class="operational-field"><span>Fin <b>*</b></span><input id="watchReportEnd" type="date" required></label>
       </div>
 
-      <footer>
+      <footer class="operational-dialog-footer">
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-watch-dialog="watchReportDialog">Annuler</button>
         <button class="btn btn-primary app-btn" type="submit"><i data-lucide="file-chart-column"></i>Générer</button>
       </footer>

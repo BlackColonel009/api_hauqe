@@ -26,6 +26,7 @@ soumission est bloquée.
 """
 
 from __future__ import annotations
+from app.models.mission_collecte import MissionCollecte
 
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -702,7 +703,12 @@ class FicheCollecteService:
         toutes les missions. Les autres profils de collecte doivent disposer
         d'une affectation dont le statut est actif.
         """
-        await MissionCollecteService.get(db, mission_id)
+        mission = (await db.execute(select(MissionCollecte).where(
+            MissionCollecte.id == mission_id).with_for_update())).scalar_one_or_none()
+        if mission is None:
+            raise HTTPException(404, "Mission introuvable.")
+        if (mission.statut or "").upper() == "ARCHIVEE":
+            raise HTTPException(409, "Cette mission est archivée : aucune nouvelle collecte autorisée.")
 
         if "COLLECTE.AFFECTER" in actor.permissions:
             return

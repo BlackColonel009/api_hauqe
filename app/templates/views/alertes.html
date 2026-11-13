@@ -128,20 +128,20 @@
     </form>
   </dialog>
 
-  <dialog id="resolveAlertDialog" class="hauqe-dialog">
+  <dialog id="resolveAlertDialog" class="hauqe-dialog operational-form-dialog themed-business-dialog">
     <form method="dialog" id="resolveAlertForm">
-      <header>
-        <div><p class="eyebrow">Traitement</p><h2>Résoudre l’alerte</h2></div>
-        <button class="dialog-close" type="button" data-close-alert-dialog="resolveAlertDialog"><i data-lucide="x"></i></button>
+      <header class="operational-dialog-header">
+        <div class="operational-dialog-title"><span class="operational-dialog-icon"><i data-lucide="circle-check"></i></span><div><p class="eyebrow">Traitement de l’alerte</p><h2>Résoudre l’alerte</h2><small>Consignez la réponse apportée avant de clôturer cette alerte.</small></div></div>
+        <button class="dialog-close operational-dialog-close" aria-label="Fermer" type="button" data-close-alert-dialog="resolveAlertDialog"><i data-lucide="x"></i></button>
       </header>
-      <div class="dialog-body">
-        <label><span>Résolution <b>*</b></span><textarea id="alertResolution" rows="4" required></textarea></label>
+      <div class="dialog-body operational-dialog-body themed-business-body">
+        <label class="operational-field"><span>Résolution <b>*</b></span><textarea id="alertResolution" rows="4" placeholder="Décrivez le traitement effectué et le résultat obtenu…" required></textarea></label>
         <label class="switch-line">
           <input id="closeAlertAfterResolution" type="checkbox" checked>
           <span>Clôturer l’alerte après enregistrement</span>
         </label>
       </div>
-      <footer>
+      <footer class="operational-dialog-footer">
         <button class="btn btn-outline-secondary app-btn" type="button" data-close-alert-dialog="resolveAlertDialog">Annuler</button>
         <button class="btn btn-primary app-btn" type="submit"><i data-lucide="circle-check"></i>Enregistrer</button>
       </footer>

@@ -9,6 +9,10 @@ Deux vues sont exposées :
 from __future__ import annotations
 
 from uuid import UUID
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
+from app.models.fiche_collecte import FicheCollecte
+from app.services import collection_transfer_service as transfer_service
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +45,66 @@ campaign_router = APIRouter(
     prefix="/campagnes/{campagne_id}/missions",
     tags=["Collecte - Missions"],
 )
+
+
+class TransferDossiersRequest(BaseModel):
+    destination_id: UUID
+    fiche_ids: list[UUID] = Field(min_length=1, max_length=200)
+    motif: str = Field(min_length=3, max_length=2000)
+
+    @field_validator('motif')
+    @classmethod
+    def trim_motif(cls, value):
+        if len(value.strip()) < 3:
+            raise ValueError('Précisez le motif.')
+        return value.strip()
+
+
+class ArchiveMissionRequest(BaseModel):
+    motif: str = Field(min_length=3, max_length=2000)
+
+    @field_validator('motif')
+    @classmethod
+    def trim_motif(cls, value):
+        return TransferDossiersRequest.trim_motif(value)
+
+
+@global_router.get('/dossiers/{fiche_id}/localisation')
+async def dossier_location(fiche_id: UUID, db: AsyncSession = Depends(get_db),
+                           actor: AuthContext = Depends(require_permission('COLLECTE.LIRE'))):
+    fiche = await db.get(FicheCollecte, fiche_id)
+    if fiche is None:
+        from fastapi import HTTPException
+        raise HTTPException(404, 'Collecte introuvable.')
+    return {'mission_id': str(fiche.mission_id)}
+
+
+@global_router.get('/{mission_id}/dossiers-deplacement')
+async def transfer_candidates(mission_id: UUID, db: AsyncSession = Depends(get_db),
+                              actor: AuthContext = Depends(require_permission('COLLECTE.AFFECTER'))):
+    transfer_service.ensure_manager(actor)
+    return await transfer_service.list_dossiers(db, mission_id)
+
+
+@global_router.post('/{mission_id}/deplacer-collectes')
+async def move_collections(mission_id: UUID, payload: TransferDossiersRequest, request: Request,
+                          db: AsyncSession = Depends(get_db),
+                          actor: AuthContext = Depends(require_permission('COLLECTE.AFFECTER'))):
+    return await transfer_service.transfer(db, mission_id, payload, actor, request)
+
+
+@global_router.post('/{mission_id}/archiver')
+async def archive_mission(mission_id: UUID, payload: ArchiveMissionRequest, request: Request,
+                         db: AsyncSession = Depends(get_db),
+                         actor: AuthContext = Depends(require_permission('COLLECTE.AFFECTER'))):
+    return await transfer_service.archive(db, mission_id, payload.motif, actor, request)
+
+
+@global_router.post('/{mission_id}/desarchiver')
+async def unarchive_mission(mission_id: UUID, payload: ArchiveMissionRequest, request: Request,
+                           db: AsyncSession = Depends(get_db),
+                           actor: AuthContext = Depends(require_permission('COLLECTE.AFFECTER'))):
+    return await transfer_service.unarchive(db, mission_id, payload.motif, actor, request)
 
 
 @global_router.get(

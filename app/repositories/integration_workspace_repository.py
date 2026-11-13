@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 from app.models.campagne import Campagne
+from app.models.correction import Correction
 from app.models.controle_fuccs import ControleFuccs
 from app.models.entreprise import Entreprise
 from app.models.fiche_collecte import FicheCollecte
@@ -25,7 +26,8 @@ class IntegrationWorkspaceRepository:
         validator = aliased(Utilisateur)
         return (select(
             IntegrationBnec,
-            Validation.id.label('validation_id'), Validation.decision.label('validation_decision'), Validation.date_validation.label('validation_date'), Validation.validateur_id.label('validator_id'),
+            Validation.id.label('validation_id'), Validation.decision.label('validation_decision'), Validation.reserves.label('validation_reserves'), Validation.date_validation.label('validation_date'), Validation.validateur_id.label('validator_id'),
+            (select(Correction.id).where(Correction.validation_id == Validation.id, Correction.statut.in_(['DEMANDEE', 'EN_COURS']), Correction.date_resoumission.is_(None)).order_by(Correction.created_at.desc()).limit(1).correlate(Validation).scalar_subquery()).label('pending_correction_id'),
             validator.prenoms.label('validator_first_names'), validator.nom.label('validator_last_name'), validator.email.label('validator_email'),
             FicheCollecte.id.label('fiche_id'), FicheCollecte.numero_revision.label('fiche_revision'), FicheCollecte.entreprise_id.label('entreprise_id'),
             MissionCollecte.id.label('mission_id'), MissionCollecte.code.label('mission_code'),
@@ -86,12 +88,22 @@ class IntegrationWorkspaceRepository:
         latest_status=select(IntegrationBnec.statut).where(IntegrationBnec.id==latest_id).correlate(Validation).scalar_subquery()
         latest_ended=select(IntegrationBnec.date_fin).where(IntegrationBnec.id==latest_id).correlate(Validation).scalar_subquery()
         validator=aliased(Utilisateur)
-        filters=[Validation.niveau_validation=='NIVEAU_2',Validation.decision.in_(['VALIDE','VALIDE_SOUS_RESERVE']),Validation.statut=='TERMINE']
+        latest_decision=aliased(Validation)
+        latest_decision_id=(select(latest_decision.id)
+            .where(latest_decision.fiche_collecte_id==FicheCollecte.id,
+                   latest_decision.niveau_validation=='NIVEAU_2')
+            .order_by(latest_decision.date_validation.desc().nullslast(),latest_decision.created_at.desc())
+            .limit(1).correlate(FicheCollecte).scalar_subquery())
+        pending_correction_id=(select(Correction.id)
+            .where(Correction.validation_id==Validation.id,Correction.statut.in_(['DEMANDEE','EN_COURS']))
+            .order_by(Correction.created_at.desc()).limit(1)
+            .correlate(Validation).scalar_subquery())
+        filters=[Validation.id==latest_decision_id,Validation.decision.in_(['VALIDE','VALIDE_SOUS_RESERVE','AJOURNE']),Validation.statut=='TERMINE']
         if search and search.strip():
             p=f'%{search.strip()}%'
             filters.append(or_(MissionCollecte.code.ilike(p),Campagne.code.ilike(p),Campagne.nom.ilike(p),ZoneAdministrative.nom.ilike(p),Entreprise.identifiant_national.ilike(p),Entreprise.raison_sociale.ilike(p),Entreprise.nom_commercial.ilike(p)))
         query=(select(
-            Validation.id.label('validation_id'),Validation.decision.label('validation_decision'),Validation.date_validation.label('validation_date'),
+            Validation.id.label('validation_id'),Validation.decision.label('validation_decision'),Validation.date_validation.label('validation_date'),Validation.reserves.label('validation_reserves'),Validation.justification.label('validation_justification'),pending_correction_id.label('pending_correction_id'),
             validator.prenoms.label('validator_first_names'),validator.nom.label('validator_last_name'),validator.email.label('validator_email'),
             FicheCollecte.id.label('fiche_id'),FicheCollecte.numero_revision.label('fiche_revision'),
             MissionCollecte.id.label('mission_id'),MissionCollecte.code.label('mission_code'),Campagne.code.label('campaign_code'),Campagne.nom.label('campaign_name'),ZoneAdministrative.nom.label('zone_name'),

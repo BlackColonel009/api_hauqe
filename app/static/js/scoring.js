@@ -1,5 +1,6 @@
 (async function(){
 "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 const api=await import('/static/js/core/api.js');
 const ui=await import('/static/js/scoring-workspace.js?v=20260921-6');
 const $=s=>document.querySelector(s),PAGE=25;
@@ -29,5 +30,19 @@ $('#classificationSort').onchange=async e=>{f.sort=e.target.value;offset=0;await
 $('#classificationReset').onclick=async()=>{Object.assign(f,{search:'',classe:'',statut:'',sort:'recent'});offset=0;$('#classificationSearch').value='';$('#classificationClass').value='';$('#classificationStatus').value='';$('#classificationSort').value='recent';await Promise.all([loadRegistry(),loadEntities()])};
 $('#classificationPrev').onclick=async()=>{offset=Math.max(0,offset-PAGE);await loadRegistry()};$('#classificationNext').onclick=async()=>{offset+=PAGE;await loadRegistry()};$('#classificationPreviewButton').onclick=preview;$('#classificationForm').onsubmit=save;document.querySelectorAll('[data-close-scoring-dialog]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.closeScoringDialog)?.close())}
 async function start(){bind();try{user=await api.apiGet('/api/v1/me');bundle=await ui.loadActiveModel(api.apiGet,'CLASSIFICATION_ENTREPRISE');ui.renderModelBanner($('#classificationModelBanner'),bundle,'Classification entreprise');ui.renderClassificationRuleGuide($('#classificationRuleGuide'),bundle);const ft=await api.apiGet('/api/v1/scoring/workspace/classification-filters');fill($('#classificationClass'),'Toutes les classes',ft.classes);fill($('#classificationStatus'),'Tous les statuts',ft.statuses);await Promise.all([loadRegistry(),loadEntities()])}catch(e){ui.showState('#scoringApiState',e?.message||'Erreur de chargement.',{error:true})}ui.refreshIcons()}
-start();
+async function refreshScoringData({ shouldApply }) {
+  const p = new URLSearchParams({limit:'60'});
+  if (f.search) p.set('search', f.search);
+  const [results, companies, model] = await Promise.all([
+    api.apiGet(`/api/v1/scoring/workspace/classifications?${qs()}`),
+    api.apiGet(`/api/v1/scoring/workspace/enterprises?${p}`),
+    ui.loadActiveModel(api.apiGet, 'CLASSIFICATION_ENTREPRISE'),
+  ]);
+  if (!shouldApply()) return false;
+  bundle = model;
+  ui.renderModelBanner($('#classificationModelBanner'), bundle, 'Classification entreprise');
+  ui.renderClassificationRuleGuide($('#classificationRuleGuide'), bundle);
+  rows(latestOnly(results)); bindHistory(); entities(companies);
+}
+start().then(() => registerDataRefresh?.(refreshScoringData));
 })();

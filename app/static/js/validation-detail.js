@@ -4,6 +4,7 @@
   const $ = (selector) => document.querySelector(selector);
   const parts = location.hash.replace(/^#\//, "").split("/");
   const ficheId = parts[1];
+  const focusedCorrectionId = parts[2] === "corrections" ? parts[3] : null;
 
   let apiGet;
   let apiPost;
@@ -623,6 +624,15 @@
           })
         );
       });
+    if (focusedCorrectionId) {
+      const target = [...document.querySelectorAll("[data-resubmit-correction]")]
+        .find((button) => button.dataset.resubmitCorrection === focusedCorrectionId);
+      if (target) {
+        target.classList.add("validation-resubmit-focus");
+        target.scrollIntoView({ block: "center", behavior: "smooth" });
+        target.focus({ preventScroll: true });
+      }
+    }
 
     refreshIcons();
   }
@@ -666,6 +676,8 @@
     $("#correctionReason").value = "";
     $("#correctionInstructions").value = "";
     $("#correctionDueDate").value = "";
+    const today = new Date();
+    $("#correctionDueDate").min = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     $("#correctionDossierName").textContent =
       $("#validationDetailTitle").textContent.trim() || "Dossier de validation";
     $("#correctionFormError").hidden = true;
@@ -679,6 +691,13 @@
 
     $("#resubmitResponse").value = "";
     $("#resubmitDate").value = "";
+    $("#resubmitDossierName").textContent =
+      $("#validationDetailTitle").textContent.trim() || "Dossier de validation";
+    const correction = corrections.find((item) => String(item.id) === String(target.correctionId));
+    $("#resubmitCorrectionContext").textContent = correction
+      ? `Motif : ${correction.motif || "non renseigné"} · Date limite : ${formatDate(correction.date_echeance)}`
+      : "Correction demandée pour ce dossier.";
+    $("#resubmitFormError").hidden = true;
 
     $("#resubmitCorrectionDialog").showModal();
     refreshIcons();
@@ -771,11 +790,12 @@
     const instructions =
       $("#correctionInstructions").value.trim();
 
-    if (!motif || !instructions) {
+    const dueDate = $("#correctionDueDate").value;
+    if (!motif || !instructions || !dueDate) {
       const error = $("#correctionFormError");
-      error.textContent = "Motif et instructions sont obligatoires.";
+      error.textContent = "Le motif, les instructions et la date limite sont obligatoires.";
       error.hidden = false;
-      (!motif ? $("#correctionReason") : $("#correctionInstructions")).focus();
+      (!motif ? $("#correctionReason") : !instructions ? $("#correctionInstructions") : $("#correctionDueDate")).focus();
       return;
     }
     $("#correctionFormError").hidden = true;
@@ -786,8 +806,7 @@
         {
           motif,
           instructions,
-          date_echeance:
-            $("#correctionDueDate").value || null,
+          date_echeance: dueDate,
         }
       );
 
@@ -823,10 +842,10 @@
       $("#resubmitResponse").value.trim();
 
     if (!response) {
-      showState(
-        "La réponse de resoumission est obligatoire.",
-        { error: true }
-      );
+      const message = $("#resubmitFormError");
+      message.textContent = "Décrivez les corrections effectuées avant de resoumettre.";
+      message.hidden = false;
+      $("#resubmitResponse").focus();
       return;
     }
 
@@ -859,10 +878,10 @@
         await task();
       }
     } catch (error) {
-      showState(
-        error?.message || "Resoumission impossible.",
-        { error: true }
-      );
+      const message = $("#resubmitFormError");
+      message.textContent = error?.message || "Resoumission impossible.";
+      message.hidden = false;
+      message.scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -931,7 +950,7 @@
 
       hideState();
       renderHeader();
-      showTab("overview");
+      showTab(focusedCorrectionId ? "corrections" : "overview");
       const { renderDossierParcours } = await import("/static/js/core/dossier-parcours.js?v=20260927-1");
       await renderDossierParcours({
         target: "#validationDossierParcours",
@@ -1002,6 +1021,9 @@
       "submit",
       submitResubmission
     );
+    $("#resubmitResponse").addEventListener("input", () => {
+      $("#resubmitFormError").hidden = true;
+    });
 
     document
       .querySelectorAll("[data-close-dialog]")

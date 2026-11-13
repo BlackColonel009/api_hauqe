@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
   const PAGE_SIZE = 25;
@@ -345,6 +346,8 @@
   async function loadRegistry({
     button = null,
     message = "Chargement des certifications",
+    silent = false,
+    shouldApply = () => true,
   } = {}) {
     hideState();
 
@@ -352,11 +355,12 @@
       const payload = await apiGet(
         `/api/v1/certifications/registry?${queryString()}`
       );
+      if (!shouldApply()) return;
       renderRows(payload);
     };
 
     try {
-      if (window.HAUQE_ACTION_LOADER) {
+      if (window.HAUQE_ACTION_LOADER && !silent) {
         await window.HAUQE_ACTION_LOADER.run(task, {
           button,
           title: "Registre des certifications",
@@ -368,6 +372,8 @@
         await task();
       }
     } catch (error) {
+      if (silent) throw error;
+      if (!shouldApply()) return;
       showState(
         error?.message || "Erreur de chargement.",
         { error: true }
@@ -520,5 +526,8 @@
     refreshIcons();
   }
 
-  bootstrap();
+  bootstrap().then(() => {
+    registerDataRefresh?.(({ shouldApply }) =>
+      loadRegistry({ silent: true, shouldApply }));
+  });
 })();

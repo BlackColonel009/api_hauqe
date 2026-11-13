@@ -108,6 +108,7 @@
 .reports-page .report-catalog header input,
 .reports-page .report-history header input,
 .reports-page .report-form-grid select,
+.reports-page .report-form-grid input,
 .reports-page .custom-dates input{
   min-height:42px;
   border:1px solid #d8e3de;
@@ -121,6 +122,7 @@
 .reports-page .report-catalog header input,
 .reports-page .report-history header input,
 .reports-page .report-form-grid select,
+.reports-page .report-form-grid input:focus,
 .reports-page .custom-dates input:focus{
   border-color:#66ad90;
   box-shadow:0 0 0 3px rgba(38,132,95,.09);
@@ -203,5 +205,8 @@
 .bnec-preview-rows span{overflow-wrap:anywhere;font-weight:700}.bnec-preview-rows b{font-size:12px;font-weight:500;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
 .bnec-report-preview>small{display:block;margin-top:10px;color:var(--muted)}
 .reports-page .report-preview-overlay{overflow-y:auto;align-items:start;justify-items:center;padding:12px}
+.reports-page .report-preview-overlay[hidden]{display:none!important}
+.reports-page .report-preview-close{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:var(--ink);touch-action:manipulation}
+.reports-page .report-preview-close svg{pointer-events:none}
 .reports-page .report-preview-modal{width:min(720px,100%);max-height:calc(100dvh - 24px);margin:auto;overflow-y:auto;overscroll-behavior:contain}
 @media(max-width:800px){.bnec-report-types,.bnec-preview-rows{grid-template-columns:1fr}.bnec-report-actions{width:100%;margin-left:0}.bnec-report-actions button{flex:1}}

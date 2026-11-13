@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,10 @@ from app.models.common import TimestampMixin, UUIDPrimaryKeyMixin
 
 class ContactEntreprise(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "contacts_entreprise"
+    __table_args__ = (CheckConstraint("genre IS NULL OR genre IN ('FEMME', 'HOMME', 'AUTRE')",
+                                     name="ck_contacts_entreprise_genre"),)
+
+    genre: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     entreprise_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),

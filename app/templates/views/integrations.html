@@ -15,5 +15,12 @@
     <div class="integration-empty" id="integrationEmpty" hidden><i data-lucide="database-zap"></i><strong>Aucune intégration trouvée</strong><span>Aucune donnée fictive n’est affichée.</span></div>
     <footer class="companies-footer"><span id="integrationPagination"></span><div><button class="btn btn-outline-secondary app-btn" id="integrationPrev" type="button"><i data-lucide="chevron-left"></i>Précédent</button><button class="btn btn-outline-secondary app-btn" id="integrationNext" type="button">Suivant<i data-lucide="chevron-right"></i></button></div></footer>
   </section>
-  <section class="panel mt-4"><div class="panel-heading"><div><h2>Validations N2 favorables</h2><p>File d’entrée de l’intégration BNEC. Un échec reste historisé et peut donner lieu à une nouvelle tentative.</p></div></div><div class="cert-doc-list" id="integrationQueue"></div></section>
+  <section class="panel mt-4"><div class="panel-heading"><div><h2>Décisions N2 et corrections</h2><p>Une décision ajournée attend sa correction et une nouvelle validation. Une validation sous réserve exige une confirmation avant intégration.</p></div></div><div class="cert-doc-list" id="integrationQueue"></div></section>
+  <dialog id="integrationReserveDialog" class="hauqe-dialog integration-reserve-dialog">
+    <div class="integration-reserve-shell">
+      <header><span><i data-lucide="shield-alert"></i></span><div><p class="eyebrow">Validation sous réserve</p><h2>Avant l’intégration BNEC</h2><small>La poursuite malgré la réserve sera tracée.</small></div><button type="button" id="integrationReserveClose" aria-label="Fermer"><i data-lucide="x"></i></button></header>
+      <div class="integration-reserve-body"><strong id="integrationReserveCompany"></strong><p id="integrationReserveReason"></p><small id="integrationReserveCorrection"></small></div>
+      <footer><a id="integrationReserveCorrectionLink" class="btn btn-outline-secondary app-btn" href="#/validations">Aller à la correction</a><button id="integrationReserveContinue" class="btn btn-primary app-btn" type="button">Continuer malgré la réserve</button></footer>
+    </div>
+  </dialog>
 </div>

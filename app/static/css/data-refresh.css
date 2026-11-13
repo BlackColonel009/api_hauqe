@@ -1,0 +1,30 @@
+/* Indicateur commun aux registres raccordés : même badge que sur Entreprises. */
+.page-data-sync,
+.registry-sync-line.page-data-sync {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+  margin-bottom: 0;
+  max-width: 100%;
+}
+.page-data-sync .page-data-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid #deebe6;
+  border-radius: 999px;
+  background: #f8fbfa;
+  color: #60726b;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.5;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+[data-theme="dark"] .page-data-sync .page-data-sync-badge {
+  border-color: #31564c;
+  background: #102d27;
+  color: #c2d8d0;
+}

@@ -80,7 +80,7 @@ class ValidationQueueItem(BaseModel):
 class CorrectionCreateRequest(BaseModel):
     motif: str = Field(min_length=1)
     instructions: str = Field(min_length=1)
-    date_echeance: date | None = None
+    date_echeance: date
 
 
 class CorrectionUpdateRequest(BaseModel):
@@ -118,6 +118,7 @@ IntegrationElementResult = Literal["INTEGRE", "ECHEC"]
 
 class IntegrationOpenRequest(BaseModel):
     resume: str | None = None
+    confirmer_reserve: bool = False
 
 
 class IntegrationCheckRequest(BaseModel):
@@ -128,6 +129,7 @@ class IntegrationCheckRequest(BaseModel):
 
 class IntegrationStartRequest(BaseModel):
     resume: str | None = None
+    confirmer_reserve: bool = False
 
 
 class IntegrationElementCreateRequest(BaseModel):

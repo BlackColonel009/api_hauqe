@@ -284,26 +284,33 @@
     setTimeout(step, 450);
   }
 
-  document
-    .querySelectorAll("[data-toggle-password]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const input = document.querySelector(
-          `#${button.dataset.togglePassword}`
-        );
-        if (!input) return;
-
-        input.type =
-          input.type === "password" ? "text" : "password";
-
-        button.innerHTML = `
-          <i data-lucide="${
-            input.type === "password" ? "eye" : "eye-off"
-          }"></i>
-        `;
-        icons();
-      });
+  // Fresh native control: no loader, no icon conversion or DOM replacement on click.
+  function mountPasswordToggle() {
+    const slot = $("#loginPasswordToggleSlot");
+    if (!slot || !passwordInput) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("data-no-action-loader", "true");
+    button.setAttribute("aria-controls", "loginPassword");
+    button.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="pointer-events:none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path data-password-slash d="m3 3 18 18"/></svg>';
+    const slash = button.querySelector('[data-password-slash]');
+    function sync() {
+      const visible = passwordInput.type === "text";
+      button.setAttribute("aria-label", visible ? "Masquer le mot de passe" : "Afficher le mot de passe");
+      button.setAttribute("aria-pressed", String(visible));
+      slash.style.display = visible ? "" : "none";
+    }
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (passwordInput.disabled) return;
+      passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+      sync();
     });
+    sync();
+    slot.replaceChildren(button);
+  }
+  mountPasswordToggle();
 
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();

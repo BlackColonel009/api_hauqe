@@ -1,5 +1,204 @@
 # FEUILLE DE ROUTE BACKEND — HAUQE CERTIF
 
+### 2 novembre 2026 — Livraison Docker Linux HAUQE préparée
+
+Voir GUIDE_LIVRAISON_DOCKER_HAUQE.md : export Contabo lecture seule par
+deploy/export-contabo.sh, dump + fichiers/avatars + hashes, secrets séparés.
+compose.linux.yaml : base non exposée, API localhost:8002, worker profil
+operations et SMTP false par défaut, rôle SQL applicatif non superutilisateur.
+Dockerfile passe à Python 3.12 slim trixie avec client PostgreSQL 17 pour backups ;
+alias /var/www/api_hauqe vers /srv/sngsc pour anciens chemins documentaires Linux.
+Échantillon de chemins et téléchargements à vérifier avant livraison réelle.
+Windows confirmé fonctionnel ; nouvelle image/Linux encore à tester. Pas de
+commit/push ni action Contabo exécutés. Conserver la production actuelle intacte.
+Le clone isolé Contabo doit recevoir un lot Git complet et approuvé ; attention
+aux changements métier/migrations antérieurs non publiés. Ne pas git add .
+Base PostgreSQL source modifiée : non. Aucune nouvelle migration ni seed Docker.
+La restauration prévue écrit uniquement dans la nouvelle base cible vide.
+
+
+### 29 octobre 2026 — Docker : dépendance Argon2 et contrôle d'import
+
+Ajout argon2-cffi>=23.1,<26 dans requirements pour les imports argon2 déjà
+utilisés. Dockerfile : pip check et imports des bibliothèques principales.
+Audit AST des imports app effectué ; ne remplace pas un test complet Docker.
+Reconstruire web avec Compose --build. Démarrage corrigé encore à confirmer.
+Aucun changement de mots de passe, de schéma, de seed ou de migration.
+Base PostgreSQL modifiée : non. Guide Docker mis à jour.
+
+
+### 29 octobre 2026 — Docker : dépendance SQLAlchemy asyncio
+
+Erreur de démarrage greenlet absent : requirements utilise désormais
+sqlalchemy[asyncio]>=2.0 et le Dockerfile teste ses imports à la construction.
+Reconstruire web : docker compose -f compose.test.yaml up -d --build web.
+Résultat du nouveau build/démarrage à confirmer. Ne pas supprimer les volumes.
+Base PostgreSQL modifiée : non. Aucune migration ni seed.
+
+
+### 5 octobre 2026 — Préparation Docker pédagogique isolée
+
+Base de test restaurée par l'utilisateur : 73 tables, head l7b1d5f9a304,
+trois registres principaux comparés sans écart. Dockerfile non-root Python 3.12,
+contexte filtré sans secrets/dumps/uploads, Compose de test sans worker séparé.
+API utilise désormais BACKGROUND_SERVICES_ENABLED (défaut true) ; transport
+EMAIL utilise HAUQE_SMTP_ENABLED (défaut true), garde la file intacte si false.
+Compose force ces deux paramètres à false et vide le SMTP : autres installations
+inchangées par défaut. .env actuel préservé, .env.docker.test privé ignoré Git.
+Build/lancement non encore validés dans Docker. Documents Windows non encore
+copiés ni chemins contrôlés. Production, sauvegardes et worker à finaliser.
+Commandes et statuts dans GUIDE_APPRENTISSAGE_DOCKER_SNGSC.md.
+Base PostgreSQL modifiée (schéma) : non. Migration/seed : aucun pour ce lot.
+Une copie de test a été remplie par restauration, sans changer la source.
+
+
+### 4 octobre 2026 — Exclusivité des affectations de vérification
+
+Sans affectation active, tout vérificateur habilité peut intervenir. Dès qu'une
+affectation active existe, seuls les vérificateurs affectés peuvent modifier ;
+ADMIN_HAUQE et POINT_FOCAL_BNEC conservent leur accès de gestion. Les autres
+gardent la consultation. Plusieurs affectations actives autorisent chacun des
+agents concernés. Statuts actifs : ACTIF, ACTIVE ou null ; les dates restent
+informatives. Désactiver toutes les affectations rend le dossier à nouveau libre.
+Contrôle serveur sur les 14 mutations du service de vérification, avec verrou
+du dossier partagé avec les changements d'affectation. Les permissions de rôle
+restent requises : aucune permission d'affecter accordée aux vérificateurs.
+Interface : actions conditionnées par un endpoint de droits du dossier ; ancien
+observateur de réouverture retiré pour éviter le réaffichage et les mutations répétées.
+Tests unitaires : 89 réussis, dont 5 cas dédiés. Clics/zoom réels non vérifiés.
+Base PostgreSQL modifiée : non pour cette mise à jour. Migration/seed : aucun.
+Déployer puis redémarrer l'API sngsc ; rechargement navigateur Ctrl+F5.
+Cache de détail et shell : 20261004-13. Les migrations des lots antérieurs restent nécessaires.
+
+
+### 4 octobre 2026 — Ouverture vérification : priorité héritée et risque
+
+Prompts libres remplacés par modal HAUQE scrollable. Mission réellement liée
+résolue au clic ; priorité affichée en lecture seule puis confirmation requise.
+Si absente, message Non renseignée sans inventer de priorité. Choix requis
+R1 faible, R2 modéré, R3 significatif, R4 élevé, R5 critique ; API d'ouverture
+accepte uniquement R1–R5 ou null. Autres écrans et risques existants inchangés.
+Boutons natifs directs, verrou contre double ouverture, annulation sans création.
+Deux tests dédiés passent ; zoom/clics réels encore à confirmer.
+Base PostgreSQL modifiée : non. Migration/seed : aucun. Cache 20261004-12.
+Déployer backend/assets puis redémarrer API sngsc.
+
+### 4 octobre 2026 — Désarchivage et visibilité terrain
+
+Gérer les campagnes > Déplacer / archiver les missions : sélectionner une
+mission archivée puis Désarchiver, avec motif et confirmation. POST dédié
+réservé aux admins HAUQE/point focal, audit et reprise au statut PLANIFIEE
+(ancien statut non stocké séparément). Campagne active requise.
+Nouvelle collecte sur mission ARCHIVEE : alerte avant navigation, message
+coordonnateur « veuillez désarchiver » ou collecteur « contactez le point
+focal ». Formulaire direct et écriture serveur également bloqués.
+Registre et synthèse Collecte terrain filtrent les campagnes inactives ;
+aucune suppression, historique toujours accessible dans Gérer les campagnes.
+Tests transfert/archivage/désarchivage/filtrage : 5 passent. Validation réelle
+navigateur encore requise. Assets version 20261004-5.
+Schéma PostgreSQL modifié : non ; statut modifié seulement au clic confirmé.
+Aucune migration ni seed. Déployer backend/assets et redémarrer API sngsc.
+
+### 4 octobre 2026 — Déplacement de dossiers entre missions/campagnes
+
+Gérer les campagnes : Déplacer / archiver les missions, modal thème HAUQE
+avec scroll, source, sélection des dossiers, destination (toutes campagnes),
+motif et confirmation. Boutons natifs neufs avec écouteurs directs.
+Accès exige COLLECTE.AFFECTER ET rôle ADMIN_HAUQE ou POINT_FOCAL_BNEC.
+POST missions/{id}/deplacer-collectes déplace toutes les révisions des dossiers
+sélectionnés sans recréer fiches, preuves, vérifications, contrôles, validations
+ou intégrations. Refus si doublon entreprise destination, campagne inactive,
+mission destination archivée/annulée ou responsables non affectés activement.
+Les affectations ne sont pas copiées silencieusement : les préparer avant.
+POST missions/{id}/archiver refuse toute mission contenant une fiche/révision,
+préserve historique et affectations. Verrous mission pour transfert/archivage
+et écriture collecte ; archivage direct via PATCH générique refusé.
+Ancien lien reprise : GET missions/dossiers/{fiche_id}/localisation résout la
+mission réelle au chargement du formulaire et ajuste l'URL sans recréer page.
+Contexte campagne/mission des pages aval reflète la destination. Messages déjà
+envoyés et codes BNEC existants non réécrits. Motif/origine/destination audités.
+Tests automatisés permissions, déplacement intercampagne avec révisions,
+mission non vide et interdiction d'écrire dans une mission archivée.
+Test navigateur zoom/boutons et parcours réel encore à confirmer ; aucun
+déplacement de données réelles exécuté pendant le développement.
+Schéma PostgreSQL modifié : non. Migration/seed/script : aucun pour ce lot.
+Les données de mission_id/statut changent uniquement sur action confirmée.
+Déployer code backend/templates/assets puis sudo systemctl restart sngsc.
+Cache scripts collecte/campagnes/router/shell et CSS : 20261004-4.
+
+### 4 octobre 2026 — Noms dans Affectations actuelles
+
+Liste des affectations enrichie par utilisateur_nom depuis utilisateurs,
+sans dépendre de la liste des collecteurs actifs. Le formulaire affiche ce
+nom en priorité, jamais utilisateur_id comme texte de secours.
+UUID conservés seulement pour les liaisons techniques. Boutons inchangés.
+Syntaxes JS/Python vérifiées ; contrôle interactif encore à confirmer.
+Base PostgreSQL modifiée : non. Migration/seed : aucun pour ce lot.
+Déployer backend et assets, redémarrer API sngsc. Cache version 20261004-2.
+
+### 4 octobre 2026 — Rappel personnel des collectes en brouillon
+
+Après connexion/chargement de session, cloche animée (sans son) et message
+avec entreprise, mission et liens pour reprendre ses brouillons. Responsable
+de fiche ciblé quel que soit son rôle, jamais tous les brouillons pour un admin.
+GET authentifié /collectes/mes-brouillons, lecture seule des données existantes.
+Fermeture native directe, affichage unique par chargement/session ; purge à la
+déconnexion et rejet des réponses anciennes. Animation réduite si préférence
+accessibilité. Scroll/mobile/thème sombre prévus. Aucun mail ni échéance créé.
+Trois tests passent : requête personnelle, absence/double initialisation,
+déconnexion pendant requête. Animation et clics réels encore à confirmer.
+Base PostgreSQL modifiée : non. Migration/seed : aucun pour ce lot.
+Déployer backend et assets, redémarrer le service API sngsc ; aucun worker
+supplémentaire. Cache shell et rappel : 20261003-13.
+
+## 3 octobre 2026 — Formulaire Entreprise : actions et corbeilles
+
+Cause vérifiée : renderStep relisait les anciennes lignes après splice,
+réintroduisant les éléments retirés et écrasant les lignes restantes.
+Capturer les saisies AVANT la mutation, puis rendre sans recapture.
+Boutons natifs recréés avec écouteurs directs et exclusion du chargeur
+automatique ; le chargeur explicite reste utilisé pour les appels API.
+Création et modification couvertes pour contacts, sites et offres :
+8 tests automatisés. Les clics/zoom réels restent à confirmer en navigateur.
+Base PostgreSQL modifiée : non pour ce lot ; migration/seed/script : aucun.
+Déployer les fichiers statiques et modèles, puis recharger le navigateur.
+Ne pas oublier la migration genre l7b1d5f9a304 du lot précédent si absente.
+
+## 3 octobre 2026 — Genre des contacts entreprise
+
+Le champ n'existait ni dans le modèle ni dans la base locale. Migration
+`l7b1d5f9a304_contact_genre.py`, après `k6a0c4e8f2b3` : ajoute uniquement
+`contacts_entreprise.genre VARCHAR(20) NULL` et une contrainte des valeurs
+FEMME/HOMME/AUTRE ou NULL. Aucun seed, aucune suppression ni reprise de données.
+Les API création/modification/lecture de contacts et leur audit transportent
+le genre. L'API Entreprise expose `genre_promoteur` calculé par sous-requête
+corrélée (pas une colonne supplémentaire) à partir du premier contact actif
+par date de création puis ID. Le genre d'un contact plus récent ne remplace
+jamais une information non renseignée sur le premier.
+
+Le catalogue Rapports conserve son filtrage frontend existant. Pour un export
+Certifications avec genre/adresse, les entreprises lisibles par le compte sont
+chargées en lots et rapprochées via entreprise_id ; aucune requête par ligne.
+Les permissions de lecture existantes ne sont pas élargies. Les bilans serveur
+BNEC ne changent pas. PostgreSQL modifié : oui. Local hauqe_certif à la révision
+l7b1d5f9a304 confirmée ; lecture SQLAlchemy et sérialisation d'une entreprise
+locale vérifiées sans erreur après migration. 76 tests unitaires réussis.
+
+## 3 octobre 2026 — Extension des chargeurs frontend (20261003-3)
+
+Sept registres métier supplémentaires réutilisent les endpoints GET existants.
+Les rafraîchissements ne calculent ni n'enregistrent des scores. Aucun changement
+de modèle, endpoint, rôle, tâche SMTP ou variable .env. Base PostgreSQL modifiée :
+non. Migration : aucune ; seed : aucun. Prévoir une lecture répétée des registres
+et modèles au délai choisi par l'utilisateur (minimum 15 secondes).
+
+## 3 octobre 2026 — Actualisation des données frontend
+
+Les chargeurs frontend réutilisent les endpoints GET existants. Aucun endpoint,
+modèle, permission, worker ou paramètre serveur n'est ajouté. Base PostgreSQL
+modifiée : non ; migration : aucune ; seed : aucun. Voir la feuille Frontend
+pour le périmètre raccordé et la recette restant à réaliser en navigateur.
+
 **Projet :** HAUQE Certif / BNEC  
 **Backend :** FastAPI + PostgreSQL + SQLAlchemy 2 async + Psycopg 3 + Alembic  
 **Dernière mise à jour :** 2026-10-01 — bilans BNEC et configurations personnelles des exports
@@ -7110,3 +7309,62 @@ absent sur le serveur, un avertissement est journalisé et le courriel part
 sans image. Les bilans BNEC PDF et XLSX incorporent le même fichier ; aucun
 document historique n'est réécrit. **Base PostgreSQL modifiée : non ;
 migration : aucune ; seed : aucun.**
+
+### Demande de correction, échéance et resoumission (02/10/2026)
+
+Une validation N1/N2 ajournée ou sous réserve peut produire une demande de
+correction avec motif, instructions et date limite obligatoires. Une seule
+correction en attente est admise par décision. Sa création produit une échéance
+`CORRECTION` rattachée à la demande, une alerte et une notification interne et
+électronique contextualisées (validateur, entreprise, motif, date et lien direct
+vers « Resoumettre ») au collecteur de la fiche, à l'administrateur HAUQE et au
+point focal BNEC, sans doublon pour les rôles cumulés. Les préférences de
+réception des courriels de chaque compte restent appliquées par le worker.
+
+Le worker rappelle ces destinataires quotidiennement de J-2 jusqu'à la
+resoumission, y compris après la date limite si la correction est toujours
+ouverte. La resoumission est autorisée au collecteur concerné, au point focal
+ou à l'administrateur ; elle clôt uniquement cette échéance, résout ses alertes
+et annule les courriels encore en file. Un contrôle supplémentaire avant SMTP
+empêche l'expédition d'un rappel déjà clôturé. Une décision N2 `AJOURNE`
+reste non intégrable jusqu'à une nouvelle validation favorable ; une décision
+`VALIDE_SOUS_RESERVE` demande une confirmation explicite et tracée avant
+l'ouverture BNEC.
+
+Le même consentement est revérifié au démarrage de la transaction
+`POST /integrations-bnec/{id}/start`, indépendamment de l'ouverture du dossier.
+Cette route vérifie aussi que la décision N2 liée est toujours la plus récente
+et favorable ; une intégration ancienne ouverte avant un ajournement ne peut
+donc pas contourner la nouvelle décision. La confirmation finale figure dans
+l'audit de réussite.
+
+**Base PostgreSQL modifiée : oui, données opérationnelles nouvelles lors des
+futures demandes (correction, échéance, alerte, notifications) et droits du
+point focal. Schéma modifié : non ; migration Alembic : aucune. Seed à rejouer :
+`python -m app.scripts.seed_validation_integration_permissions`.**
+
+### Courriels de renouvellement alignés sur les jalons du certificat (02/10/2026)
+
+Le scan quotidien lit les jalons propres à chaque certification (ou la règle
+générale en l'absence de plan local). À chaque seuil franchi, il crée une
+notification interne et un courriel contextualisés pour les comptes actifs
+`CELLULE_VEILLE`, `ADMIN_HAUQE` et `POINT_FOCAL_BNEC`, plus le responsable
+explicitement affecté à l'échéance s'il existe. Les destinataires sont
+dédupliqués par compte. Un jalon donné n'est envoyé qu'une fois par cycle de
+date d'expiration ; un scan tardif peut rattraper un seuil franchi sans le
+renvoyer chaque jour. Le transport SMTP respecte toujours la préférence de
+réception du compte et les exclusions d'administrateur de cette échéance.
+
+L'échéance d'expiration est la source du courriel lorsque le renouvellement
+partage la même date, afin d'éviter deux messages identiques. Une date limite
+de renouvellement distincte conserve son suivi et emploie les mêmes seuils
+propres au certificat. La modification des jalons recalcule les alertes du
+certificat et des renouvellements encore ouverts ; pour les renouvellements
+automatiques, elle réaligne aussi la date d'ouverture sur le premier jalon.
+Les renouvellements décidés ne sont plus repris dans le scan ; leurs anciennes
+échéances actives sont clôturées et leurs courriels non envoyés annulés. Le
+worker vérifie une dernière fois l'état de l'échéance et de l'alerte avant SMTP.
+
+**Base PostgreSQL modifiée : oui, données opérationnelles de suivi et
+notifications uniquement ; schéma modifié : non ; migration Alembic : aucune ;
+seed : aucun.**

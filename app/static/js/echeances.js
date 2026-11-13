@@ -1,5 +1,6 @@
 (async function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const api = await import("/static/js/core/api.js");
   const $ = (s) => document.querySelector(s);
@@ -500,6 +501,7 @@
     if (resource === "ACCREDITATION") return "organismes";
     if (resource === "CONFIRMATION_EXTERNE") return "verifications";
     if (["DOSSIER_VEILLE", "RELANCE_VEILLE"].includes(resource)) return "veille";
+    if (resource === "CORRECTION") return "validations";
     return "manual";
   }
 
@@ -509,6 +511,7 @@
       organismes: "Organismes / accréditations",
       verifications: "Vérifications",
       veille: "Cellule de veille",
+      validations: "Validations",
       manual: "Planification directe",
     }[sourceGroup(item)] || "Autre source";
   }
@@ -520,6 +523,7 @@
       organismes: 0,
       verifications: 0,
       veille: 0,
+      validations: 0,
       manual: 0,
     };
     allItems.forEach((item) => {
@@ -587,7 +591,7 @@
     icons();
   }
 
-  async function loadGlobalDeadlines() {
+  async function loadGlobalDeadlines({ shouldApply = () => true } = {}) {
     const firstPage = await api.apiGet(
       "/api/v1/veille/workspace/deadlines?limit=500&offset=0"
     );
@@ -605,6 +609,7 @@
       );
       remainingPages.forEach((page) => pages.push(page.items || []));
     }
+    if (!shouldApply()) return;
     allItems = pages.flat();
     renderGlobalFilters();
     renderGlobalRegistry();
@@ -656,18 +661,19 @@
     $("#listView").hidden = view !== "list";
   }
 
-  async function load() {
+  async function load({ shouldApply = () => true, background = false } = {}) {
     const sequence = ++loadSequence;
     try {
       const payload = await api.apiGet(
         `/api/v1/veille/workspace/deadlines?${params()}`
       );
-      if (sequence !== loadSequence) return;
+      if (sequence !== loadSequence || !shouldApply()) return;
       items = payload.items || [];
       renderKpis(payload.summary || {});
       render();
     } catch (error) {
-      if (sequence !== loadSequence) return;
+      if (background) throw error;
+      if (sequence !== loadSequence || !shouldApply()) return;
       state(error?.message || "Chargement impossible.", true);
     }
   }
@@ -825,6 +831,7 @@
 
     const status = displayStatus(selected);
     const closed = ["TERMINEE","ANNULEE"].includes(status);
+    const isCorrection = String(selected.ressource_type || "").toUpperCase() === "CORRECTION";
     const dueDate = selected.date_echeance
       ? new Date(`${String(selected.date_echeance).slice(0, 10)}T12:00:00`)
       : null;
@@ -869,8 +876,14 @@
           </section>
           <section class="deadline-reminder-summary">
             <div class="deadline-section-title"><span><i data-lucide="mail-check"></i></span><div><small>Notifications automatiques</small><h3>Plan de rappel</h3></div></div>
-            <p>${selected.rappels_email_actifs !== false ? `Rappel quotidien à l’agent à partir de J-${e(selected.rappel_jours_avant ?? 2)} jusqu’au jour J.` : "Rappel e-mail à l’agent désactivé."}</p>
-            <p>${selected.escalade_administrateurs_jour_j !== false ? "Escalade e-mail aux administrateurs HAUQE actifs le jour J." : "Escalade aux administrateurs désactivée."}</p>
+            <p>${isCorrection
+              ? selected.rappels_email_actifs !== false
+                ? `Rappel quotidien au collecteur concerné, au point focal et aux administrateurs HAUQE à partir de J-${e(selected.rappel_jours_avant ?? 2)}, puis tant que la correction n’est pas resoumise.`
+                : "Rappels de cette correction désactivés."
+              : selected.rappels_email_actifs !== false
+                ? `Rappel quotidien à l’agent à partir de J-${e(selected.rappel_jours_avant ?? 2)} jusqu’au jour J.`
+                : "Rappel e-mail à l’agent désactivé."}</p>
+            ${isCorrection ? "" : `<p>${selected.escalade_administrateurs_jour_j !== false ? "Escalade e-mail aux administrateurs HAUQE actifs le jour J." : "Escalade aux administrateurs désactivée."}</p>`}
           </section>
           ${closed ? `<section class="deadline-closure-note ${status === "ANNULEE" ? "cancelled" : "completed"}"><span><i data-lucide="${status === "ANNULEE" ? "ban" : "file-check-2"}"></i></span><div><small>${status === "ANNULEE" ? "Échéance annulée" : "Échéance terminée"}</small><strong>${e(displayText(selected.motif_cloture, "Le motif est consigné dans le journal d’audit."))}</strong></div></section>` : ""}
         </main>
@@ -881,7 +894,10 @@
           <div class="deadline-meta-row"><span><i data-lucide="shield-check"></i></span><div><small>Traçabilité</small><strong>Journalisation active</strong></div></div>
         </aside>
       </div>`;
-    $("#deadlineDetailActions").innerHTML = perm("ECHEANCES.GERER") && !closed
+    $("#deadlineDetailActions").innerHTML = isCorrection
+      ? `${selected.resource_route ? `<a class="btn btn-primary app-btn" href="${e(selected.resource_route)}"><i data-lucide="undo-2"></i>Ouvrir la correction</a>` : ""}
+         ${perm("ECHEANCES.GERER") && !closed ? `<button class="btn btn-outline-secondary app-btn" type="button" data-action="reminders"><i data-lucide="mail-cog"></i>Configurer les rappels</button>` : ""}`
+      : perm("ECHEANCES.GERER") && !closed
       ? `<button class="btn btn-outline-secondary app-btn" type="button" data-action="reminders"><i data-lucide="mail-cog"></i>Configurer les rappels</button>
          <button class="btn btn-outline-secondary app-btn" type="button" data-action="cancel"><i data-lucide="ban"></i>Annuler l’échéance</button>
          <button class="btn btn-primary app-btn" type="button" data-action="complete"><i data-lucide="circle-check"></i>Terminer l’échéance</button>`
@@ -1080,6 +1096,8 @@
     bind();
     await loadFilters();
     await Promise.all([load(), loadGlobalDeadlines()]);
+    registerDataRefresh?.(({ shouldApply }) =>
+      Promise.all([load({ shouldApply, background: true }), loadGlobalDeadlines({ shouldApply })]));
   } catch (error) {
     state(error?.message || "Erreur de chargement.", true);
   }

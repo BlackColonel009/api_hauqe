@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,6 +36,8 @@ class ContactEntrepriseCreateRequest(BaseModel):
     """
     Données autorisées lors de la création d'un contact.
     """
+
+    genre: Literal["FEMME", "HOMME", "AUTRE"] | None = None
 
     nom: str | None = Field(
         default=None,
@@ -79,6 +82,8 @@ class ContactEntrepriseUpdateRequest(BaseModel):
 
     entreprise_id n'est volontairement pas modifiable ici.
     """
+
+    genre: Literal["FEMME", "HOMME", "AUTRE"] | None = None
 
     nom: str | None = Field(
         default=None,
@@ -133,6 +138,8 @@ class ContactStatusRequest(BaseModel):
 # ============================================================
 
 class ContactEntrepriseResponse(BaseModel):
+
+    genre: str | None = None
 
     id: UUID
     entreprise_id: UUID

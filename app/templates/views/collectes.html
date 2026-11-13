@@ -81,11 +81,14 @@
 
   <section class="panel collectes-panel">
     <div class="collectes-list-head">
-      <div>
-        <strong id="collecteCount">0 mission</strong>
-        <small id="collecteRange">Données</small>
+      <div class="collecte-register-summary">
+        <span class="collecte-register-caption">Sur cette page</span>
+        <div id="collecteCount" class="collecte-register-counts">0 mission</div>
+        <small id="collecteRange" class="collecte-register-range">Données</small>
       </div>
 
+      <div class="collecte-register-controls">
+      <div id="collecteViewSwitch" class="collecte-view-switch" role="group" aria-label="Affichage des campagnes"></div>
       <select id="collecteSort">
         <option value="planned">Date prévue</option>
         <option value="recent">Création récente</option>
@@ -94,9 +97,10 @@
         <option value="completion">Complétude</option>
         <option value="status">Statut</option>
       </select>
+      </div>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" id="collecteListView">
       <table class="table collecte-table collecte-campaign-tree">
         <thead>
           <tr>
@@ -107,6 +111,7 @@
       </table>
     </div>
 
+    <div id="collecteGridView" class="collecte-campaign-grid" hidden></div>
     <div class="collecte-empty" id="collecteEmpty" hidden>
       <i data-lucide="clipboard-x"></i>
       <strong>Aucune mission trouvée</strong>

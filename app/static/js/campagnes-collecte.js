@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+const registerDataRefresh = window.HAUQE_CAPTURE_DATA_REFRESH?.() || window.HAUQE_REGISTER_DATA_REFRESH;
 
   const $ = (selector) => document.querySelector(selector);
   let apiGet;
@@ -131,11 +132,17 @@
           danger: true,
           handler: () => disableCampaign(campaign),
         }));
+      } else {
+        slot.appendChild(createCampaignActionButton({
+          label: "Réactiver la campagne",
+          iconName: "rotate-ccw",
+          handler: () => reactivateCampaign(campaign),
+        }));
       }
     });
   }
 
-  async function loadCampaigns() {
+  async function loadCampaigns(options = {}) {
     const requestSequence = ++loadSequence;
     hideState();
     const params = new URLSearchParams({ limit: "200", offset: "0" });
@@ -147,10 +154,11 @@
       const payload = await apiGet(`/api/v1/campagnes?${params}`);
       // Une recherche ou un rafraîchissement plus récent ne doit jamais être
       // remplacé par la réponse, arrivée en retard, d'une requête précédente.
-      if (requestSequence !== loadSequence) return;
+      if (requestSequence !== loadSequence || (options.shouldApply && !options.shouldApply())) return false;
       campaigns = payload.items || [];
       render();
     } catch (error) {
+      if (options.shouldApply) throw error;
       if (requestSequence !== loadSequence) return;
       showState(error?.message || "Chargement des campagnes impossible.", true);
     }
@@ -288,6 +296,21 @@
     }
   }
 
+  async function reactivateCampaign(campaign) {
+    if (!campaign || actionInProgress) return;
+    if (!window.confirm(`Réactiver la campagne « ${campaign.code} » ? Elle sera de nouveau proposée pour créer une mission. Les missions et collectes existantes ne seront pas modifiées.`)) return;
+    actionInProgress = true;
+    try {
+      await apiPatch(`/api/v1/campagnes/${campaign.id}`, { statut: "ACTIVE" });
+      await loadCampaigns();
+      showState("Campagne réactivée. Elle est de nouveau disponible pour une nouvelle mission.");
+    } catch (error) {
+      showState(error?.message || "Réactivation impossible.", true);
+    } finally {
+      actionInProgress = false;
+    }
+  }
+
   // Les lignes sont redessinées après recherche, rafraîchissement ou sauvegarde.
   // Le gestionnaire est donc posé une seule fois sur leur conteneur persistant :
   // les actions restent disponibles dès le premier clic, y compris sur une ligne
@@ -364,6 +387,8 @@
     const api = await import("/static/js/core/api.js");
     apiGet = api.apiGet; apiPost = api.apiPost; apiPatch = api.apiPatch;
     currentUser = await apiGet("/api/v1/me");
+    const { installCollectionTransfer } = await import('/static/js/core/collection-transfer.js?v=20261004-6');
+    installCollectionTransfer({apiGet, apiPost, user:currentUser, refresh:loadCampaigns});
     if (!canManage()) { $("#newCampaign").hidden = true; showState("Cette rubrique est réservée aux coordonnateurs et administrateurs habilités.", true); return; }
     $("#newCampaign").addEventListener("click", () => openDialog());
     bindRowActions();
@@ -383,5 +408,6 @@
     refreshIcons();
   }
 
-  bootstrap().catch((error) => showState(error?.message || "Préparation de la gestion des campagnes impossible.", true));
+  bootstrap().then(() => registerDataRefresh?.(loadCampaigns))
+    .catch((error) => showState(error?.message || "Préparation de la gestion des campagnes impossible.", true));
 })();
